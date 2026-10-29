@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Install Heiss OS
+Name[ru]=Установить Heiss OS
+Comment=Install Heiss OS to disk
+Exec=sudo -E calamares
+Icon=calamares
+Terminal=false
+Categories=System;
