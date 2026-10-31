@@ -1,0 +1,16 @@
+[kdeglobals][General]
+ColorScheme=HeissLight
+AccentColor=206,181,125
+
+[kdeglobals][KDE]
+widgetStyle=Breeze
+
+[kdeglobals][Icons]
+Theme=breeze
+
+[plasmarc][Theme]
+name=default
+
+[kwinrc][org.kde.kdecoration2]
+library=org.kde.breeze
+theme=Breeze

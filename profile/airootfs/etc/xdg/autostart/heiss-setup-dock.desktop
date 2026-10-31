@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=Heiss dock
+Exec=sh /usr/local/bin/heiss-setup-dock.sh
+OnlyShowIn=KDE;
+NoDisplay=true
