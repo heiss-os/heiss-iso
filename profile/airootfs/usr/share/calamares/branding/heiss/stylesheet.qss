@@ -94,3 +94,30 @@ QPushButton#aboutButton { qproperty-icon: url(:/data/images/release.svg); }
 #licenseItem {  }
 #licenseItemFullText {  }
 */
+
+
+/* ===== Heiss OS installer redesign =====
+ * Each block below can be switched off by removing/commenting it.
+ */
+
+/* [switch: about-button] hide the About button (unverified: check in the VM) */
+QPushButton#aboutButton {
+    qproperty-visible: false;
+    max-width: 0px;
+    max-height: 0px;
+    padding: 0px;
+    border: none;
+}
+
+/* [switch: logo-background] faint Heiss logo behind the content (unverified: child widgets may cover it) */
+QWidget#mainApp {
+    background-image: url(/usr/share/calamares/branding/heiss/logo-bg.png);
+    background-repeat: no-repeat;
+    background-position: center;
+}
+
+/* [switch: heading-font] Montserrat for headings (object names to be confirmed via the Debug Dialog) */
+#mainText, #titleLabel, #welcomeTitle {
+    font-family: "Montserrat";
+    font-weight: 600;
+}
