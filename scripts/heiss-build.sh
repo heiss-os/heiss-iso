@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Heiss OS: чистая сборка ISO и копирование в общую папку VirtualBox.
-# Usage: heiss-build.sh [--dry-run]
+# Usage: [HEISS_FAST=1] heiss-build.sh [--dry-run]
+#   HEISS_FAST=1  fast test build: zstd squashfs (bigger ISO, much quicker). Default is xz.
 #   --dry-run  only render the profile (substitute @LOCALREPO@ in pacman.conf) and exit.
 set -euo pipefail
 
@@ -19,9 +20,16 @@ cp -a profile/. "$RENDERED/"
 sed -i "s#@LOCALREPO@#$LOCALREPO#g" "$RENDERED/pacman.conf"
 if grep -q '@LOCALREPO@' "$RENDERED/pacman.conf"; then echo "Плейсхолдер не заменён" >&2; exit 1; fi
 
+if [[ "${HEISS_FAST:-0}" == "1" ]]; then
+    echo "==> HEISS_FAST=1: zstd для squashfs (тестовая сборка, ISO больше)"
+    sed -i "s#^airootfs_image_tool_options=.*#airootfs_image_tool_options=('-comp' 'zstd' '-Xcompression-level' '3' '-b' '1M')#" "$RENDERED/profiledef.sh"
+    if ! grep -q "'zstd'" "$RENDERED/profiledef.sh"; then echo "Не удалось применить zstd в profiledef.sh" >&2; exit 1; fi
+fi
+
 if [[ $DRY_RUN -eq 1 ]]; then
     echo "==> Dry run: итоговая секция [heiss-local]"
     grep -A2 '^\[heiss-local\]' "$RENDERED/pacman.conf"
+    grep '^airootfs_image_tool_options' "$RENDERED/profiledef.sh"
     exit 0
 fi
 
