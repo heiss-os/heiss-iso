@@ -103,8 +103,8 @@ ForegroundPositive=31,138,101
 ForegroundVisited=110,92,58
 
 [Colors:View]
-BackgroundAlternate=229,226,219
-BackgroundNormal=236,233,227
+BackgroundAlternate=243,241,236
+BackgroundNormal=250,249,246
 DecorationFocus=140,116,72
 DecorationHover=140,116,72
 ForegroundActive=140,116,72
