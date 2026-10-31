@@ -6,7 +6,7 @@
                 "Name": "Heiss OS"
             }
         ],
-        "Description": "Heiss OS global theme (dark) with gold accent",
+        "Description": "Heiss OS global theme (dark) with neutral palette and sand accent",
         "Id": "org.heiss.dark.desktop",
         "Name": "Heiss Dark",
         "License": "LicenseRef-Heiss-Branding",

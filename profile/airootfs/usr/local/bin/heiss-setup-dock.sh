@@ -1,6 +1,6 @@
 #!/bin/sh
 # Heiss OS: при первом входе собирает панель-док (как на макете): внизу, плавающая,
-# значок ß, закреплённые приложения, трей и часы справа.
+# значок ß (sand accent), закреплённые приложения, трей и часы справа.
 MARK="$HOME/.config/heiss-dock-set"
 [ -f "$MARK" ] && exit 0
 for i in $(seq 1 60); do
@@ -15,9 +15,11 @@ panel.location = "bottom";
 panel.height = 52;
 panel.lengthMode = "fill";
 panel.floating = true;
+// translucent panel background (Plasma blurs/fades it; uses the neutral color scheme)
+panel.opacity = "translucent";
 var k = panel.addWidget("org.kde.plasma.kickoff");
 k.currentConfigGroup = ["General"];
-k.writeConfig("icon", "heiss-launcher");
+k.writeConfig("icon", "heiss-launcher-sand");
 var t = panel.addWidget("org.kde.plasma.icontasks");
 t.currentConfigGroup = ["General"];
 t.writeConfig("launchers", "applications:org.kde.dolphin.desktop,applications:firefox.desktop,applications:org.kde.konsole.desktop,applications:systemsettings.desktop");
