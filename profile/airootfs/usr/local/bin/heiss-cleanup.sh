@@ -27,6 +27,7 @@ find /etc/systemd/system -xtype l -delete 2>/dev/null || true
 
 log "установщик"
 rm -f /usr/share/applications/heiss-installer.desktop
+rm -f /etc/xdg/autostart/heiss-installer-autostart.desktop
 rm -rf /etc/calamares /usr/share/calamares/branding/heiss
 pacman -Rns --noconfirm calamares 2>/dev/null || true
 

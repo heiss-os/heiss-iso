@@ -1,0 +1,15 @@
+{
+    "KPackageStructure": "Plasma/LookAndFeel",
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "Heiss OS"
+            }
+        ],
+        "Description": "Heiss OS global theme (dark) with gold accent",
+        "Id": "org.heiss.dark.desktop",
+        "Name": "Heiss Dark",
+        "License": "LicenseRef-Heiss-Branding",
+        "Version": "0.1"
+    }
+}

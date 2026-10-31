@@ -128,11 +128,11 @@ strings:
     versionedName: "Heiss OS"
     shortVersionedName: "Heiss OS"
     bootloaderEntryName: "Heiss OS"
-    productUrl:          https://calamares.io/
-    supportUrl:          https://codeberg.org/Calamares/calamares/wiki
-    knownIssuesUrl:      https://codeberg.org/Calamares/calamares/issues
-    releaseNotesUrl:     https://calamares.io/news/
-    donateUrl:           https://docs.codeberg.org/improving-codeberg/donate/
+    productUrl:         https://github.com/heiss-os
+    supportUrl:         https://github.com/heiss-os/heiss-iso/issues
+    knownIssuesUrl:     https://github.com/heiss-os/heiss-iso/issues
+    releaseNotesUrl:   https://github.com/heiss-os/heiss-iso/releases
+    #donateUrl:           https://docs.codeberg.org/improving-codeberg/donate/
 
 # These images are loaded from the branding module directory.
 #
@@ -163,10 +163,10 @@ strings:
 # These filenames can also use substitutions from os-release (see above).
 images:
     # productBanner:       "banner.png"
-    productIcon:         "squid.png"
-    productLogo:         "squid.png"
+    productIcon:      "heiss-logo.png"
+    productLogo:      "heiss-logo.png"
     # productWallpaper:    "wallpaper.png"
-    productWelcome:      "languages.png"
+    #productWelcome:      "languages.png"
 
 # Colors for text and background components.
 #
