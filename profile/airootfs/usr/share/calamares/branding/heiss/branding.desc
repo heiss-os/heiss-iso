@@ -165,7 +165,9 @@ strings:
 # These filenames can also use substitutions from os-release (see above).
 images:
     # productBanner:       "banner.png"
-    productIcon:      "heiss-logo.png"
+    # Window icon: fully transparent so no tile is drawn in the title bar.
+    # Switch back to "heiss-logo.png" to show the logo there.
+    productIcon:      "icon-blank.png"
     productLogo:      "heiss-logo.png"
     # productWallpaper:    "wallpaper.png"
     #productWelcome:      "languages.png"
