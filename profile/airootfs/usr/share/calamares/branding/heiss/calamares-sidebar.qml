@@ -12,11 +12,30 @@ Rectangle {
     // ---- feature switches ----
     readonly property bool showStepDots: true
     readonly property bool showSocial: true
+    // Open links through the live-session helper (heiss-open-link, 127.0.0.1 only).
+    // false = fall back to Qt.openUrlExternally (does not work when Calamares runs as root).
+    readonly property bool useLinkHelper: true
+    readonly property string helperUrl: "http://127.0.0.1:48731/open?name="
     // --------------------------
 
     readonly property string brandDir: "file:///usr/share/calamares/branding/heiss/"
 
     color: Branding.styleString(Branding.SidebarBackground)
+
+    // name: "telegram" | "x" (the helper maps these to two fixed URLs)
+    function openLink(name, fallbackUrl) {
+        if (!useLinkHelper) {
+            Qt.openUrlExternally(fallbackUrl)
+            return
+        }
+        var xhr = new XMLHttpRequest()
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState === XMLHttpRequest.DONE && xhr.status === 0)
+                Qt.openUrlExternally(fallbackUrl)   // helper not running
+        }
+        xhr.open("GET", helperUrl + name)
+        xhr.send()
+    }
 
     Image {
         id: glyph
@@ -60,7 +79,7 @@ Rectangle {
             smooth: true; opacity: tg.containsMouse ? 1.0 : 0.6
             MouseArea { id: tg; anchors.fill: parent; hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
-                onClicked: Qt.openUrlExternally("https://t.me/heiss_os") }
+                onClicked: sideBar.openLink("telegram", "https://t.me/heiss_os") }
         }
         Image {
             width: 20; height: 20
@@ -68,7 +87,7 @@ Rectangle {
             smooth: true; opacity: xx.containsMouse ? 1.0 : 0.6
             MouseArea { id: xx; anchors.fill: parent; hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
-                onClicked: Qt.openUrlExternally("https://x.com/heiss_OS") }
+                onClicked: sideBar.openLink("x", "https://x.com/heiss_OS") }
         }
     }
 }
