@@ -1,0 +1,11 @@
+NAME="Heiss OS"
+PRETTY_NAME="Heiss OS"
+ID=heiss
+ID_LIKE=arch
+BUILD_ID=rolling
+ANSI_COLOR="38;2;206;181;125"
+HOME_URL="https://github.com/heiss-os"
+DOCUMENTATION_URL="https://github.com/heiss-os/heiss-iso"
+SUPPORT_URL="https://t.me/heiss_os"
+BUG_REPORT_URL="https://github.com/heiss-os/heiss-iso/issues"
+LOGO=heiss
