@@ -58,5 +58,6 @@ sudo mkarchiso -v -w ~/archiso-work -o out profile
 - Док собирается скриптом при первом входе (`usr/local/bin/heiss-setup-dock.sh`): требует проверки; позже сделать панель полупрозрачнее.
 - Пакет `heiss-branding` вместо россыпи файлов; собственный репозиторий пакетов с подписью GPG; автосборка в GitHub Actions.
 - Не проверялись: UEFI и Secure Boot. В VirtualBox замечена проблема с выделением мышью на рабочем столе (возможно, особенность Wayland и VirtualBox).
+- Анимация слайдшоу (бегущий огонёк по логотипу, `show.qml`) готова и требует проверки в виртуальной машине (свечение через QtQuick.Effects не проверено; переключатели `animated`, `glow`, `glowUsesEffects`).
 - Из live-образа в установленную систему попадают лишние службы (`cloud-init` и др.): убрать в `heiss-cleanup.sh`.
 - Дальше по дорожной карте: Welcome-приложение с выбором профиля, Btrfs и снапшоты, Security Center, Security Labs.
