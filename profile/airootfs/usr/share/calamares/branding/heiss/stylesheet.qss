@@ -116,8 +116,26 @@ QWidget#mainApp {
     background-position: center;
 }
 
-/* [switch: heading-font] Montserrat for headings (object names to be confirmed via the Debug Dialog) */
-#mainText, #titleLabel, #welcomeTitle {
-    font-family: "Montserrat";
+/* [switch: fonts-base] Inter Regular for all text, Medium for labels and errors, SemiBold for buttons.
+ * Static Inter files are shipped in /usr/share/fonts/heiss-inter (see branding/fonts/README.txt). */
+QWidget {
+    font-family: "Inter";
+    font-weight: 400;
+}
+
+QLabel#errorLabel, QLabel[error="true"], QFormLayout QLabel {
+    font-weight: 500;
+}
+
+QPushButton {
     font-weight: 600;
+}
+
+/* [switch: fonts-accent] accent font (Inter ExtraBold Italic) for screen titles and important text.
+ * Object names are to be confirmed via the Calamares Debug Dialog; the pages without a title
+ * object get one in the QML users module (Task C). */
+#mainText, #titleLabel, #welcomeTitle {
+    font-family: "Inter";
+    font-weight: 800;
+    font-style: italic;
 }
