@@ -14,3 +14,6 @@ name=default
 [kwinrc][org.kde.kdecoration2]
 library=org.kde.breeze
 theme=Breeze
+
+[Wallpaper]
+Image=Heiss-Everyday
