@@ -1,13 +1,19 @@
-/* Heiss OS users page: three centered steps inside one Calamares module.
- *   1. name + login name   2. computer name   3. password
- * The in-page Back/Continue buttons move between the steps; the Calamares Next
- * button becomes active when config.ready is true (everything valid, step 3).
+/* Heiss OS users page: ONE centered page with three groups stacked
+ *   1. full name + login name   2. computer name   3. password + repeat
+ * No in-page buttons: the main Calamares Back/Next buttons are used. The Next button
+ * follows config.ready (UsersQmlViewStep::isNextEnabled), i.e. it is enabled when
+ * everything is valid. Calamares 3.4.2 gives QML no way to step between sub-pages with
+ * the main buttons (ViewManager.next() leaves the whole module), hence one page.
+ *
+ * Texts: simple dictionary below, language picked from Qt.locale() (en, ru; fallback en).
+ * To add a language: copy the "en" block in `dict`, change the key to the two-letter code
+ * (e.g. "de") and translate the values. Messages that come from the users module itself
+ * (login/computer name errors, password quality) are translated by Calamares.
  *
  * Uses only QtQuick.Controls (Kirigami is not shipped in the live image).
- * Fonts: Inter Display ExtraBold Italic for the step title, Medium for labels,
- * Regular for fields and hints, SemiBold for buttons (see branding/fonts/README.txt).
  *
- * Switch: set useStepTitleAccent to false to use the plain label font for titles.
+ * Switches: useStepTitleAccent (false = plain label font for the title),
+ *           useDictionary (false = always English), showLogoRing (false = plain background).
  */
 import io.calamares.core 1.0
 import io.calamares.ui 1.0
@@ -21,6 +27,8 @@ Item {
 
     // ---- switches ----
     readonly property bool useStepTitleAccent: true
+    readonly property bool useDictionary: true
+    readonly property bool showLogoRing: true
     // ------------------
 
     // Heiss Dark palette
@@ -31,26 +39,59 @@ Item {
     readonly property color cPanel: "#1E1F21"
     readonly property color cError: "#E08A7A"
 
-    property int step: 0   // 0 = name, 1 = computer, 2 = password
+    // ---- translations ----
+    readonly property var dict: ({
+        "en": {
+            title: "Create your account",
+            name: "What is your name?", namePh: "Full name",
+            login: "What name do you want to use to log in?", loginPh: "Login name",
+            host: "What is the name of this computer?", hostPh: "Computer name",
+            pass: "Choose a password", passPh: "Password",
+            pass2: "Repeat password", pass2Ph: "Repeat password",
+            mismatch: "The passwords do not match."
+        },
+        "ru": {
+            title: "Создайте учётную запись",
+            name: "Как вас зовут?", namePh: "Имя и фамилия",
+            login: "Какое имя использовать для входа в систему?", loginPh: "Имя для входа",
+            host: "Как назвать этот компьютер?", hostPh: "Имя компьютера",
+            pass: "Придумайте пароль", passPh: "Пароль",
+            pass2: "Повторите пароль", pass2Ph: "Повторите пароль",
+            mismatch: "Пароли не совпадают."
+        }
+    })
+    // Calamares changes the default locale when the user picks a language, usually after
+    // this page was created, so the language is re-read whenever the page is shown.
+    property string lang: "en"
+    function refreshLang() {
+        var l = useDictionary ? Qt.locale().name.substring(0, 2) : "en"
+        lang = dict[l] ? l : "en"
+    }
+    function tr(key) { return dict[lang][key] }
+    Component.onCompleted: refreshLang()
+    onVisibleChanged: if (visible) refreshLang()
 
-    readonly property bool step0Ok: config.fullName.length > 0
-                                    && config.loginName.length > 0
-                                    && config.loginNameStatus.length === 0
-    readonly property bool step1Ok: config.hostname.length > 0
-                                    && config.hostnameStatus.length === 0
     readonly property bool passwordsMatch: config.userPassword.length > 0
                                            && config.userPassword === config.userPasswordSecondary
-    readonly property bool stepOk: step === 0 ? step0Ok : (step === 1 ? step1Ok : config.ready)
 
-    function goNext() { if (step < 2 && stepOk) step++ }
-    function goBack() { if (step > 0) step-- }
+    // Dark background (a QML page is white by default) with the same faint logo ring
+    // as the widget pages (see stylesheet.qss, logo-background).
+    Rectangle { anchors.fill: parent; color: page.cPanel }
+    Image {
+        visible: page.showLogoRing
+        anchors.fill: parent
+        source: Qt.resolvedUrl("logo-bg.png")
+        fillMode: Image.PreserveAspectFit
+        horizontalAlignment: Image.AlignHCenter
+        verticalAlignment: Image.AlignVCenter
+    }
 
     // ---- reusable pieces ----
     component Field: TextField {
         id: f
         property bool bad: false
         Layout.fillWidth: true
-        implicitHeight: 40
+        implicitHeight: 38
         color: page.cText
         placeholderTextColor: page.cMuted
         selectionColor: page.cAccent
@@ -84,169 +125,92 @@ Item {
         font.family: "Inter"; font.weight: Font.Medium; font.pixelSize: 12
     }
 
-    component Btn: Button {
-        id: b
-        property bool primary: false
-        implicitHeight: 38
-        implicitWidth: 120
-        font.family: "Inter"; font.weight: Font.DemiBold; font.pixelSize: 14
-        contentItem: Text {
-            text: b.text; font: b.font
-            color: !b.enabled ? page.cMuted : (b.primary ? page.cPanel : page.cText)
-            horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter
-        }
-        background: Rectangle {
-            radius: 6
-            color: b.primary ? (b.enabled ? page.cAccent : page.cField) : page.cField
-            opacity: b.down ? 0.8 : 1.0
-        }
-    }
-
     // ---- centered content ----
     ColumnLayout {
         id: content
         anchors.centerIn: parent
         width: Math.min(parent.width - 48, 420)
-        spacing: 12
-
-        // step indicator: three short bars
-        Row {
-            Layout.alignment: Qt.AlignHCenter
-            spacing: 6
-            Repeater {
-                model: 3
-                Rectangle {
-                    width: 28; height: 3; radius: 2
-                    color: index === page.step ? page.cAccent : page.cMuted
-                    opacity: index === page.step ? 1.0 : 0.35
-                }
-            }
-        }
+        spacing: 4
 
         Label {
             Layout.fillWidth: true
-            Layout.topMargin: 8
+            Layout.bottomMargin: 8
             horizontalAlignment: Text.AlignHCenter
             wrapMode: Text.WordWrap
             color: page.cText
-            text: page.step === 0 ? qsTr("What is your name?")
-                : page.step === 1 ? qsTr("Name this computer")
-                : qsTr("Choose a password")
+            text: page.tr("title")
             font.family: page.useStepTitleAccent ? "Inter Display" : "Inter"
             font.weight: page.useStepTitleAccent ? Font.ExtraBold : Font.Medium
             font.italic: page.useStepTitleAccent
-            font.pixelSize: 30
+            font.pixelSize: 26
         }
 
-        // ---- step 1 ----
-        ColumnLayout {
-            visible: page.step === 0
-            Layout.fillWidth: true
-            spacing: 6
-
-            FieldLabel { text: qsTr("Your name") }
-            Field {
-                id: nameField
-                placeholderText: qsTr("Full name")
-                text: config.fullName
-                onTextEdited: config.setFullName(text)
-                onAccepted: loginField.forceActiveFocus()
-                Component.onCompleted: if (page.step === 0) forceActiveFocus()
-            }
-
-            FieldLabel { Layout.topMargin: 8; text: qsTr("What name do you want to use to log in?") }
-            Field {
-                id: loginField
-                placeholderText: qsTr("Login name")
-                text: config.loginName
-                bad: text.length > 0 && config.loginNameStatus.length > 0
-                onTextEdited: config.setLoginName(text)
-                onAccepted: page.goNext()
-                inputMethodHints: Qt.ImhNoAutoUppercase | Qt.ImhNoPredictiveText
-            }
-            Msg { visible: loginField.text.length > 0 && config.loginNameStatus.length > 0
-                  text: config.loginNameStatus }
-            Hint { text: qsTr("If more than one person will use this computer, you can create more accounts after installation.") }
+        // ---- group 1: name + login ----
+        FieldLabel { text: page.tr("name") }
+        Field {
+            id: nameField
+            placeholderText: page.tr("namePh")
+            text: config.fullName
+            onTextEdited: config.setFullName(text)
+            onAccepted: loginField.forceActiveFocus()
+            Component.onCompleted: forceActiveFocus()
         }
 
-        // ---- step 2 ----
-        ColumnLayout {
-            visible: page.step === 1
-            Layout.fillWidth: true
-            spacing: 6
-
-            FieldLabel { text: qsTr("What is the name of this computer?") }
-            Field {
-                id: hostField
-                placeholderText: qsTr("Computer name")
-                text: config.hostname
-                bad: text.length > 0 && config.hostnameStatus.length > 0
-                onTextEdited: config.setHostName(text)
-                onAccepted: page.goNext()
-                inputMethodHints: Qt.ImhNoAutoUppercase | Qt.ImhNoPredictiveText
-            }
-            Msg { visible: hostField.text.length > 0 && config.hostnameStatus.length > 0
-                  text: config.hostnameStatus }
-            Hint { text: qsTr("This name is used if you make the computer visible to others on a network.") }
+        FieldLabel { Layout.topMargin: 6; text: page.tr("login") }
+        Field {
+            id: loginField
+            placeholderText: page.tr("loginPh")
+            text: config.loginName
+            bad: text.length > 0 && config.loginNameStatus.length > 0
+            onTextEdited: config.setLoginName(text)
+            onAccepted: hostField.forceActiveFocus()
+            inputMethodHints: Qt.ImhNoAutoUppercase | Qt.ImhNoPredictiveText
         }
+        Msg { visible: loginField.text.length > 0 && config.loginNameStatus.length > 0
+              text: config.loginNameStatus }
 
-        // ---- step 3 ----
-        ColumnLayout {
-            visible: page.step === 2
-            Layout.fillWidth: true
-            spacing: 6
-
-            FieldLabel { text: qsTr("Password") }
-            Field {
-                id: passField
-                placeholderText: qsTr("Password")
-                echoMode: TextInput.Password
-                passwordMaskDelay: 300
-                text: config.userPassword
-                onTextEdited: config.setUserPassword(text)
-                onAccepted: pass2Field.forceActiveFocus()
-                inputMethodHints: Qt.ImhNoAutoUppercase | Qt.ImhSensitiveData
-            }
-
-            FieldLabel { Layout.topMargin: 8; text: qsTr("Repeat password") }
-            Field {
-                id: pass2Field
-                placeholderText: qsTr("Repeat password")
-                echoMode: TextInput.Password
-                passwordMaskDelay: 300
-                text: config.userPasswordSecondary
-                bad: text.length > 0 && !page.passwordsMatch
-                onTextEdited: config.setUserPasswordSecondary(text)
-                inputMethodHints: Qt.ImhNoAutoUppercase | Qt.ImhSensitiveData
-            }
-            Msg { visible: pass2Field.text.length > 0 && !page.passwordsMatch
-                  text: qsTr("The passwords do not match.") }
-            Msg { visible: page.passwordsMatch && config.userPasswordValidity !== 0
-                           && config.userPasswordMessage.length > 0
-                  color: config.requireStrongPasswords ? page.cError : page.cAccent
-                  text: config.userPasswordMessage }
-            Hint { text: qsTr("A good password mixes letters, numbers and punctuation and is at least eight characters long.") }
+        // ---- group 2: computer name ----
+        FieldLabel { Layout.topMargin: 6; text: page.tr("host") }
+        Field {
+            id: hostField
+            placeholderText: page.tr("hostPh")
+            text: config.hostname
+            bad: text.length > 0 && config.hostnameStatus.length > 0
+            onTextEdited: config.setHostName(text)
+            onAccepted: passField.forceActiveFocus()
+            inputMethodHints: Qt.ImhNoAutoUppercase | Qt.ImhNoPredictiveText
         }
+        Msg { visible: hostField.text.length > 0 && config.hostnameStatus.length > 0
+              text: config.hostnameStatus }
 
-        // ---- in-page navigation ----
-        RowLayout {
-            Layout.fillWidth: true
-            Layout.topMargin: 16
-            spacing: 12
-
-            Btn {
-                text: qsTr("Back")
-                visible: page.step > 0
-                onClicked: page.goBack()
-            }
-            Item { Layout.fillWidth: true }
-            Btn {
-                text: qsTr("Continue")
-                primary: true
-                visible: page.step < 2
-                enabled: page.stepOk
-                onClicked: page.goNext()
-            }
+        // ---- group 3: password + repeat ----
+        FieldLabel { Layout.topMargin: 6; text: page.tr("pass") }
+        Field {
+            id: passField
+            placeholderText: page.tr("passPh")
+            echoMode: TextInput.Password
+            passwordMaskDelay: 300
+            text: config.userPassword
+            onTextEdited: config.setUserPassword(text)
+            onAccepted: pass2Field.forceActiveFocus()
+            inputMethodHints: Qt.ImhNoAutoUppercase | Qt.ImhSensitiveData
         }
+        Field {
+            id: pass2Field
+            Layout.topMargin: 4
+            placeholderText: page.tr("pass2Ph")
+            echoMode: TextInput.Password
+            passwordMaskDelay: 300
+            text: config.userPasswordSecondary
+            bad: text.length > 0 && !page.passwordsMatch
+            onTextEdited: config.setUserPasswordSecondary(text)
+            inputMethodHints: Qt.ImhNoAutoUppercase | Qt.ImhSensitiveData
+        }
+        Msg { visible: pass2Field.text.length > 0 && !page.passwordsMatch
+              text: page.tr("mismatch") }
+        Msg { visible: page.passwordsMatch && config.userPasswordValidity !== 0
+                       && config.userPasswordMessage.length > 0
+              color: config.requireStrongPasswords ? page.cError : page.cAccent
+              text: config.userPasswordMessage }
     }
 }

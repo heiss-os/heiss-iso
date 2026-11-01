@@ -161,3 +161,21 @@ QWidget#viewManagerStack QPushButton {
     min-height: 30px;
     padding: 0px 14px;
 }
+
+/* [switch: keyboard-page] keyboard page (object names from Calamares 3.4.2 KeyboardPage.ui):
+ * LE_TestKeyboard = "Type here to test" field, groupSelector = "Switch Keyboard" combo.
+ * The test field stretches; the combo is compact and its popup is a plain list
+ * (combobox-popup: 0) sized to the combo, so it cannot grow wider than the page. */
+QLineEdit#LE_TestKeyboard {
+    min-width: 280px;
+    min-height: 30px;
+}
+QComboBox#groupSelector {
+    min-width: 110px;
+    max-width: 200px;
+    combobox-popup: 0;
+}
+QComboBox#groupSelector QAbstractItemView {
+    min-width: 0px;
+    max-width: 200px;
+}
