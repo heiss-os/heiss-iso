@@ -1,0 +1,10 @@
+[Trigger]
+Operation = Install
+Operation = Upgrade
+Type = Package
+Target = filesystem
+
+[Action]
+Description = Restoring Heiss OS branding in os-release...
+When = PostTransaction
+Exec = /usr/bin/install -Dm644 /usr/share/heiss/os-release /usr/lib/os-release
