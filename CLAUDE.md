@@ -65,4 +65,5 @@ sudo mkarchiso -v -w ~/archiso-work -o out profile
 - Не проверялись: UEFI и Secure Boot. В VirtualBox замечена проблема с выделением мышью на рабочем столе (возможно, особенность Wayland и VirtualBox).
 - Анимация слайдшоу (бегущий огонёк по логотипу, `show.qml`) готова и требует проверки в виртуальной машине (свечение через QtQuick.Effects не проверено; переключатели `animated`, `glow`, `glowUsesEffects`).
 - Из live-образа в установленную систему попадают лишние службы (`cloud-init` и др.): убрать в `heiss-cleanup.sh`.
+- KDE visual polish pass pending (panel, widgets, fonts).
 - Дальше по дорожной карте: Welcome-приложение с выбором профиля, Btrfs и снапшоты, Security Center, Security Labs.

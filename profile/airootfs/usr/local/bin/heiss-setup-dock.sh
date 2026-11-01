@@ -8,7 +8,10 @@ for i in $(seq 1 60); do
   sleep 1
 done
 sleep 6
-JS=$(cat << 'JSEOF'
+LIVE=false
+[ -d /run/archiso/bootmnt ] && LIVE=true
+JS="var LIVE = $LIVE;
+$(cat << 'JSEOF'
 var old = panels();
 var panel = new Panel();
 panel.location = "bottom";
@@ -22,12 +25,25 @@ k.currentConfigGroup = ["General"];
 k.writeConfig("icon", "heiss-launcher-sand");
 var t = panel.addWidget("org.kde.plasma.icontasks");
 t.currentConfigGroup = ["General"];
-t.writeConfig("launchers", "applications:org.kde.dolphin.desktop,applications:firefox.desktop,applications:org.kde.konsole.desktop,applications:systemsettings.desktop");
+// Plasma 6 on Arch desktop file ids. An id that does not exist shows up as a generic
+// "file" icon in the task manager, so keep these in sync with the installed packages.
+var launchers = "applications:org.mozilla.firefox.desktop,applications:org.kde.dolphin.desktop,applications:systemsettings.desktop";
+if (LIVE) { launchers += ",applications:heiss-installer.desktop"; }  // installer shortcut: live session only
+t.writeConfig("launchers", launchers);
 panel.addWidget("org.kde.plasma.systemtray");
-panel.addWidget("org.kde.plasma.digitalclock");
+var c = panel.addWidget("org.kde.plasma.digitalclock");
+// Lighter clock: Inter Regular 11 pt, no date line (set showDate to true for a small date)
+c.currentConfigGroup = ["Appearance"];
+c.writeConfig("autoFontAndSize", "false");
+c.writeConfig("fontFamily", "Inter");
+c.writeConfig("fontWeight", "400");
+c.writeConfig("fontStyleName", "Regular");
+c.writeConfig("fontSize", "11");
+c.writeConfig("showDate", "false");
+c.writeConfig("dateFormat", "shortDate");
 for (var i = 0; i < old.length; ++i) { old[i].remove(); }
 JSEOF
-)
+)"
 if busctl --user call org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell evaluateScript s "$JS" >/dev/null 2>&1; then
   mkdir -p "$HOME/.config"
   touch "$MARK"
