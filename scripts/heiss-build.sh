@@ -20,6 +20,13 @@ cp -a profile/. "$RENDERED/"
 sed -i "s#@LOCALREPO@#$LOCALREPO#g" "$RENDERED/pacman.conf"
 if grep -q '@LOCALREPO@' "$RENDERED/pacman.conf"; then echo "Плейсхолдер не заменён" >&2; exit 1; fi
 
+# mkarchiso strips HookDir from the profile pacman.conf and always uses
+# <airootfs>/etc/pacman.d/hooks/ for pacstrap. Install build-only hooks there
+# (rendered copy only, the repo airootfs stays free of package-owned files).
+HOOKDIR_REL="airootfs/etc/pacman.d/hooks"
+mkdir -p "$RENDERED/$HOOKDIR_REL"
+cp profile/hooks/*.hook "$RENDERED/$HOOKDIR_REL/"
+
 if [[ "${HEISS_FAST:-0}" == "1" ]]; then
     echo "==> HEISS_FAST=1: zstd для squashfs (тестовая сборка, ISO больше)"
     sed -i "s#^airootfs_image_tool_options=.*#airootfs_image_tool_options=('-comp' 'zstd' '-Xcompression-level' '3' '-b' '1M')#" "$RENDERED/profiledef.sh"
@@ -29,6 +36,9 @@ fi
 if [[ $DRY_RUN -eq 1 ]]; then
     echo "==> Dry run: итоговая секция [heiss-local]"
     grep -A2 '^\[heiss-local\]' "$RENDERED/pacman.conf"
+    echo "Build hooks (mkarchiso HookDir = <pacstrap>/etc/pacman.d/hooks/):"
+    ls "$RENDERED/$HOOKDIR_REL"
+    echo "HookDir = <workdir>/x86_64/airootfs/etc/pacman.d/hooks/ (forced by mkarchiso; filled from $RENDERED/$HOOKDIR_REL)"
     grep '^airootfs_image_tool_options' "$RENDERED/profiledef.sh"
     exit 0
 fi

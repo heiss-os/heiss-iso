@@ -19,6 +19,7 @@ Heiß OS (ASCII-вариант: Heiss, техническое имя: `heiss`, �
 
 - `profile/` профиль archiso: `packages.x86_64`, `pacman.conf`, `profiledef.sh`, `syslinux/`, `efiboot/`, `grub/`.
 - `profile/airootfs/` файлы, попадающие в образ: настройки Calamares (`etc/calamares/`), тема KDE (`usr/share/color-schemes/`, `usr/share/plasma/look-and-feel/`), автозапуск (`etc/xdg/autostart/`), скрипты (`usr/local/bin/`), брендинг установщика (`usr/share/calamares/branding/heiss/`).
+- `profile/hooks/` pacman-хуки только для сборки (не попадают в образ), см. ниже про os-release.
 - `scripts/` вспомогательные скрипты сборки.
 - `branding/` исходники бренда: логотипы (`logo/`), обои (`wallpapers/`).
 
@@ -31,6 +32,10 @@ sudo mkarchiso -v -w ~/archiso-work -o out profile
 Каталоги `out/` и рабочий каталог не коммитятся. Перед сборкой пакет Calamares должен лежать в `~/localrepo` (создаётся `scripts/heiss-calamares-build.sh`).
 
 Известная проблема: в `profile/pacman.conf` репозиторий `[heiss-local]` указан по абсолютному пути `/home/heiss-os/localrepo` (так было в виртуальной машине сборки). Нужно сделать путь независимым от пользователя.
+
+## os-release и конфликты с пакетами
+
+В `profile/airootfs/` нельзя держать файлы, которыми владеют пакеты (например `usr/lib/os-release` принадлежит `filesystem`): pacstrap падает с «exists in filesystem», а `NoExtract` проверку конфликтов не отключает. Вместо этого `profile/hooks/90-heiss-os-release.hook` (PostTransaction на `filesystem`) копирует `/usr/share/heiss/os-release` в `/usr/lib/os-release`. mkarchiso вырезает `HookDir` из pacman.conf профиля и всегда использует `<airootfs>/etc/pacman.d/hooks/`, поэтому `scripts/heiss-build.sh` кладёт хук туда в отрендеренной копии профиля (releng сам удаляет его из образа после pacstrap). Для установленной системы работает такой же хук в `usr/share/libalpm/hooks/`.
 
 ## Как проверять
 
