@@ -17,6 +17,16 @@ echo "==> Что будет собираться (проверьте глаза�
 grep -nE '^(pkgver|pkgrel|url|source)' PKGBUILD || true
 echo
 
+# [switch] HEISS_PATCH_LAYOUT=1 (default): narrow sidebar (56 px) and even Back/Next/Cancel spacing.
+# Set HEISS_PATCH_LAYOUT=0 to build stock Calamares.
+if [ "${HEISS_PATCH_LAYOUT:-1}" = "1" ]; then
+    echo "==> Применяю патч раскладки Heiss (узкая боковая панель, ровные кнопки)"
+    cp "$(dirname "$(readlink -f "$0")")/patches/calamares-heiss-layout.patch" "$PWD/heiss-layout.patch"
+    # apply inside build(), right after the source directory is known
+    sed -i '/local _pkgsrc_dir=/a\  patch -d "$_pkgsrc_dir" -p1 < "$startdir/heiss-layout.patch"' PKGBUILD
+    grep -n 'heiss-layout.patch' PKGBUILD
+fi
+
 echo "==> Сборка (10-30 минут). Пароль sudo понадобится для установки зависимостей."
 makepkg -s --noconfirm 2>&1 | tee ~/calamares-build.log
 

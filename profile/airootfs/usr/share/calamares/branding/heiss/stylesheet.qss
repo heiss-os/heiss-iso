@@ -139,3 +139,25 @@ QPushButton {
     font-weight: 800;
     font-style: italic;
 }
+
+/* [switch: nav-buttons] Back / Next / Cancel: identical size and padding on every page.
+ * Object names come from Calamares (CalamaresWindow.cpp). The gaps between the buttons are
+ * made equal by scripts/patches/calamares-heiss-layout.patch (removes the extra 12 px before Cancel). */
+#view-button-back, #view-button-next, #view-button-cancel {
+    min-width: 92px;
+    min-height: 34px;
+    max-height: 34px;
+    padding: 0px 14px;
+    margin: 0px;
+}
+
+/* [switch: compact-pages] same height for combo boxes and "Change..." buttons on the
+ * timezone and locale pages, so the rows line up. */
+QComboBox {
+    min-height: 30px;
+    padding: 0px 10px;
+}
+QWidget#viewManagerStack QPushButton {
+    min-height: 30px;
+    padding: 0px 14px;
+}

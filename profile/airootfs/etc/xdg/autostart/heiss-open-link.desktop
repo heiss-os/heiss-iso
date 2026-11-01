@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=Heiss installer link helper (live session only)
+Exec=sh -c "test -d /run/archiso/bootmnt && exec /usr/local/bin/heiss-open-link"
+OnlyShowIn=KDE;
+NoDisplay=true
