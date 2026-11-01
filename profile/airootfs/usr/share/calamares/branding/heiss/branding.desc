@@ -167,7 +167,7 @@ images:
     # productBanner:       "banner.png"
     # Window icon: fully transparent so no tile is drawn in the title bar.
     # Switch back to "heiss-logo.png" to show the logo there.
-    productIcon:      "icon-blank.png"
+    productIcon:      "icon-glyph-128.png"
     productLogo:      "heiss-logo.png"
     # productWallpaper:    "wallpaper.png"
     #productWelcome:      "languages.png"

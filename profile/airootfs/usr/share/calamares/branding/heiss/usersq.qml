@@ -5,7 +5,9 @@
  * everything is valid. Calamares 3.4.2 gives QML no way to step between sub-pages with
  * the main buttons (ViewManager.next() leaves the whole module), hence one page.
  *
- * Texts: simple dictionary below, language picked from Qt.locale() (en, ru; fallback en).
+ * Texts: simple dictionary below. The language is the one selected in the installer:
+ * Global storage key localeConf.LANG (written by the welcome module when the user picks a
+ * language), re-read on every Global.changed(). Fallback: Qt.locale(), then en. (en, ru).
  * To add a language: copy the "en" block in `dict`, change the key to the two-letter code
  * (e.g. "de") and translate the values. Messages that come from the users module itself
  * (login/computer name errors, password quality) are translated by Calamares.
@@ -13,7 +15,8 @@
  * Uses only QtQuick.Controls (Kirigami is not shipped in the live image).
  *
  * Switches: useStepTitleAccent (false = plain label font for the title),
- *           useDictionary (false = always English), showLogoRing (false = plain background).
+ *           useDictionary (false = always English), showLogoRing (false = plain background),
+ *           animated (false = old static logo; true = "line drawing" logo, see LogoDraw.qml).
  */
 import io.calamares.core 1.0
 import io.calamares.ui 1.0
@@ -29,6 +32,7 @@ Item {
     readonly property bool useStepTitleAccent: true
     readonly property bool useDictionary: true
     readonly property bool showLogoRing: true
+    readonly property bool animated: true
     // ------------------
 
     // Heiss Dark palette
@@ -60,16 +64,27 @@ Item {
             mismatch: "Пароли не совпадают."
         }
     })
-    // Calamares changes the default locale when the user picks a language, usually after
-    // this page was created, so the language is re-read whenever the page is shown.
+    // Source of truth: Global storage localeConf.LANG ("ru", "ru_RU", ...), set by the welcome
+    // module in Config::setLocaleIndex() together with QLocale::setDefault(). Qt.locale() is
+    // not bound to anything, so it is only the fallback.
     property string lang: "en"
+    function selectedLocaleName() {
+        var conf = Global.value("localeConf")
+        if (conf && conf.LANG && String(conf.LANG).length > 0)
+            return String(conf.LANG)
+        return Qt.locale().name
+    }
     function refreshLang() {
-        var l = useDictionary ? Qt.locale().name.substring(0, 2) : "en"
+        var l = useDictionary ? selectedLocaleName().substring(0, 2).toLowerCase() : "en"
         lang = dict[l] ? l : "en"
     }
     function tr(key) { return dict[lang][key] }
     Component.onCompleted: refreshLang()
-    onVisibleChanged: if (visible) refreshLang()
+    onVisibleChanged: if (visible) { refreshLang(); logoDraw.restart() }
+    Connections {
+        target: Global
+        function onChanged() { page.refreshLang() }
+    }
 
     readonly property bool passwordsMatch: config.userPassword.length > 0
                                            && config.userPassword === config.userPasswordSecondary
@@ -78,12 +93,28 @@ Item {
     // as the widget pages (see stylesheet.qss, logo-background).
     Rectangle { anchors.fill: parent; color: page.cPanel }
     Image {
-        visible: page.showLogoRing
+        visible: page.showLogoRing && !page.animated
         anchors.fill: parent
         source: Qt.resolvedUrl("logo-bg.png")
         fillMode: Image.PreserveAspectFit
         horizontalAlignment: Image.AlignHCenter
         verticalAlignment: Image.AlignVCenter
+    }
+    // Animated variant: same size/position as logo-bg.png (800x520 canvas, scale 4.2, centered).
+    LogoDraw {
+        id: logoDraw
+        visible: page.showLogoRing && page.animated
+        running: visible && page.visible
+        anchors.centerIn: parent
+        // logo-bg.png centers the path point (51.25, 51.5); the item is centered on the viewBox (51, 54)
+        anchors.horizontalCenterOffset: -0.25 * logoScale
+        anchors.verticalCenterOffset: 2.5 * logoScale
+        logoScale: 4.2 * Math.min(page.width / 800, page.height / 520)
+    }
+    // start a new cycle whenever the user arrives on a page (cheap, harmless on other pages)
+    Connections {
+        target: ViewManager
+        function onCurrentStepChanged() { logoDraw.restart() }
     }
 
     // ---- reusable pieces ----

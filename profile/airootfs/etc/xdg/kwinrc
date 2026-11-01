@@ -1,0 +1,4 @@
+[org.kde.kdecoration2]
+# No window menu / application icon button (default is "MSE"): the M button is dropped.
+ButtonsOnLeft=SE
+ButtonsOnRight=HIAX
