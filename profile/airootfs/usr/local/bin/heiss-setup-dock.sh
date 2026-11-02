@@ -4,7 +4,6 @@
 # plasmashell from the first frame. This script only:
 #   * does nothing when the panel is already ours (kickoff icon heiss-launcher-sand);
 #     it never removes or rebuilds a panel that is ours
-#   * in the live session appends the installer pin to our task manager (once)
 #   * builds our panel only if the layout script did not (e.g. an old home directory that
 #     already has a stock panel), removing the other panels in that case
 #   * reads the result back, logs it to ~/.cache/heiss-dock.log and sets the marker
@@ -29,7 +28,7 @@ if ! flock -n 9; then log "another instance is running, exit"; exit 0; fi
 
 LIVE=false
 [ -d /run/archiso/bootmnt ] && LIVE=true
-DOCK_PINS="applications:firefox.desktop,applications:org.kde.dolphin.desktop,applications:org.kde.konsole.desktop,applications:systemsettings.desktop"
+DOCK_PINS="applications:org.kde.dolphin.desktop,applications:org.kde.konsole.desktop,applications:systemsettings.desktop,applications:firefox.desktop"
 log "start: live=$LIVE"
 
 # Returns the text print()ed by the script (the D-Bus reply is: s "text").
@@ -63,17 +62,6 @@ for (var i = 0; i < ps.length; ++i) {
     + ' clock=[' + cfg(ck, 'Appearance', 'showDate') + ',' + cfg(ck, 'Appearance', 'fontFamily') + ',' + cfg(ck, 'Appearance', 'fontSize') + ',' + cfg(ck, 'Appearance', 'fontWeight') + ']');
 }
 print(out.join('|'));"
-
-# Live only: add the installer pin to OUR task manager if it is missing (adds, never rebuilds).
-ADDPIN="$FIND
-var ps = panels();
-for (var i = 0; i < ps.length; ++i) {
-  if (!isHeiss(ps[i])) continue;
-  var t = widgetOf(ps[i], 'org.kde.plasma.icontasks'); if (!t) continue;
-  t.currentConfigGroup = ['General'];
-  var l = String(t.readConfig('launchers')).split(',');
-  if (String(l).indexOf('heiss-installer.desktop') < 0) { l.push('applications:heiss-installer.desktop'); t.writeConfig('launchers', l); t.reloadConfig(); print('pin added'); }
-}"
 
 BUILD="var PINS = \"$DOCK_PINS\".split(',');
 $FIND
@@ -120,13 +108,12 @@ if printf '%s' "$state" | grep -q 'heiss loc='; then
 else
   log "no Heiss panel, building fallback: $(evaljs "$BUILD")"
 fi
-$LIVE && log "installer pin: $(evaljs "$ADDPIN")"
 
 ok=false
 for attempt in 1 2 3; do
   sleep 3
   state=$(evaljs "$CHECK"); log "check $attempt: $state"
-  if printf '%s' "$state" | grep -q '^count=1|heiss .*icon=heiss-launcher-sand launchers=applications:firefox.desktop,applications:org.kde.dolphin.desktop,applications:org.kde.konsole.desktop,applications:systemsettings.desktop[^|]* clock=\[false,'; then
+  if printf '%s' "$state" | grep -q '^count=1|heiss .*icon=heiss-launcher-sand launchers=applications:org.kde.dolphin.desktop,applications:org.kde.konsole.desktop,applications:systemsettings.desktop,applications:firefox.desktop[^|]* clock=\[false,'; then
     ok=true; break
   fi
 done
