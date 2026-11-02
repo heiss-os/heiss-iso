@@ -45,9 +45,12 @@ Item {
     readonly property bool showLogoRing: true
     readonly property bool animated: true
     // breathing of the background logo (only used when animated)
-    readonly property int  breathMs: 4600        // full cycle
-    readonly property real breathScale: 1.035    // 1.0 -> breathScale -> 1.0
-    readonly property real breathOpacityMin: 0.65 // x the base opacity; max is 1.0x
+    readonly property int  breathMs: 3200        // full cycle
+    readonly property real breathScale: 1.06     // 1.0 -> breathScale -> 1.0
+    readonly property real breathOpacityMin: 0.45 // x the base opacity; max is 1.0x
+    // base opacity boost: a second copy of the faint logo at this opacity on top of the first
+    // (~ +30% for a faint logo; 0 = original look). The PNG itself is shared with the widget pages.
+    readonly property real logoBoost: 0.3
     // ------------------
 
     // Heiss Dark palette
@@ -131,6 +134,15 @@ Item {
 
         Image {
             anchors.fill: parent
+            source: Qt.resolvedUrl("logo-bg.png")
+            fillMode: Image.PreserveAspectFit
+            horizontalAlignment: Image.AlignHCenter
+            verticalAlignment: Image.AlignVCenter
+        }
+        Image {
+            anchors.fill: parent
+            visible: page.logoBoost > 0
+            opacity: page.logoBoost
             source: Qt.resolvedUrl("logo-bg.png")
             fillMode: Image.PreserveAspectFit
             horizontalAlignment: Image.AlignHCenter
