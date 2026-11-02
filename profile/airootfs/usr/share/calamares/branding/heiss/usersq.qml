@@ -7,7 +7,9 @@
  *
  * Texts: simple dictionary below. The language is the one selected in the installer:
  * Global storage key localeConf.LANG (written by the welcome module when the user picks a
- * language), re-read on every Global.changed(). Fallback: Qt.locale(), then en. (en, ru).
+ * language), polled by a Timer while the page is visible. NEVER connect to Global.changed():
+ * GlobalStorage emits it from ~WriteLock() while its non-recursive mutex is still held, so a
+ * handler that calls Global.value() deadlocks the GUI thread. Fallback: Qt.locale(), then en.
  * To add a language: copy the "en" block in `dict`, change the key to the two-letter code
  * (e.g. "de") and translate the values. Messages that come from the users module itself
  * (login/computer name errors, password quality) are translated by Calamares.
@@ -29,6 +31,8 @@ Item {
     id: page
 
     // ---- switches ----
+    // false = Qt.locale() only, no Global access at all
+    readonly property bool followInstallerLanguage: true
     readonly property bool useStepTitleAccent: true
     readonly property bool useDictionary: true
     readonly property bool showLogoRing: true
@@ -69,6 +73,8 @@ Item {
     // not bound to anything, so it is only the fallback.
     property string lang: "en"
     function selectedLocaleName() {
+        if (!followInstallerLanguage)
+            return Qt.locale().name
         var conf = Global.value("localeConf")
         if (conf && conf.LANG && String(conf.LANG).length > 0)
             return String(conf.LANG)
@@ -76,14 +82,20 @@ Item {
     }
     function refreshLang() {
         var l = useDictionary ? selectedLocaleName().substring(0, 2).toLowerCase() : "en"
-        lang = dict[l] ? l : "en"
+        var n = dict[l] ? l : "en"
+        if (n !== lang) lang = n   // update only on a real change
     }
     function tr(key) { return dict[lang][key] }
-    Component.onCompleted: refreshLang()
-    onVisibleChanged: if (visible) { refreshLang(); logoDraw.restart() }
-    Connections {
-        target: Global
-        function onChanged() { page.refreshLang() }
+    Component.onCompleted: if (!followInstallerLanguage) refreshLang()
+    onVisibleChanged: if (visible) { logoDraw.restart() }
+    // Polling instead of signals: runs on the GUI thread between events, never inside a
+    // GlobalStorage write. Only active while the page is shown.
+    Timer {
+        interval: 500
+        repeat: true
+        running: page.visible && page.followInstallerLanguage
+        triggeredOnStart: true
+        onTriggered: page.refreshLang()
     }
 
     readonly property bool passwordsMatch: config.userPassword.length > 0
@@ -110,11 +122,6 @@ Item {
         anchors.horizontalCenterOffset: -0.25 * logoScale
         anchors.verticalCenterOffset: 2.5 * logoScale
         logoScale: 4.2 * Math.min(page.width / 800, page.height / 520)
-    }
-    // start a new cycle whenever the user arrives on a page (cheap, harmless on other pages)
-    Connections {
-        target: ViewManager
-        function onCurrentStepChanged() { logoDraw.restart() }
     }
 
     // ---- reusable pieces ----
