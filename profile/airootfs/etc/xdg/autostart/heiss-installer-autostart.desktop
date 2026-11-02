@@ -1,6 +1,6 @@
 [Desktop Entry]
 Type=Application
 Name=Install Heiss OS (live autostart)
-Exec=sh -c "test -d /run/archiso/bootmnt && sleep 4 && sudo -E calamares"
+Exec=/usr/local/bin/heiss-start-installer.sh
 OnlyShowIn=KDE;
 NoDisplay=true
