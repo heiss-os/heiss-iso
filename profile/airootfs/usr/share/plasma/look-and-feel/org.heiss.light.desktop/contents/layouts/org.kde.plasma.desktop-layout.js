@@ -3,8 +3,7 @@
 // created from the first frame, so no stock panel flashes and nothing has to be rebuilt.
 //
 // ONE bottom floating panel: Heiss launcher, icon-only task manager, system tray, clock.
-// The live-only installer pin is added later by heiss-setup-dock.sh (the installed system
-// must not pin a desktop file that heiss-cleanup.sh removes: it would show a white icon).
+// The installer is not pinned (the desktop shortcut starts it; a running installer shows as a normal task).
 //
 // Pins are a real JS array: a comma-joined string is stored as ONE launcher entry (that was
 // the white generic icon with the tooltip "firefox.desktop,applications:org.kde.d...").
@@ -23,10 +22,10 @@ kickoff.writeConfig("icon", "heiss-launcher-sand");
 var tasks = panel.addWidget("org.kde.plasma.icontasks");
 tasks.currentConfigGroup = ["General"];
 tasks.writeConfig("launchers", [
-    "applications:firefox.desktop",
     "applications:org.kde.dolphin.desktop",
     "applications:org.kde.konsole.desktop",
-    "applications:systemsettings.desktop"
+    "applications:systemsettings.desktop",
+    "applications:firefox.desktop"
 ]);
 
 panel.addWidget("org.kde.plasma.systemtray");
