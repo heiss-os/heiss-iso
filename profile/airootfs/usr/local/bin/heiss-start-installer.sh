@@ -1,20 +1,15 @@
 #!/bin/sh
-# Heiss OS: starts the installer in the live session once the desktop is ready.
-# Ready = plasmashell is running AND the dock script has finished (marker set, or it logged a
-# failure, or the dock is disabled), but never wait longer than 30 s.
-# Calamares output goes to ~/.cache/heiss-calamares-start.log.
+# Heiss OS: starts the installer in the live session as soon as the desktop is up.
+# Ready = plasmashell is running (max wait 8 s). It does NOT wait for the dock script.
+# Calamares output and the waited time go to ~/.cache/heiss-calamares-start.log.
 [ -d /run/archiso/bootmnt ] || exit 0
 
 LOG="$HOME/.cache/heiss-calamares-start.log"
 mkdir -p "$HOME/.cache"
-DOCKLOG="$HOME/.cache/heiss-dock.log"
-MARK="$HOME/.config/heiss-dock-set"
 
 i=0
-while [ "$i" -lt 30 ]; do
-  if pgrep -x plasmashell >/dev/null; then
-    if [ "${HEISS_DOCK:-1}" = 0 ] || [ -f "$MARK" ] || grep -q 'FAILED' "$DOCKLOG" 2>/dev/null; then break; fi
-  fi
+while [ "$i" -lt 8 ]; do
+  pgrep -x plasmashell >/dev/null && break
   sleep 1; i=$((i+1))
 done
 
