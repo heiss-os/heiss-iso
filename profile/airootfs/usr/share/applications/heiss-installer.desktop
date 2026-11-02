@@ -4,6 +4,10 @@ Name=Install Heiss OS
 Name[ru]=Установить Heiss OS
 Comment=Install Heiss OS to disk
 Exec=sudo -E calamares
-Icon=heiss
+Icon=heiss-installer
 Terminal=false
 Categories=System;
+# Calamares sets application name "Calamares": its window class / app id is "calamares".
+# Matching it here makes the task manager show ONE entry (this icon) for the pinned
+# launcher and the running window instead of an extra generic entry.
+StartupWMClass=calamares
