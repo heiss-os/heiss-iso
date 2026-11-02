@@ -5,20 +5,27 @@
  * everything is valid. Calamares 3.4.2 gives QML no way to step between sub-pages with
  * the main buttons (ViewManager.next() leaves the whole module), hence one page.
  *
- * Texts: simple dictionary below. The language is the one selected in the installer:
- * Global storage key localeConf.LANG (written by the welcome module when the user picks a
- * language), polled by a Timer while the page is visible. NEVER connect to Global.changed():
- * GlobalStorage emits it from ~WriteLock() while its non-recursive mutex is still held, so a
- * handler that calls Global.value() deadlocks the GUI thread. Fallback: Qt.locale(), then en.
+ * Texts: dictionary `dict` below (en, ru), fallback en.
+ *   Language source of truth: Qt.locale().name. The welcome module calls QLocale::setDefault()
+ *   in Config::setLocaleIndex() every time the user picks a language, so this is exactly the
+ *   installer UI language. A Timer re-reads it every 500 ms while the page is shown (no
+ *   signals), so a change is visible within about 1 s.
+ *   NOT used as primary: Global "localeConf".LANG. The welcome module writes it, but the locale
+ *   module then OVERWRITES the whole localeConf (updateGSLocale) with the locale of the
+ *   *target system* (depends on the chosen location), so it can say en_US while the UI is
+ *   Russian. It is read only as a fallback when Qt.locale() is "C" (no default set).
+ *   NEVER connect to Global.changed(): GlobalStorage emits it with its mutex held (deadlock).
  * To add a language: copy the "en" block in `dict`, change the key to the two-letter code
- * (e.g. "de") and translate the values. Messages that come from the users module itself
- * (login/computer name errors, password quality) are translated by Calamares.
+ * (e.g. "de") and translate all values. Nothing else to change. Messages that come from the
+ * users module itself (login/computer name errors, password quality) are translated by
+ * Calamares.
  *
  * Uses only QtQuick.Controls (Kirigami is not shipped in the live image).
  *
- * Switches: useStepTitleAccent (false = plain label font for the title),
+ * Switches: followInstallerLanguage (false = always Qt.locale(), no Global access),
+ *           useStepTitleAccent (false = plain label font for the title),
  *           useDictionary (false = always English), showLogoRing (false = plain background),
- *           animated (false = old static logo; true = "line drawing" logo, see LogoDraw.qml).
+ *           animated (false = static background logo; true = slow "breathing", see below).
  */
 import io.calamares.core 1.0
 import io.calamares.ui 1.0
@@ -37,6 +44,10 @@ Item {
     readonly property bool useDictionary: true
     readonly property bool showLogoRing: true
     readonly property bool animated: true
+    // breathing of the background logo (only used when animated)
+    readonly property int  breathMs: 4600        // full cycle
+    readonly property real breathScale: 1.035    // 1.0 -> breathScale -> 1.0
+    readonly property real breathOpacityMin: 0.65 // x the base opacity; max is 1.0x
     // ------------------
 
     // Heiss Dark palette
@@ -62,38 +73,36 @@ Item {
             title: "Создайте учётную запись",
             name: "Как вас зовут?", namePh: "Имя и фамилия",
             login: "Какое имя использовать для входа в систему?", loginPh: "Имя для входа",
-            host: "Как назвать этот компьютер?", hostPh: "Имя компьютера",
+            host: "Как называется этот компьютер?", hostPh: "Имя компьютера",
             pass: "Придумайте пароль", passPh: "Пароль",
             pass2: "Повторите пароль", pass2Ph: "Повторите пароль",
             mismatch: "Пароли не совпадают."
         }
     })
-    // Source of truth: Global storage localeConf.LANG ("ru", "ru_RU", ...), set by the welcome
-    // module in Config::setLocaleIndex() together with QLocale::setDefault(). Qt.locale() is
-    // not bound to anything, so it is only the fallback.
     property string lang: "en"
+    // true only while the page is really on screen (the QML window is hidden by Calamares when
+    // another step is shown, but Item.visible alone does not reflect that)
+    readonly property bool pageActive: page.visible && (!page.Window.window || page.Window.window.visible)
     function selectedLocaleName() {
-        if (!followInstallerLanguage)
-            return Qt.locale().name
-        var conf = Global.value("localeConf")
-        if (conf && conf.LANG && String(conf.LANG).length > 0)
-            return String(conf.LANG)
-        return Qt.locale().name
+        var n = Qt.locale().name
+        if (followInstallerLanguage && (!n || n === "C")) {
+            var conf = Global.value("localeConf")   // fallback only, see header
+            if (conf && conf.LANG && String(conf.LANG).length > 0) return String(conf.LANG)
+        }
+        return n
     }
     function refreshLang() {
         var l = useDictionary ? selectedLocaleName().substring(0, 2).toLowerCase() : "en"
         var n = dict[l] ? l : "en"
         if (n !== lang) lang = n   // update only on a real change
     }
-    function tr(key) { return dict[lang][key] }
-    Component.onCompleted: if (!followInstallerLanguage) refreshLang()
-    onVisibleChanged: if (visible) { logoDraw.restart() }
-    // Polling instead of signals: runs on the GUI thread between events, never inside a
-    // GlobalStorage write. Only active while the page is shown.
+    function tr(key) { var d = dict[lang]; return (d && d[key] !== undefined) ? d[key] : dict["en"][key] }
+    Component.onCompleted: refreshLang()
+    // Timer, not signals: runs on the GUI thread between events, never inside a GlobalStorage write
     Timer {
         interval: 500
         repeat: true
-        running: page.visible && page.followInstallerLanguage
+        running: page.pageActive
         triggeredOnStart: true
         onTriggered: page.refreshLang()
     }
@@ -101,27 +110,53 @@ Item {
     readonly property bool passwordsMatch: config.userPassword.length > 0
                                            && config.userPassword === config.userPasswordSecondary
 
-    // Dark background (a QML page is white by default) with the same faint logo ring
-    // as the widget pages (see stylesheet.qss, logo-background).
     Rectangle { anchors.fill: parent; color: page.cPanel }
-    Image {
-        visible: page.showLogoRing && !page.animated
+    // Big faint logo (same file/size/position as the widget pages, see stylesheet.qss).
+    // The holder breathes: scale 1.0 -> breathScale -> 1.0 while opacity goes
+    // breathOpacityMin -> 1.0 -> breathOpacityMin (x the faint base opacity), InOutSine.
+    Item {
+        id: logoHolder
         anchors.fill: parent
-        source: Qt.resolvedUrl("logo-bg.png")
-        fillMode: Image.PreserveAspectFit
-        horizontalAlignment: Image.AlignHCenter
-        verticalAlignment: Image.AlignVCenter
-    }
-    // Animated variant: same size/position as logo-bg.png (800x520 canvas, scale 4.2, centered).
-    LogoDraw {
-        id: logoDraw
-        visible: page.showLogoRing && page.animated
-        running: visible && page.visible
-        anchors.centerIn: parent
-        // logo-bg.png centers the path point (51.25, 51.5); the item is centered on the viewBox (51, 54)
-        anchors.horizontalCenterOffset: -0.25 * logoScale
-        anchors.verticalCenterOffset: 2.5 * logoScale
-        logoScale: 4.2 * Math.min(page.width / 800, page.height / 520)
+        visible: page.showLogoRing
+        transformOrigin: Item.Center
+        readonly property bool breathing: page.animated && page.pageActive
+        onBreathingChanged: {
+            // new cycle every time the page becomes active; rest state when it is not
+            breathe.stop()
+            scale = 1.0
+            opacity = page.animated ? page.breathOpacityMin : 1.0
+            if (breathing) breathe.start()
+        }
+        Component.onCompleted: opacity = page.animated ? page.breathOpacityMin : 1.0
+
+        Image {
+            anchors.fill: parent
+            source: Qt.resolvedUrl("logo-bg.png")
+            fillMode: Image.PreserveAspectFit
+            horizontalAlignment: Image.AlignHCenter
+            verticalAlignment: Image.AlignVCenter
+        }
+
+        SequentialAnimation {
+            id: breathe
+            loops: Animation.Infinite
+            ParallelAnimation {
+                NumberAnimation { target: logoHolder; property: "scale"
+                                  from: 1.0; to: page.breathScale
+                                  duration: page.breathMs / 2; easing.type: Easing.InOutSine }
+                NumberAnimation { target: logoHolder; property: "opacity"
+                                  from: page.breathOpacityMin; to: 1.0
+                                  duration: page.breathMs / 2; easing.type: Easing.InOutSine }
+            }
+            ParallelAnimation {
+                NumberAnimation { target: logoHolder; property: "scale"
+                                  from: page.breathScale; to: 1.0
+                                  duration: page.breathMs / 2; easing.type: Easing.InOutSine }
+                NumberAnimation { target: logoHolder; property: "opacity"
+                                  from: 1.0; to: page.breathOpacityMin
+                                  duration: page.breathMs / 2; easing.type: Easing.InOutSine }
+            }
+        }
     }
 
     // ---- reusable pieces ----
@@ -146,14 +181,7 @@ Item {
 
     component FieldLabel: Label {
         color: page.cText
-        font.family: "Inter"; font.weight: Font.Medium; font.pixelSize: 13
-    }
-
-    component Hint: Label {
-        Layout.fillWidth: true
-        wrapMode: Text.WordWrap
-        color: page.cMuted
-        font.family: "Inter"; font.weight: Font.Normal; font.pixelSize: 12
+        font.family: "Inter"; font.weight: Font.DemiBold; font.pixelSize: 13
     }
 
     component Msg: Label {
