@@ -1,0 +1,10 @@
+[Desktop Entry]
+# Overrides the package's /usr/share/applications/calamares.desktop (/usr/local/share comes
+# first in XDG_DATA_DIRS): hidden from menus, and a running Calamares window is matched to
+# the Heiss icon instead of the stock Calamares logo.
+Type=Application
+Name=Install System
+Exec=sudo -E calamares
+Icon=heiss-installer
+NoDisplay=true
+StartupWMClass=calamares
