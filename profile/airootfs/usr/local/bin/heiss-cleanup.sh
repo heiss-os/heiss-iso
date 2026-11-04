@@ -48,6 +48,10 @@ fallback_options="-S autodetect"
 PRESET_EOF
 mkinitcpio -P || log "ВНИМАНИЕ: mkinitcpio завершился с ошибкой"
 
+log "stock KDE wallpapers"
+# squashfs may carry them if the build hook did not run; the libalpm hook keeps them away after updates
+find /usr/share/wallpapers -mindepth 1 -maxdepth 1 ! -name 'Heiss-*' -exec rm -rf {} + 2>/dev/null || true
+
 log "название системы в меню GRUB"
 sed -i 's/^GRUB_DISTRIBUTOR=.*/GRUB_DISTRIBUTOR="Heiss OS"/' /etc/default/grub || true
 
