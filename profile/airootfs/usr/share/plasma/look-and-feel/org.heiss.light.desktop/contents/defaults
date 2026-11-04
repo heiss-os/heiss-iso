@@ -17,3 +17,6 @@ theme=Breeze
 
 [Wallpaper]
 Image=Heiss-Everyday-Light
+
+[KSplash]
+Theme=org.heiss.light.desktop
