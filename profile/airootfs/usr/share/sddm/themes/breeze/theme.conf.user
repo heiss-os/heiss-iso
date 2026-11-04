@@ -1,3 +1,8 @@
 [General]
 type=image
-background=/usr/share/wallpapers/Heiss-Everyday/contents/images/3840x2160.png
+background=/usr/share/wallpapers/Heiss-Everyday/contents/images_dark/3840x2160.png
+color=#1E1F21
+showlogo=shown
+logo=/usr/share/heiss/heiss-glyph-sand.svg
+showClock=true
+fontSize=11

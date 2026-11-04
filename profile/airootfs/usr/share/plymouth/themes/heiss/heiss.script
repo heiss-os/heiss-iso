@@ -1,0 +1,51 @@
+// Heiss OS Plymouth theme. Background #1E1F21, sand logo centered, breathing like the
+// installer slideshow: scale 1.0 -> 1.035, opacity 0.65 -> 1.0, period 4.6 s.
+// Switch off the animation: set animated = 0.
+animated = 1;
+period = 4.6;
+fps = 50.0;   // Plymouth calls the refresh callback ~50 times per second
+
+Window.SetBackgroundTopColor(0.1176, 0.1216, 0.1294);
+Window.SetBackgroundBottomColor(0.1176, 0.1216, 0.1294);
+
+logo.image = Image("logo.png");
+logo.w = logo.image.GetWidth();
+logo.h = logo.image.GetHeight();
+logo.sprite = Sprite(logo.image);
+logo.sprite.SetX(Window.GetWidth() / 2 - logo.w / 2);
+logo.sprite.SetY(Window.GetHeight() / 2 - logo.h / 2);
+
+frame = 0;
+fun refresh() {
+    if (animated) {
+        t = frame / (fps * period);
+        k = (1 - Math.Cos(2 * Math.Pi * t)) / 2;   // 0..1..0
+        s = 1.0 + 0.035 * k;
+        w = Math.Int(logo.w * s);
+        h = Math.Int(logo.h * s);
+        logo.sprite.SetImage(logo.image.Scale(w, h));
+        logo.sprite.SetX(Window.GetWidth() / 2 - w / 2);
+        logo.sprite.SetY(Window.GetHeight() / 2 - h / 2);
+        logo.sprite.SetOpacity(0.65 + 0.35 * k);
+        frame++;
+    }
+}
+Plymouth.SetRefreshFunction(refresh);
+
+// Disk encryption passphrase prompt (LUKS): simple text under the logo.
+prompt.sprite = Sprite();
+bullets.sprite = Sprite();
+fun password_cb(prompt_text, bullets_count) {
+    str = "";
+    for (i = 0; i < bullets_count; i++) str += "*";
+    img = Image.Text(prompt_text + "  " + str, 0.79, 0.70, 0.54);
+    prompt.sprite.SetImage(img);
+    prompt.sprite.SetX(Window.GetWidth() / 2 - img.GetWidth() / 2);
+    prompt.sprite.SetY(Window.GetHeight() / 2 + logo.h);
+}
+Plymouth.SetDisplayPasswordFunction(password_cb);
+fun normal_cb() { prompt.sprite.SetOpacity(0); }
+Plymouth.SetDisplayNormalFunction(normal_cb);
+// Boot/shutdown text messages are intentionally not displayed (no distro text on screen).
+fun message_cb(text) { }
+Plymouth.SetMessageFunction(message_cb);
