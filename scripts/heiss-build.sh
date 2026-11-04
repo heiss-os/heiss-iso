@@ -54,7 +54,16 @@ echo "==> Копирование в общую папку"
 mkdir -p ~/share
 mountpoint -q ~/share || sudo mount -t vboxsf share ~/share -o uid="$(id -u)",gid="$(id -g)"
 rm -f ~/share/heiss-*.iso
-cp out/heiss-*.iso ~/share/
+# cp onto vboxsf can silently produce a truncated/corrupt file (ISOLINUX then
+# fails with "Failed to load ldlinux.c32"). Use dd and verify the checksum.
+for iso in out/heiss-*.iso; do
+    dd if="$iso" of="$HOME/share/$(basename "$iso")" bs=1M status=progress
+    sync
+    src_sum="$(sha256sum "$iso" | cut -d' ' -f1)"
+    dst_sum="$(sha256sum "$HOME/share/$(basename "$iso")" | cut -d' ' -f1)"
+    if [[ "$src_sum" != "$dst_sum" ]]; then echo "Контрольные суммы не совпали: $iso" >&2; exit 1; fi
+    echo "sha256 OK: $src_sum"
+done
 
 echo
 ls -lh out ~/share
