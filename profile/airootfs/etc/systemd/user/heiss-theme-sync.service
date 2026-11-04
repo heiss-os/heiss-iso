@@ -1,0 +1,6 @@
+[Unit]
+Description=Apply Heiss launcher icon variant for the active theme
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/heiss-theme-sync.sh

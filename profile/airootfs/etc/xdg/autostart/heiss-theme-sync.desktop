@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=Heiss theme sync
+Exec=sh /usr/local/bin/heiss-theme-sync.sh
+OnlyShowIn=KDE;
+NoDisplay=true

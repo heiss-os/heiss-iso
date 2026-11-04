@@ -17,7 +17,7 @@ panel.opacity = "translucent";
 
 var kickoff = panel.addWidget("org.kde.plasma.kickoff");
 kickoff.currentConfigGroup = ["General"];
-kickoff.writeConfig("icon", "heiss-launcher-sand");
+kickoff.writeConfig("icon", "heiss-launcher-sand-light");   // darker sand (#8C7448) for the light panel
 
 var tasks = panel.addWidget("org.kde.plasma.icontasks");
 tasks.currentConfigGroup = ["General"];
