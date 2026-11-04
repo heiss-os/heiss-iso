@@ -138,6 +138,7 @@ noto-fonts
 xdg-desktop-portal-kde
 calamares
 os-prober
+plymouth
 polkit-kde-agent
 networkmanager
 plasma-nm

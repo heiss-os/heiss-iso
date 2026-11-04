@@ -1,0 +1,39 @@
+# Heiss OS GRUB theme: Heiss Dark palette, sand accent #C9B28A.
+desktop-image: "background.png"
+desktop-color: "#1E1F21"
+title-text: ""
+terminal-font: "Inter Regular 16"
+
++ image {
+    file = "logo.png"
+    left = 50%-64
+    top = 12%
+    width = 128
+    height = 128
+}
+
++ boot_menu {
+    left = 50%-260
+    top = 38%
+    width = 520
+    height = 40%
+    item_font = "Inter Regular 20"
+    item_color = "#A9A7A1"
+    selected_item_font = "Inter Regular 20"
+    selected_item_color = "#C9B28A"
+    item_height = 44
+    item_padding = 14
+    item_spacing = 6
+    selected_item_pixmap_style = "select_*.png"
+    scrollbar = false
+}
+
++ label {
+    left = 50%-260
+    top = 92%
+    width = 520
+    align = "center"
+    font = "Inter Regular 16"
+    color = "#A9A7A1"
+    text = "Heiss OS"
+}
