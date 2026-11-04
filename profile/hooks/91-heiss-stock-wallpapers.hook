@@ -1,0 +1,12 @@
+[Trigger]
+Operation = Install
+Operation = Upgrade
+Type = Package
+Target = breeze
+Target = plasma-workspace
+Target = plasma-workspace-wallpapers
+
+[Action]
+Description = Removing stock KDE wallpapers (Heiss OS ships its own)...
+When = PostTransaction
+Exec = /usr/bin/find /usr/share/wallpapers -mindepth 1 -maxdepth 1 ! -name Heiss-* -exec rm -rf {} +
