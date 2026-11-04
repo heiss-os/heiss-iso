@@ -1,0 +1,9 @@
+[Unit]
+Description=Watch the KDE global theme for changes (Heiss OS)
+
+[Path]
+PathChanged=%h/.config/kdeglobals
+Unit=heiss-theme-sync.service
+
+[Install]
+WantedBy=default.target
