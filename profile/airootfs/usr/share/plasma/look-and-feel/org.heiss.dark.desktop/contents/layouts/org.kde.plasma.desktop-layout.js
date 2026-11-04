@@ -46,7 +46,10 @@ var desktopsArray = desktopsForActivity(currentActivity());
 for (var j = 0; j < desktopsArray.length; j++) {
     desktopsArray[j].wallpaperPlugin = "org.kde.image";
     // Reference the wallpaper PACKAGE id (never a file path: a path shows up as a second
-    // "3840x2160" entry in the Wallpaper dialog). Plasma picks images_dark/images by color scheme.
+    // "3840x2160" entry in the Wallpaper dialog). Each theme has its own plain package, no
+    // dependence on the "dynamic wallpaper" light/dark mechanism. Color is what Plasma paints
+    // when the image fails to load, so a failure shows the theme background, not white.
     desktopsArray[j].currentConfigGroup = ["Wallpaper", "org.kde.image", "General"];
     desktopsArray[j].writeConfig("Image", "Heiss-Everyday");
+    desktopsArray[j].writeConfig("Color", "#1E1F21");
 }
