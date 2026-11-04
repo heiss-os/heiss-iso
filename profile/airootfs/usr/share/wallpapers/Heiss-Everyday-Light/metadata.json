@@ -1,0 +1,8 @@
+{
+    "KPlugin": {
+        "Id": "Heiss-Everyday-Light",
+        "Name": "Heiss Everyday Light",
+        "Authors": [ { "Name": "Heiss OS" } ],
+        "License": "LicenseRef-Heiss-Branding"
+    }
+}
