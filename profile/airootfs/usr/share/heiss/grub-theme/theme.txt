@@ -1,25 +1,29 @@
 # Heiss OS GRUB theme: Heiss Dark palette, sand accent #C9B28A.
+# Selection bar: nine solid 4x4 slices select_{nw,n,ne,w,c,e,sw,s,se}.png (all must exist,
+# GRUB expands "select_*.png" to the full set). heiss-boot-branding.sh removes the
+# selected_item_pixmap_style line when HEISS_GRUB_SELECT_BAR=0 (text color only).
 desktop-image: "background.png"
 desktop-color: "#1E1F21"
 title-text: ""
 terminal-font: "Inter Regular 16"
 
+# logo.png is 256x256 and shown at exactly half size (clean 2:1 downscale)
 + image {
     file = "logo.png"
     left = 50%-64
-    top = 12%
+    top = 10%
     width = 128
     height = 128
 }
 
 + boot_menu {
     left = 50%-260
-    top = 38%
+    top = 36%
     width = 520
-    height = 40%
-    item_font = "Inter Regular 20"
+    height = 44%
+    item_font = "Inter Regular 24"
     item_color = "#A9A7A1"
-    selected_item_font = "Inter Regular 20"
+    selected_item_font = "Inter Regular 24"
     selected_item_color = "#C9B28A"
     item_height = 44
     item_padding = 14
@@ -32,6 +36,7 @@ terminal-font: "Inter Regular 16"
     left = 50%-260
     top = 92%
     width = 520
+    height = 24
     align = "center"
     font = "Inter Regular 16"
     color = "#A9A7A1"

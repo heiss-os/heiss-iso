@@ -5,7 +5,13 @@
 # (which runs grub-install + grub-mkconfig). Disable: set HEISS_BOOT_BRANDING=0 or remove
 # "shellprocess@boot" from the exec sequence in settings.conf. Not used on the live ISO.
 set -u
-log() { echo "[heiss-boot-branding] $*"; }
+# ---- switches (environment overrides) ----------------------------------------------------
+HEISS_GRUB_THEME="${HEISS_GRUB_THEME:-1}"            # 0: leave GRUB on its default text menu
+HEISS_GRUB_GFXMODE="${HEISS_GRUB_GFXMODE:-1920x1080,1280x800,1024x768,auto}"
+HEISS_GRUB_SELECT_BAR="${HEISS_GRUB_SELECT_BAR:-1}"  # 0: no selection bar, only text color
+HEISS_GRUB_OVERRIDE_NAME="${HEISS_GRUB_OVERRIDE_NAME:-0}"  # see the note near the end
+LOGFILE=/var/log/heiss-boot-branding.log
+log() { echo "[heiss-boot-branding] $*"; echo "[heiss-boot-branding] $*" >> "$LOGFILE" 2>/dev/null; }
 [ "${HEISS_BOOT_BRANDING:-1}" = 0 ] && { log "disabled"; exit 0; }
 
 # ---- Plymouth -------------------------------------------------------------------------
@@ -44,14 +50,31 @@ if [ -f "$G" ]; then
   else
     setvar GRUB_TIMEOUT 3
   fi
-  if [ -d /usr/share/heiss/grub-theme ]; then
+  if [ "$HEISS_GRUB_THEME" != 0 ] && [ -d /usr/share/heiss/grub-theme ]; then
     install -d /boot/grub/themes/heiss
     cp -a /usr/share/heiss/grub-theme/. /boot/grub/themes/heiss/
-    setvar GRUB_THEME '"/boot/grub/themes/heiss/theme.txt"'
+    T=/boot/grub/themes/heiss/theme.txt
+    if [ "$HEISS_GRUB_SELECT_BAR" = 0 ]; then
+      sed -i '/selected_item_pixmap_style/d' "$T"
+      rm -f /boot/grub/themes/heiss/select_*.png
+    fi
+    setvar GRUB_THEME "\"$T\""
+    # grub-mkconfig only loads the theme when gfxterm is in GRUB_TERMINAL_OUTPUT. Leave
+    # GRUB_TERMINAL_INPUT / GRUB_TERMINAL unset: GRUB keeps its native input terminal.
     setvar GRUB_TERMINAL_OUTPUT gfxterm
-    setvar GRUB_GFXMODE auto
+    sed -i -E '/^#?GRUB_TERMINAL=/d' "$G"
+    setvar GRUB_GFXMODE "\"$HEISS_GRUB_GFXMODE\""
     setvar GRUB_GFXPAYLOAD_LINUX keep
   fi
+  # Menu entries read "Heiss OS Linux" because 10_linux builds the name as
+  # "${GRUB_DISTRIBUTOR} Linux". Showing just "Heiss OS" would need a sed on
+  # /etc/grub.d/10_linux (overwritten by every grub package update), so it is OFF by default.
+  if [ "$HEISS_GRUB_OVERRIDE_NAME" = 1 ] && [ -f /etc/grub.d/10_linux ]; then
+    sed -i 's/OS="${GRUB_DISTRIBUTOR} Linux"/OS="${GRUB_DISTRIBUTOR}"/' /etc/grub.d/10_linux
+  fi
+  log "wrote /etc/default/grub:"
+  grep -E '^(GRUB_(DISTRIBUTOR|TIMEOUT|TIMEOUT_STYLE|THEME|TERMINAL|TERMINAL_INPUT|TERMINAL_OUTPUT|GFXMODE|GFXPAYLOAD_LINUX|CMDLINE_LINUX_DEFAULT))=' "$G" | while read -r l; do log "  $l"; done
+  [ -d /boot/grub/themes/heiss ] && { log "theme dir:"; ls /boot/grub/themes/heiss | while read -r l; do log "  $l"; done; }
 fi
 
 rm -f /usr/local/bin/heiss-boot-branding.sh
