@@ -77,7 +77,7 @@ sed -i '/^\[heiss-local\]/,/^$/d' /etc/pacman.conf
 if ! grep -q '^Server' /etc/pacman.d/mirrorlist 2>/dev/null; then
   echo 'Server = https://geo.mirror.pkgbuild.com/$repo/os/$arch' >> /etc/pacman.d/mirrorlist
 fi
-if grep -q 'file://' /etc/pacman.conf; then log "WARNING: file:// still present in pacman.conf"; fi
+if grep -qE '^Server *= *file://' /etc/pacman.conf; then log "WARNING: file:// still present in pacman.conf"; fi
 
 log "ядро и initramfs"
 rm -f /etc/mkinitcpio.conf.d/archiso.conf
