@@ -7,23 +7,27 @@ desktop-color: "#1E1F21"
 title-text: ""
 terminal-font: "Inter Regular 16"
 
-# logo.png is 256x256 and shown at exactly half size (clean 2:1 downscale)
+# GRUB does not scale images: logo.png is drawn at its own size, so it must be exactly
+# 128x128 (glyph centered, transparent background) to match left/width/height below.
+# Layout never overlaps (logo 128 px at 15%, menu at 45%): gap logo->menu is
+# 102 px @1024x768, 120 px @1280x800, 196 px @1920x1080 (all >= 24 px);
+# menu ends at 85%, footer label at 92%.
 + image {
     file = "logo.png"
     left = 50%-64
-    top = 10%
+    top = 15%
     width = 128
     height = 128
 }
 
 + boot_menu {
     left = 50%-260
-    top = 36%
+    top = 45%
     width = 520
-    height = 44%
-    item_font = "Inter Regular 24"
+    height = 40%
+    item_font = "Inter Regular 20"
     item_color = "#A9A7A1"
-    selected_item_font = "Inter Regular 24"
+    selected_item_font = "Inter Regular 20"
     selected_item_color = "#C9B28A"
     item_height = 44
     item_padding = 14
