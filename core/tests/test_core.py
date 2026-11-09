@@ -33,7 +33,7 @@ class Manifests(unittest.TestCase):
         self.assertEqual(mf.closure(m, ["cyber"]), ["essentials", "base", "cyber"])
 
     def test_rejects_bad_input(self):
-        for bad in (good(packages=["Foo Bar"]), good(packages=["a", "a"]), good(unknown=1), good(id="Bad"),
+        for bad in (good(packages=["Foo Bar"]), good(packages=["--overwrite=*"]), good(packages=[".hidden"]), good(packages=["a", "a"]), good(unknown=1), good(id="Bad"),
                     good(services=["x.sh"]), good(post_actions=["rm -rf /"]),
                     good(dropins=[{"path": "/usr/lib/x.conf", "content": ""}]),
                     good(dropins=[{"path": "/etc/a.d/../../b.conf", "content": ""}]),

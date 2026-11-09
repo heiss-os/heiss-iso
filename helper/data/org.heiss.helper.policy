@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE policyconfig PUBLIC "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
+ "http://www.freedesktop.org/standards/PolicyKit/1.0/policyconfig.dtd">
+<policyconfig>
+  <vendor>Heiss OS</vendor>
+  <vendor_url>https://github.com/heiss-os/heiss-iso</vendor_url>
+
+  <action id="org.heiss.packages.install">
+    <description>Install Heiss OS packages</description>
+    <description xml:lang="ru">Установка пакетов Heiss OS</description>
+    <message>Authentication is required to install packages selected in Heiss OS</message>
+    <message xml:lang="ru">Требуется аутентификация для установки пакетов, выбранных в Heiss OS</message>
+    <defaults>
+      <allow_any>no</allow_any>
+      <allow_inactive>no</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+  </action>
+
+  <action id="org.heiss.packages.remove">
+    <description>Remove Heiss OS packages</description>
+    <description xml:lang="ru">Удаление пакетов Heiss OS</description>
+    <message>Authentication is required to remove packages that Heiss OS installed</message>
+    <message xml:lang="ru">Требуется аутентификация для удаления пакетов, установленных Heiss OS</message>
+    <defaults>
+      <allow_any>no</allow_any>
+      <allow_inactive>no</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+  </action>
+
+  <action id="org.heiss.packages.adopt">
+    <description>Claim installed packages as managed by Heiss OS</description>
+    <description xml:lang="ru">Отметить установленные пакеты как управляемые Heiss OS</description>
+    <message>Authentication is required to let Heiss OS manage (and later remove) packages that are already installed</message>
+    <message xml:lang="ru">Требуется аутентификация, чтобы Heiss OS управляла (и позже могла удалить) уже установленными пакетами</message>
+    <defaults>
+      <allow_any>no</allow_any>
+      <allow_inactive>no</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+  </action>
+
+  <action id="org.heiss.services.manage">
+    <description>Manage Heiss OS services</description>
+    <description xml:lang="ru">Управление службами Heiss OS</description>
+    <message>Authentication is required to enable or disable system services</message>
+    <message xml:lang="ru">Требуется аутентификация для включения или отключения системных служб</message>
+    <defaults>
+      <allow_any>no</allow_any>
+      <allow_inactive>no</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+  </action>
+
+  <action id="org.heiss.config.write">
+    <description>Write Heiss OS configuration</description>
+    <description xml:lang="ru">Запись настроек Heiss OS</description>
+    <message>Authentication is required to write system configuration</message>
+    <message xml:lang="ru">Требуется аутентификация для записи системных настроек</message>
+    <defaults>
+      <allow_any>no</allow_any>
+      <allow_inactive>no</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+  </action>
+
+  <action id="org.heiss.postaction.run">
+    <description>Run a Heiss OS post-install step</description>
+    <description xml:lang="ru">Шаг после установки Heiss OS</description>
+    <message>Authentication is required to run a system update step (for example rebuilding the boot image)</message>
+    <message xml:lang="ru">Требуется аутентификация для служебного шага (например пересборки образа загрузки)</message>
+    <defaults>
+      <allow_any>no</allow_any>
+      <allow_inactive>no</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+  </action>
+
+  <action id="org.heiss.system.update">
+    <description>Update the system</description>
+    <description xml:lang="ru">Обновление системы</description>
+    <message>Authentication is required to update the system</message>
+    <message xml:lang="ru">Требуется аутентификация для обновления системы</message>
+    <defaults>
+      <allow_any>no</allow_any>
+      <allow_inactive>no</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+  </action>
+
+  <action id="org.heiss.snapshot.create">
+    <description>Create a system snapshot</description>
+    <description xml:lang="ru">Создание снимка системы</description>
+    <message>Authentication is required to create a system snapshot</message>
+    <message xml:lang="ru">Требуется аутентификация для создания снимка системы</message>
+    <defaults>
+      <allow_any>no</allow_any>
+      <allow_inactive>no</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+  </action>
+
+</policyconfig>

@@ -15,6 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: python3 -m unittest discover -s core/tests -v
+      - run: python3 -m unittest discover -s helper/tests -v
       - name: Generated metapackage files are up to date
         run: python3 scripts/gen-profile-packages.py --check
       - name: Manifests load and validate
@@ -53,3 +54,16 @@ jobs:
             pacman -Qip "$p" | grep -E '^(Name|Version|Depends On)'
             bsdtar -tf "$p" | grep -q 'usr/share/heiss/profiles/.*\.toml'
           done
+
+  helper-dbus:
+    name: heiss-helper D-Bus glue on a private bus
+    runs-on: ubuntu-latest
+    container: archlinux:latest
+    steps:
+      - name: Install tools
+        run: pacman -Syu --noconfirm python python-gobject dbus git
+      - uses: actions/checkout@v4
+      - name: Integration test (private bus, fake polkit and runner)
+        run: |
+          dbus-uuidgen --ensure
+          python3 -m unittest discover -s helper/tests -v
