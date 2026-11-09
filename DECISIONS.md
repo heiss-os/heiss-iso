@@ -71,3 +71,10 @@ Format: date, what, why. Newest at the bottom.
 - **Packages are built from git HEAD** by `scripts/heiss-packages-build.sh` (replaces `heiss-profile-build.sh`); `sha256sums=('SKIP')` is acceptable because the archive is generated locally from a commit, not downloaded. `heiss-build.sh` (Tier A) was not edited; the build order is documented instead.
 - **Found by running the packaged layout:** `PacmanSystem` crashed when `flatpak` is not installed (it is not on the ISO). A missing command is now reported as "no data", with tests.
 - **Not changed in this PR:** the releng leftovers in `packages.x86_64` (clonezilla, nmap, ...), mime associations, theming: separate Phase 4 PRs.
+
+## 2026-11-10 (file associations, made by the assistant)
+
+- **Defaults live in `/etc/xdg/mimeapps.list`** (system-wide XDG file): reaches the live session, the installed system and new users, and per-user choices still win. New file, no existing config edited.
+- **One app per job, only Base apps:** Dolphin, Firefox, Kate, Gwenview, Okular, Haruna (video and audio), Ark, KeePassXC. No `mailto:` handler because Base has no mail client.
+- **Aliases listed next to canonical MIME names** where tools disagree; unknown types were dropped by checking against shared-mime-info.
+- **Guard in CI:** every desktop file must exist in a Base package (`pacman -F`), so a renamed desktop file or a package removed from Base fails the build instead of silently breaking a default.
