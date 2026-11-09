@@ -28,7 +28,7 @@ One TOML file per profile (`schema_version`, `id`, `name`/`description`/`warning
 
 ## Tests and honesty
 
-- Fixtures in `core/tests/fixtures/hw/`: one REAL capture (`virtualbox-vmsvga`, taken on the build VM, only non-identifying fields) and five SYNTHETIC ones written by hand from known PCI IDs (`synthetic: true` in `facts.json`): Intel iGPU laptop, AMD desktop, NVIDIA modern, NVIDIA old, NVIDIA + Intel hybrid laptop, Broadcom Wi-Fi laptop. Synthetic fixtures check the rules, not real hardware.
+- Fixtures in `core/tests/fixtures/hw/`: one REAL capture (`virtualbox-vmsvga`, taken on the build VM, only non-identifying fields) and six SYNTHETIC ones written by hand from known PCI IDs (`synthetic: true` in `facts.json`): Intel iGPU laptop, AMD desktop, NVIDIA modern desktop, NVIDIA old desktop, NVIDIA + Intel hybrid laptop, Broadcom Wi-Fi laptop. Synthetic fixtures check the rules, not real hardware.
 - The NVIDIA threshold (open modules for device IDs from 0x1e00, Turing and newer) is a heuristic taken from NVIDIA's public statement, NOT verified against the package: the pacman file database is not synced here, so `supported-gpus.json` could not be inspected. The profile warning says so.
 - NOT verified: any real hardware, hybrid graphics behavior and boot safety, early KMS, Broadcom behavior, USB devices (not collected yet: `lsusb` is not installed on the build VM), fingerprint readers, printers, touchscreens, Bluetooth detection beyond `/sys/class/bluetooth`, Secure Boot interaction, install-time use.
 - Not built yet: snapshot before driver changes, safe-graphics boot entry, the "driver doctor" report (Phase 7).
