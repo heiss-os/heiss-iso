@@ -78,3 +78,9 @@ Format: date, what, why. Newest at the bottom.
 - **One app per job, only Base apps:** Dolphin, Firefox, Kate, Gwenview, Okular, Haruna (video and audio), Ark, KeePassXC. No `mailto:` handler because Base has no mail client.
 - **Aliases listed next to canonical MIME names** where tools disagree; unknown types were dropped by checking against shared-mime-info.
 - **Guard in CI:** every desktop file must exist in a Base package (`pacman -F`), so a renamed desktop file or a package removed from Base fails the build instead of silently breaking a default.
+
+## 2026-11-10 (GTK, made by the assistant)
+
+- **No GTK configuration is shipped yet; Plasma's `kde-gtk-config` stays the single owner of GTK settings.** Why: the package database shows it already ships the kded `gtkconfig` module, a GTK3 color-reload module, Breeze window-decoration CSS and depends on `xsettingsd` and `xdg-desktop-portal-gtk`. Writing the same files from Heiss would race with it, and I cannot run GTK here to see the actual files.
+- **`heiss-gtk-audit` (read-only, in `heiss-core`) collects the facts in the VM.** The next GTK step is chosen from its output (decision table in `docs/design/GTK.md`). Generated token CSS for GTK stays staged in `branding/tokens/generated/`.
+- **GTK prerequisites are guarded by a test:** kde-gtk-config, breeze-gtk and both portal backends must stay in every profile.
