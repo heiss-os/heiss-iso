@@ -2,7 +2,7 @@
 
 Read this file at the start of every session. Source plan: `heiss-master-prompt.md` (kept outside the repo, in `~/share/`).
 
-Last updated: 2026-11-09
+Last updated: 2026-11-10
 
 ## Done
 
@@ -28,3 +28,8 @@ See `docs/apps/RESEARCH.md`, section 9 (numbered, each with a recommended defaul
 - Real versions of Plasma, KWin and Calamares inside the ISO that was built (the repository database says Plasma 6.8.2; Calamares 3.4.2-2 sits in `~/localrepo`). The existing ISO was not unpacked.
 - UEFI, Secure Boot, real hardware, installed system after Calamares (ext4 is the Calamares default today).
 - Every visual statement in `docs/design/AUDIT.md` marked "to verify": needs screenshots from the owner.
+
+## Phase status (2026-11-10)
+
+- Phase 0: merged (PR 37). Phase 1b: merged (PR 38). Phase 1a: owner checklist in `docs/infra/REPOSITORY.md`, waiting for owner actions.
+- Phase 2: PR "feat/core-profiles" (core engine: manifests, answers, state, resolver, CLI, profiles). Still to do in Phase 2: hardware detection with fixtures, metapackage PKGBUILDs generated from manifests, README/docs rename PR.

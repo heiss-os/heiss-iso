@@ -1,0 +1,7 @@
+schema_version = 1
+id = "custom"
+kind = "profile"
+tier = "important"
+name = { en = "Custom", ru = "Свой набор" }
+description = { en = "Essentials only. You choose extras from the add-on list.", ru = "Только основа. Остальное вы выбираете из списка дополнений." }
+requires = ["essentials"]

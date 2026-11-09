@@ -1,0 +1,8 @@
+schema_version = 1
+id = "addon-developer-extended"
+kind = "addon"
+tier = "extended"
+name = { en = "Developer: extended tools", ru = "Разработчик: расширенный набор" }
+description = { en = "Java (about 600 MiB) and Docker alongside Podman.", ru = "Java (около 600 МиБ) и Docker рядом с Podman." }
+requires = ["developer"]
+packages = ["jdk-openjdk", "docker", "docker-compose"]

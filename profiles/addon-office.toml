@@ -1,0 +1,6 @@
+schema_version = 1
+id = "addon-office"
+kind = "addon"
+name = { en = "Office suite", ru = "Офисный пакет" }
+description = { en = "LibreOffice (stable branch), about 420 MiB.", ru = "LibreOffice (стабильная ветка), около 420 МиБ." }
+packages = ["libreoffice-still"]
