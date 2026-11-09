@@ -60,6 +60,27 @@ class TokenSanity(unittest.TestCase):
         self.assertEqual(d["terminal"]["ansi"][3], d["base"]["neutral"])
 
 
+class DerivedTextColors(unittest.TestCase):
+    def test_text_variants_meet_aa_on_all_backgrounds(self):
+        tokens = h.load()
+        for th in h.THEMES:
+            p = h.palette(tokens, th)
+            for name in ("accent", "negative", "neutral", "positive", "info"):
+                for bg in h.TEXT_BACKGROUNDS:
+                    self.assertGreaterEqual(h.contrast(p[name + "_text"], p[bg]), 4.5, "%s %s_text on %s" % (th, name, bg))
+
+    def test_frozen_colors_not_altered_by_derivation(self):
+        tokens = h.load()
+        for th in h.THEMES:
+            p = h.palette(tokens, th)
+            for k, v in tokens["themes"][th]["base"].items():
+                self.assertEqual(p[k], v, k)
+
+    def test_light_accent_text_is_darker_than_accent(self):
+        p = h.palette(h.load(), "light")
+        self.assertLess(h.luminance(p["accent_text"]), h.luminance(p["accent"]))
+
+
 class Contrast(unittest.TestCase):
     def test_pairs_meet_minimum_or_are_known(self):
         tokens = h.load()

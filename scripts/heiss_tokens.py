@@ -41,6 +41,21 @@ def mix(a, b, p):
     return rgb_to_hex(out)
 
 
+TEXT_BACKGROUNDS = ("window", "view", "panel", "button")
+
+
+def ensure_contrast(color, toward, bgs, minimum, step=0.05):
+    """Smallest mix(color, toward, p), p in steps of 0.05, with contrast >= minimum on every bg.
+
+    p = 0 returns the color unchanged when it already passes. Deterministic.
+    """
+    for i in range(0, 21):
+        c = mix(color, toward, i * step)
+        if all(contrast(c, b) >= minimum for b in bgs):
+            return c
+    raise ValueError("cannot reach %.1f:1 for %s" % (minimum, color))
+
+
 def luminance(h):
     def lin(c):
         c = c / 255.0
@@ -72,6 +87,10 @@ def palette(tokens, theme):
     p["disabled_text"] = mix(p["text"], p["window"], 0.55)
     p["focus_ring"] = p["accent"]
     p["selection"] = p["accent"]
+    # AA text variants of accent and semantic colors (frozen originals stay untouched)
+    bgs = [p[b] for b in TEXT_BACKGROUNDS]
+    for name in ("accent", "negative", "neutral", "positive", "info"):
+        p[name + "_text"] = ensure_contrast(p[name], p["text"], bgs, 4.5)
     return p
 
 
@@ -205,15 +224,15 @@ def render_gtk(tokens, theme, gtk4):
         ("popover_bg_color", p["panel"]), ("popover_fg_color", p["text"]),
         ("sidebar_bg_color", p["panel"]), ("sidebar_fg_color", p["text"]),
         ("accent_bg_color", p["accent"]), ("accent_fg_color", p["on_accent"]),
-        ("accent_color", p["accent"]),
+        ("accent_color", p["accent_text"]),
         ("destructive_bg_color", p["negative"]), ("destructive_fg_color", p["on_accent"]),
-        ("destructive_color", p["negative"]),
+        ("destructive_color", p["negative_text"]),
         ("success_bg_color", p["positive"]), ("success_fg_color", p["on_accent"]),
-        ("success_color", p["positive"]),
+        ("success_color", p["positive_text"]),
         ("warning_bg_color", p["neutral"]), ("warning_fg_color", p["on_accent"]),
-        ("warning_color", p["neutral"]),
+        ("warning_color", p["neutral_text"]),
         ("error_bg_color", p["negative"]), ("error_fg_color", p["on_accent"]),
-        ("error_color", p["negative"]),
+        ("error_color", p["negative_text"]),
     ]
     if not gtk4:
         names += [
@@ -238,7 +257,7 @@ def render_kitty(tokens, theme):
            "selection_foreground %s" % t["selection_fg"].lower(),
            "selection_background %s" % t["selection_bg"].lower(),
            "cursor %s" % t["cursor"].lower(), "cursor_text_color %s" % t["bg"].lower(),
-           "url_color %s" % p["accent"].lower(),
+           "url_color %s" % p["accent_text"].lower(),
            "active_border_color %s" % p["accent"].lower(),
            "inactive_border_color %s" % p["border"].lower()]
     out += ["color%d %s" % (i, c.lower()) for i, c in enumerate(t["ansi"])]
@@ -270,6 +289,9 @@ def text_pairs(tokens, theme):
         pairs.append(("text on %s" % bg, p["text"], p[bg], 4.5))
         pairs.append(("text_secondary on %s" % bg, p["text_secondary"], p[bg], 4.5))
         pairs.append(("accent on %s" % bg, p["accent"], p[bg], 4.5))
+    for name in ("accent", "negative", "neutral", "positive", "info"):
+        for bg in TEXT_BACKGROUNDS:
+            pairs.append(("%s_text on %s" % (name, bg), p[name + "_text"], p[bg], 4.5))
     pairs.append(("on_accent on accent", p["on_accent"], p["accent"], 4.5))
     for sem in ("negative", "neutral", "positive", "info"):
         pairs.append(("%s on window" % sem, p[sem], p["window"], 4.5))

@@ -8,9 +8,23 @@ Source of truth: `branding/tokens/heiss-tokens.json`. Edit it, then run `python3
 - Added: `info` (blue, per theme) and the 16-color terminal palette. ANSI 1, 2, 3 in Dark reuse the frozen negative/positive/neutral.
 - Derived (integer math, round half up): hover = mix(button, text, 8%), pressed = mix(button, text, 14%), border = mix(window, text, 14%), disabled text = mix(text, window, 55%), focus ring and selection = accent.
 
+## AA text variants (derived)
+
+Frozen colors are never changed. For text use, `palette()` derives `accent_text`, `negative_text`, `neutral_text`, `positive_text` and `info_text`: the frozen color mixed toward the theme text color in 5% steps until it reaches 4.5:1 on window, view, panel and button (`ensure_contrast` in `scripts/heiss_tokens.py`). Where the frozen color already passes, the variant equals it.
+
+| Token | Dark | Light |
+|---|---|---|
+| accent_text | #C9B28A (= accent) | #6D5D3F |
+| positive_text | #6FD0A8 (= positive) | #216851 |
+| neutral_text | #E2B050 (= neutral) | #7D5924 |
+| negative_text | #E38C84 | #A9362B |
+| info_text | #7FA6D6 (= info) | #2D608F |
+
+Use these for text and icons on surfaces; use the frozen colors for fills and for the KDE scheme. The generated GTK CSS maps libadwaita `accent_color`, `success_color`, `warning_color`, `error_color`, `destructive_color` to the text variants.
+
 ## Contrast findings from frozen values (Light theme)
 
-These pairs are below WCAG AA 4.5:1 because of existing palette values. Nothing was changed; they need an owner decision (Tier A/B item):
+These pairs, using the FROZEN colors directly, are below WCAG AA 4.5:1. Nothing frozen was changed. New code should use the `*_text` variants above; changing the frozen values themselves is a Tier A/B item:
 
 | Pair | Ratio |
 |---|---|
