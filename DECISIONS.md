@@ -84,3 +84,12 @@ Format: date, what, why. Newest at the bottom.
 - **No GTK configuration is shipped yet; Plasma's `kde-gtk-config` stays the single owner of GTK settings.** Why: the package database shows it already ships the kded `gtkconfig` module, a GTK3 color-reload module, Breeze window-decoration CSS and depends on `xsettingsd` and `xdg-desktop-portal-gtk`. Writing the same files from Heiss would race with it, and I cannot run GTK here to see the actual files.
 - **`heiss-gtk-audit` (read-only, in `heiss-core`) collects the facts in the VM.** The next GTK step is chosen from its output (decision table in `docs/design/GTK.md`). Generated token CSS for GTK stays staged in `branding/tokens/generated/`.
 - **GTK prerequisites are guarded by a test:** kde-gtk-config, breeze-gtk and both portal backends must stay in every profile.
+
+## 2026-11-10 (theme sync, made by the assistant)
+
+- **`heiss theme sync` replaces the shell logic** (the entry point `heiss-theme-sync.sh`, the path unit and the autostart entry stay). Python in heiss-core so it can be unit tested against a scripted desktop; one log line per target; failures are visible; exit code 1 only on failure.
+- **Set only what nothing else sets** (launcher icon, Konsole default profile and running sessions); **check the rest** (Plasma consistency against the Look-and-Feel defaults, kde-gtk-config module, GSettings, portal) and report differences instead of writing Plasma-owned files (Tier B).
+- **kitty follows the portal** through `*-theme.auto.conf` files; no sync target writes kitty config.
+- **New package `heiss-theme`** (generated from the tokens: Konsole schemes and profiles, `/etc/xdg/konsolerc`, kitty files) and it is in the ISO list. Terminal font size token `terminal` = 11 pt.
+- **CI guard against file conflicts:** no file of our packages may also be shipped by an official package (`pacman -F`), because pacstrap would fail the ISO build.
+- **Stacked on PR 47** (the GTK audit) because both bump the pkgrel of heiss-core.

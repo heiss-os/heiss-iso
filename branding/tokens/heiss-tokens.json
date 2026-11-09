@@ -117,7 +117,7 @@
     "ui": "Inter",
     "mono": "JetBrains Mono",
     "title": "Inter ExtraBold Italic",
-    "sizes_pt": {"small": 9, "body": 10, "large": 12, "title": 20}
+    "sizes_pt": {"small": 9, "body": 10, "large": 12, "title": 20, "terminal": 11}
   },
   "motion": {
     "comment": "Proposal approved in Phase 0 (not yet used anywhere). Reduced/Off scale all durations by 0.",

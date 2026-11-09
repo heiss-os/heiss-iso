@@ -13,6 +13,7 @@ from . import apply as applymod
 from . import hardware as hw
 from . import manifest as mf
 from . import resolver, state as st
+from . import themesync
 from .errors import HeissError
 from .system import PacmanSystem
 
@@ -60,7 +61,7 @@ def _real_helper():
     return GioHelperClient()
 
 
-def main(argv=None, system=None, out=sys.stdout, helper=None, confirm=None):
+def main(argv=None, system=None, out=sys.stdout, helper=None, confirm=None, theme_env=None):
     p = argparse.ArgumentParser(prog="heiss")
     p.add_argument("--profiles", help="directory with manifests")
     p.add_argument("--json", action="store_true")
@@ -82,10 +83,25 @@ def main(argv=None, system=None, out=sys.stdout, helper=None, confirm=None):
     det.add_argument("--hardware", help="directory with hardware profiles")
     det.add_argument("--fixture", help="use a recorded fixture directory instead of the live system")
     det.add_argument("--lang", choices=("en", "ru"), default="en")
+    th = sub.add_parser("theme").add_subparsers(dest="sub", required=True)
+    ts = th.add_parser("sync", help="bring launcher icon and Konsole in line with the active Heiss theme and check the rest")
+    ts.add_argument("--no-wait", action="store_true", help="do not wait for plasmashell and the settings to settle")
+    ts.add_argument("--dry-run", action="store_true")
+    th.add_parser("status", help="like sync --dry-run --no-wait: report only")
     av = sub.add_parser("answers").add_subparsers(dest="sub", required=True)
     v = av.add_parser("validate")
     v.add_argument("file")
     args = p.parse_args(argv)
+    if args.cmd == "theme":
+        env = theme_env or themesync.RealEnv()
+        dry = args.sub == "status" or args.dry_run
+        log = (lambda line: None) if dry else env.append_log
+
+        def say(line):
+            out.write(line + "\n")
+            log(line)
+        _, rc = themesync.sync(env, wait=(args.sub == "sync" and not args.no_wait), dry_run=dry, say=say)
+        return rc
     system = system or PacmanSystem()
     try:
         if args.cmd == "hw":

@@ -62,6 +62,10 @@ jobs:
           chown -R builder /home/builder/src
           su builder -c 'cd /home/builder/src && git config --global --add safe.directory /home/builder/src && LOCALREPO=/home/builder/localrepo bash scripts/heiss-packages-build.sh'
           ls /home/builder/localrepo
+      - name: No file of ours is also shipped by an official package
+        run: |
+          pacman -Fy
+          python3 scripts/check-file-conflicts.py /home/builder/localrepo/heiss-*.pkg.tar.zst
       - name: Inspect packages and run the engine from the extracted packages
         run: |
           cd /home/builder/localrepo

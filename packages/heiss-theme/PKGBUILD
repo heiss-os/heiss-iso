@@ -1,0 +1,22 @@
+# Maintainer: Heiss OS <https://github.com/heiss-os>
+# Built from the repository HEAD by scripts/heiss-packages-build.sh (it creates heiss-src.tar.gz).
+pkgname=heiss-theme
+pkgver=0.1.0
+pkgrel=1
+pkgdesc='Heiss OS terminal themes: Konsole profiles and kitty theme files generated from the design tokens'
+arch=('any')
+url='https://github.com/heiss-os/heiss-iso'
+license=('GPL-3.0-or-later')
+optdepends=('konsole: Heiss Dark and Heiss Light profiles'
+            'kitty: automatic Dark/Light theme')
+backup=('etc/xdg/konsolerc' 'etc/xdg/kitty/kitty.conf')
+source=('heiss-src.tar.gz')
+sha256sums=('SKIP')   # archive made locally from git HEAD; not a downloaded file
+
+package() {
+  cd "$srcdir/heiss-src/branding/tokens/generated"
+  install -Dm644 -t "$pkgdir/usr/share/konsole" konsole/*.colorscheme konsole/*.profile
+  install -Dm644 konsole/konsolerc "$pkgdir/etc/xdg/konsolerc"
+  install -Dm644 -t "$pkgdir/etc/xdg/kitty" kitty/kitty.conf kitty/*-theme.auto.conf
+  install -Dm644 -t "$pkgdir/usr/share/heiss/kitty" kitty/heiss-dark.conf kitty/heiss-light.conf
+}
