@@ -34,6 +34,11 @@ jobs:
       - run: python3 scripts/check-packages.py
       - name: ISO package list is valid
         run: python3 scripts/check-iso-packages.py
+      - name: File associations point to Base apps that really ship those desktop files
+        run: |
+          pacman -S --noconfirm shared-mime-info
+          pacman -Fy
+          python3 scripts/check-mimeapps.py --require-file-db
 
   build-packages:
     name: heiss packages build (makepkg) and packaged layout works
