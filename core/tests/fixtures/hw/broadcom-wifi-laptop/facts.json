@@ -1,0 +1,10 @@
+{
+  "chassis_type": 9,
+  "cpu_vendor": "GenuineIntel",
+  "has_battery": true,
+  "has_bluetooth": true,
+  "product_name": "Broadcom laptop",
+  "synthetic": true,
+  "sys_vendor": "Synthetic",
+  "virt": "none"
+}

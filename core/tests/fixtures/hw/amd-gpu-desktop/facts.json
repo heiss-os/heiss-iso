@@ -1,0 +1,10 @@
+{
+  "chassis_type": 3,
+  "cpu_vendor": "AuthenticAMD",
+  "has_battery": false,
+  "has_bluetooth": false,
+  "product_name": "AMD desktop",
+  "synthetic": true,
+  "sys_vendor": "Synthetic",
+  "virt": "none"
+}

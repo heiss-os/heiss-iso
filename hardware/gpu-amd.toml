@@ -1,0 +1,9 @@
+schema_version = 1
+id = "gpu-amd"
+name = { en = "AMD graphics", ru = "Графика AMD" }
+description = { en = "Open-source Mesa drivers with Vulkan.", ru = "Открытые драйверы Mesa с Vulkan." }
+safe_by_default = true
+packages = ["mesa", "vulkan-radeon"]
+[match]
+virt = "none"
+pci = [{ vendor = "1002", class = "display" }]

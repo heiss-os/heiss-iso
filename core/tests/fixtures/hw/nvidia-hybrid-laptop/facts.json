@@ -1,0 +1,10 @@
+{
+  "chassis_type": 10,
+  "cpu_vendor": "GenuineIntel",
+  "has_battery": true,
+  "has_bluetooth": true,
+  "product_name": "Hybrid laptop",
+  "synthetic": true,
+  "sys_vendor": "Synthetic",
+  "virt": "none"
+}

@@ -1,0 +1,10 @@
+schema_version = 1
+id = "hybrid-nvidia-amd"
+name = { en = "Hybrid graphics (AMD + NVIDIA)", ru = "Гибридная графика (AMD + NVIDIA)" }
+description = { en = "Laptop with an AMD and an NVIDIA GPU: adds the render offload helper.", ru = "Ноутбук с графикой AMD и NVIDIA: добавляет помощник для запуска приложений на NVIDIA." }
+packages = ["nvidia-prime"]
+warnings = { en = "Use together with the NVIDIA profile. Hybrid setups could not be tested on real hardware.", ru = "Используйте вместе с профилем NVIDIA. Гибридные конфигурации не проверялись на реальном железе." }
+[match]
+virt = "none"
+form_factor = "laptop"
+pci = [{ vendor = "1002", class = "display" }, { vendor = "10de", class = "display", device_min = "1e00" }]

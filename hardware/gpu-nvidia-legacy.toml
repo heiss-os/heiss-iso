@@ -1,0 +1,10 @@
+schema_version = 1
+id = "gpu-nvidia-legacy"
+name = { en = "Older NVIDIA graphics (open nouveau stack)", ru = "Старая графика NVIDIA (открытый стек nouveau)" }
+description = { en = "This NVIDIA card is older than the supported generation. The open nouveau driver stays in use.", ru = "Эта видеокарта NVIDIA старше поддерживаемого поколения. Используется открытый драйвер nouveau." }
+packages = ["mesa"]
+safe_by_default = true
+warnings = { en = "Performance and 3D support are limited. The proprietary legacy drivers exist only in the AUR and are never installed automatically.", ru = "Производительность и 3D ограничены. Закрытые драйверы для старых карт есть только в AUR и никогда не ставятся автоматически." }
+[match]
+virt = "none"
+pci = [{ vendor = "10de", class = "display", device_max = "1dff" }]

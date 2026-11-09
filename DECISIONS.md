@@ -28,3 +28,10 @@ Format: date, what, why. Newest at the bottom.
 - **State and ownership:** only packages recorded in `/var/lib/heiss/state.json` can be removed; preinstalled packages become owned only through an explicit `--adopt` of explicitly installed packages named in a manifest.
 - **`heiss profile apply` without `--dry-run` refuses** until the privileged helper (Phase 3) exists.
 - **Profile contents** follow the Phase 0 recommendations the owner accepted (haruna, keepassxc, no mail and office in Base, `code` not shipped, kitty/Thunar/LTS kernel/office/mail as add-ons).
+
+## 2026-11-10 (hardware detection, made by the assistant)
+
+- **Hardware profiles are declarative TOML** in `hardware/` with conjunctive match rules, evaluated by a pure function, so fixtures can assert the result. Why: plan section 11.2; also lets us add hardware without code changes.
+- **NVIDIA generation rule = PCI device ID >= 0x1e00** (Turing and newer) for open modules; older cards stay on nouveau with a message, never AUR. Heuristic, not verified against the package; revisit when `supported-gpus.json` can be read.
+- **Guest tools only for the detected hypervisor**; microcode and GPU drivers never proposed in a VM.
+- **USB detection deferred** (`lsusb` missing on the build VM; no rule needs it yet).

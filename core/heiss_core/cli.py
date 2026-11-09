@@ -8,6 +8,7 @@ import os
 import sys
 
 from . import answers as ans
+from . import hardware as hw
 from . import manifest as mf
 from . import resolver, state as st
 from .errors import HeissError
@@ -16,6 +17,7 @@ from .system import PacmanSystem
 DEFAULT_PROFILES = "/usr/share/heiss/profiles"
 DEFAULT_ETC = "/etc/heiss"
 DEFAULT_STATE = "/var/lib/heiss/state.json"
+DEFAULT_HARDWARE = "/usr/share/heiss/hardware"
 
 
 def _paths(args):
@@ -58,11 +60,23 @@ def main(argv=None, system=None, out=sys.stdout):
         sp.add_argument("--adopt", action="store_true", help="claim already installed profile packages")
         if name == "apply":
             sp.add_argument("--dry-run", action="store_true")
+    hwp = sub.add_parser("hw").add_subparsers(dest="sub", required=True)
+    det = hwp.add_parser("detect", help="read-only hardware detection and proposals")
+    det.add_argument("--hardware", help="directory with hardware profiles")
+    det.add_argument("--fixture", help="use a recorded fixture directory instead of the live system")
+    det.add_argument("--lang", choices=("en", "ru"), default="en")
     av = sub.add_parser("answers").add_subparsers(dest="sub", required=True)
     v = av.add_parser("validate")
     v.add_argument("file")
     args = p.parse_args(argv)
     try:
+        if args.cmd == "hw":
+            profiles = hw.load_profiles(args.hardware or os.environ.get("HEISS_HARDWARE", DEFAULT_HARDWARE))
+            facts = hw.load_fixture(args.fixture) if args.fixture else hw.collect_live()
+            report = hw.detect(facts, profiles)
+            out.write(json.dumps(report.to_dict(), indent=2, ensure_ascii=False) + "\n" if args.json
+                      else hw.render_text(report, args.lang))
+            return 0
         if args.cmd == "answers":
             doc = ans.load(args.file)
             out.write(json.dumps(doc, indent=2) if args.json else ans.dumps(doc))

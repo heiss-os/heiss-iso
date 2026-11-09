@@ -1,0 +1,2 @@
+00:00.0 "Host bridge [0600]" "Intel Corporation [8086]" "Host bridge [0000]" -p00 "" ""
+0a:00.0 "VGA compatible controller [0300]" "Advanced Micro Devices, Inc. [AMD/ATI] [1002]" "Navi 23 [Radeon RX 6600] [73ff]" -p00 "" ""

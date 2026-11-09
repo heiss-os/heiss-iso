@@ -1,0 +1,9 @@
+schema_version = 1
+id = "vm-qemu"
+name = { en = "QEMU/KVM guest tools", ru = "Гостевые службы QEMU/KVM" }
+description = { en = "Guest agent and clipboard/resize agent for QEMU/KVM.", ru = "Гостевой агент и агент буфера обмена и разрешения для QEMU/KVM." }
+safe_by_default = true
+packages = ["qemu-guest-agent", "spice-vdagent"]
+services = ["qemu-guest-agent.service"]
+[match]
+virt = "kvm"

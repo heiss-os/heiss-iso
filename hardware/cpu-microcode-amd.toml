@@ -1,0 +1,10 @@
+schema_version = 1
+id = "cpu-microcode-amd"
+name = { en = "AMD CPU microcode", ru = "Микрокод процессора AMD" }
+description = { en = "Security and stability updates for AMD processors, loaded at boot.", ru = "Обновления безопасности и стабильности для процессоров AMD, загружаются при старте." }
+safe_by_default = true
+packages = ["amd-ucode"]
+post_actions = ["grub-mkconfig"]
+[match]
+cpu_vendor = "AuthenticAMD"
+virt = "none"
