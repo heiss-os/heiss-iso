@@ -63,3 +63,11 @@ Format: date, what, why. Newest at the bottom.
 - **Pre-flight refusals before any change:** Flatpak changes (unsupported), downloads while NetworkManager says offline (`nmcli`, no probing of the network by us; unknown counts as online and pacman reports the real failure).
 - **Client sends only names and ids**, never file content; the helper reads content from its own manifests.
 - **Gaps recorded:** the answers file is not saved by `apply` (needs a helper method), state entries of vanished packages are not forgotten, no cancel.
+
+## 2026-11-10 (Phase 4, first ISO-changing PR, owner instruction)
+
+- **The ISO now contains `heiss-core`, `heiss-helper` and `heiss-profile-base`**, built into `[heiss-local]`, so the next ISO build tests the helper and `heiss profile apply` end to end. Base in the ISO is delivery option (a) from Phase 0. Before/after ISO size is NOT measured (needs a real build).
+- **`heiss-core` ships all manifests; metapackages are empty.** Why: otherwise `apply --profile cyber` could not find `cyber.toml` before `heiss-profile-cyber` was installed. Supersedes the earlier choice that metapackages ship their manifest.
+- **Packages are built from git HEAD** by `scripts/heiss-packages-build.sh` (replaces `heiss-profile-build.sh`); `sha256sums=('SKIP')` is acceptable because the archive is generated locally from a commit, not downloaded. `heiss-build.sh` (Tier A) was not edited; the build order is documented instead.
+- **Found by running the packaged layout:** `PacmanSystem` crashed when `flatpak` is not installed (it is not on the ISO). A missing command is now reported as "no data", with tests.
+- **Not changed in this PR:** the releng leftovers in `packages.x86_64` (clonezilla, nmap, ...), mime associations, theming: separate Phase 4 PRs.

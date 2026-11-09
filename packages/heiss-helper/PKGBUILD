@@ -1,0 +1,26 @@
+# Maintainer: Heiss OS <https://github.com/heiss-os>
+# Built from the repository HEAD by scripts/heiss-packages-build.sh (it creates heiss-src.tar.gz).
+pkgname=heiss-helper
+pkgver=0.1.0
+pkgrel=1
+pkgdesc='Heiss OS privileged helper (D-Bus service with polkit)'
+arch=('any')
+url='https://github.com/heiss-os/heiss-iso'
+license=('GPL-3.0-or-later')
+depends=('heiss-core' 'python' 'python-gobject' 'polkit' 'dbus')
+optdepends=('snapper: snapshots before system changes')
+source=('heiss-src.tar.gz')
+sha256sums=('SKIP')   # archive made locally from git HEAD; not a downloaded file
+
+package() {
+  cd "$srcdir/heiss-src"
+  local sp
+  sp="$(python -c 'import sysconfig; print(sysconfig.get_path("purelib"))')"
+  install -d "$pkgdir$sp"
+  cp -r helper/heiss_helper "$pkgdir$sp/"
+  find "$pkgdir$sp" -name __pycache__ -prune -exec rm -rf {} +
+  install -Dm644 helper/data/org.heiss.Helper1.conf "$pkgdir/usr/share/dbus-1/system.d/org.heiss.Helper1.conf"
+  install -Dm644 helper/data/org.heiss.Helper1.service "$pkgdir/usr/share/dbus-1/system-services/org.heiss.Helper1.service"
+  install -Dm644 helper/data/heiss-helper.service "$pkgdir/usr/lib/systemd/system/heiss-helper.service"
+  install -Dm644 helper/data/org.heiss.helper.policy "$pkgdir/usr/share/polkit-1/actions/org.heiss.helper.policy"
+}

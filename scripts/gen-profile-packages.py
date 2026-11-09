@@ -4,12 +4,12 @@
   gen-profile-packages.py           write packages/heiss-profile-<id>/ (PKGBUILD + manifest copy)
   gen-profile-packages.py --check   exit 1 if the committed files differ from regeneration
 
-TOML manifest -> PKGBUILD (single source of truth). Each package depends on the
-packages of its manifest and on the metapackage of every manifest it requires,
-and ships its manifest at /usr/share/heiss/profiles/<id>.toml. Services, drop-ins
-and KDE settings are applied by the Heiss engine, not by the package.
+TOML manifest -> PKGBUILD (single source of truth). Each package is EMPTY: it only
+depends on the packages of its manifest and on the metapackage of every manifest it
+requires. All manifests are shipped by heiss-core, so every profile is known to the
+engine before its metapackage is installed. Services, drop-ins and KDE settings are
+applied by the Heiss engine, not by the package.
 """
-import hashlib
 import json
 import os
 import shutil
@@ -28,7 +28,7 @@ def pkg_name(mid):
     return "heiss-profile-" + mid
 
 
-def render(m, pkgver, pkgrel, sha):
+def render(m, pkgver, pkgrel):
     deps = [pkg_name(r) for r in m.requires] + list(m.packages)
     depends = "\n".join("  '%s'" % d for d in deps)
     desc = m.description["en"].replace("'", "").split(". ")[0].rstrip(".")
@@ -43,14 +43,12 @@ license=('GPL-3.0-or-later')
 depends=(
 %(depends)s
 )
-source=('%(id)s.toml')
-sha256sums=('%(sha)s')
 
 package() {
-  install -Dm644 "$srcdir/%(id)s.toml" "$pkgdir/usr/share/heiss/profiles/%(id)s.toml"
+  :   # metapackage: dependencies only; manifests are shipped by heiss-core
 }
 """ % {"name": pkg_name(m.id), "ver": pkgver, "rel": pkgrel, "title": m.name["en"], "desc": desc,
-       "depends": depends, "id": m.id, "sha": sha}
+       "depends": depends}
 
 
 def outputs():
@@ -60,12 +58,8 @@ def outputs():
     files = {}
     for mid in PROFILES:
         m = manifests[mid]
-        src = os.path.join(ROOT, "profiles", mid + ".toml")
-        with open(src, "rb") as f:
-            data = f.read()
         name = pkg_name(mid)
-        files[os.path.join(name, "PKGBUILD")] = render(m, rel["pkgver"], rel[name], hashlib.sha256(data).hexdigest()).encode()
-        files[os.path.join(name, mid + ".toml")] = data
+        files[os.path.join(name, "PKGBUILD")] = render(m, rel["pkgver"], rel[name]).encode()
     return files
 
 

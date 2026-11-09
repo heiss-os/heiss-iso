@@ -153,3 +153,8 @@ pipewire-pulse
 wireplumber
 ttf-jetbrains-mono
 python
+# Heiss OS engine and the Base profile (built into [heiss-local] by scripts/heiss-packages-build.sh).
+# heiss-profile-base pulls essentials and the default apps (delivery option (a): Base is in the ISO).
+heiss-core
+heiss-helper
+heiss-profile-base

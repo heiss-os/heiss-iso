@@ -7,7 +7,13 @@ import subprocess
 
 
 def _run(args):
-    r = subprocess.run(args, capture_output=True, text=True, env={"LC_ALL": "C", "PATH": "/usr/bin:/bin"})
+    """(returncode, stdout). A missing command (for example flatpak or nmcli on a minimal system)
+    is reported as returncode 127 instead of raising."""
+    try:
+        r = subprocess.run(args, capture_output=True, text=True, timeout=120,
+                           env={"LC_ALL": "C", "PATH": "/usr/bin:/bin"})
+    except (OSError, subprocess.TimeoutExpired):
+        return 127, ""
     return r.returncode, r.stdout
 
 
