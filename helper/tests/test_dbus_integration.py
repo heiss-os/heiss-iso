@@ -20,12 +20,14 @@ except (ImportError, ValueError, AttributeError):
     HAVE = False
 
 if HAVE:
+    from heiss_core.errors import HeissError
     from heiss_helper.audit import Audit
+    from heiss_helper.client import GioHelperClient
     from heiss_helper.service import INTERFACE, OBJECT_PATH, HelperService
 
 
 @unittest.skipUnless(HAVE, "python-gobject and dbus-daemon are required")
-class DBusGlue(Env):
+class BusBase(Env):
     def setUp(self):
         super().setUp()
         self.testbus = Gio.TestDBus.new(Gio.TestDBusFlags.NONE)
@@ -69,6 +71,9 @@ class DBusGlue(Env):
         GLib.timeout_add_seconds(15, loop.quit)
         loop.run()
 
+
+@unittest.skipUnless(HAVE, "python-gobject and dbus-daemon are required")
+class DBusGlue(BusBase):
     def test_ping(self):
         self.assertEqual(self.call("Ping")["value"][0], "0.1.0")
 
@@ -94,6 +99,43 @@ class DBusGlue(Env):
 
     def test_unknown_method_is_rejected_by_the_bus(self):
         self.assertIn("error", self.call("RunShell", GLib.Variant("(s)", ("id",))))
+
+
+@unittest.skipUnless(HAVE, "python-gobject and dbus-daemon are required")
+class ClientAgainstService(BusBase):
+    """The real GioHelperClient talking to the real service over the private bus."""
+
+    def setUp(self):
+        super().setUp()
+        self.server_thread_note = "service and client share one process: the client spins a loop while the service answers from worker threads"
+        self.client_api = GioHelperClient(self.client, self.dest)
+
+    def test_call_streams_output_and_returns_on_success(self):
+        lines = []
+        self.client_api.call("InstallPackages", (["kate"],), lines.append)
+        self.assertTrue(any("ran pacman" in l for l in lines))
+        self.assertEqual(self.runner.calls[-1][:3], ["pacman", "-S", "--needed"])
+
+    def test_many_calls_in_a_row_never_lose_the_final_signal(self):
+        for _ in range(10):      # the job can finish before the reply with its id is processed
+            self.client_api.call("RunPostAction", ("mkinitcpio",), lambda l: None)
+
+    def test_failed_job_raises_with_message(self):
+        self.runner.fail_on = "mkinitcpio"
+        with self.assertRaises(HeissError) as cm:
+            self.client_api.call("RunPostAction", ("mkinitcpio",), lambda l: None)
+        self.assertIn("failed", str(cm.exception))
+
+    def test_unauthorized_raises_with_code(self):
+        self.auth.allow = False
+        with self.assertRaises(HeissError) as cm:
+            self.client_api.call("InstallPackages", (["kate"],), lambda l: None)
+        self.assertIn("NotAuthorized", str(cm.exception))
+
+    def test_invalid_raises_with_code(self):
+        with self.assertRaises(HeissError) as cm:
+            self.client_api.call("InstallPackages", (["not-allowed"],), lambda l: None)
+        self.assertIn("Invalid", str(cm.exception))
 
 
 if __name__ == "__main__":

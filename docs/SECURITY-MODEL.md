@@ -77,4 +77,5 @@ There is no method that takes a command, a file path to read, or file content.
 - Real `pacman`, `systemctl`, `snapper`, `mkinitcpio`, `grub-mkconfig` runs through the helper.
 - The helper's behaviour with a real polkit agent dialog (Plasma) and `auth_admin_keep`.
 - Packaging: the files are not yet shipped by a package (Phase 10), so nothing runs on an installed system.
-- Pending design work: a `Cancel` method, flatpak actions, per-user KDE settings (those run as the user, not through the helper), `heiss profile apply` wiring and a client library.
+- `heiss profile apply` and the Gio client (`helper/heiss_helper/client.py`) are tested against the service on a private bus in CI only, with a fake polkit; never against a real polkitd, real pacman or a real system.
+- Pending design work: a `Cancel` method, flatpak actions, saving the answers file (`/etc/heiss/profile.toml` is root-owned and the helper has no method to write it yet), forgetting state entries of packages that disappeared.
