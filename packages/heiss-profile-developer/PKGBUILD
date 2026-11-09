@@ -2,7 +2,7 @@
 # Maintainer: Heiss OS <https://github.com/heiss-os>
 pkgname=heiss-profile-developer
 pkgver=0.1.0
-pkgrel=1
+pkgrel=2
 pkgdesc='Heiss OS profile Developer: Base plus compilers, version control, editors, containers and modern command-line tools'
 arch=('any')
 url='https://github.com/heiss-os/heiss-iso'
@@ -30,9 +30,7 @@ depends=(
   'podman'
   'distrobox'
 )
-source=('developer.toml')
-sha256sums=('94ab36067cf4e7099a63f84e109f9074373a25315da5fe57d73ad582a7979fd3')
 
 package() {
-  install -Dm644 "$srcdir/developer.toml" "$pkgdir/usr/share/heiss/profiles/developer.toml"
+  :   # metapackage: dependencies only; manifests are shipped by heiss-core
 }

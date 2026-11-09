@@ -2,7 +2,7 @@
 # Maintainer: Heiss OS <https://github.com/heiss-os>
 pkgname=heiss-profile-cyber
 pkgver=0.1.0
-pkgrel=1
+pkgrel=2
 pkgdesc='Heiss OS profile Cyber: Base plus tools for network analysis, reverse engineering and forensics'
 arch=('any')
 url='https://github.com/heiss-os/heiss-iso'
@@ -21,9 +21,7 @@ depends=(
   'podman'
   'distrobox'
 )
-source=('cyber.toml')
-sha256sums=('70a8ac7d9325470144476e0620a3a986b44f6f4cac01d60385347e49bfac701a')
 
 package() {
-  install -Dm644 "$srcdir/cyber.toml" "$pkgdir/usr/share/heiss/profiles/cyber.toml"
+  :   # metapackage: dependencies only; manifests are shipped by heiss-core
 }

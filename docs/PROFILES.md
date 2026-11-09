@@ -24,7 +24,7 @@ Sizes come from `scripts/check-packages.py` (pacman sync database, 2026-11-09). 
 - Konsole and Dolphin are the defaults. Kitty and Thunar are add-ons.
 - Not in any profile yet: NVIDIA and other hardware-dependent packages (Phase 7), Flatpak/Flathub (an answer, off by default), Inter font (ships with the branding package, Phase 10), Heiss's own packages (not written yet).
 
-## Commands (read-only for now)
+## Commands
 
 ```
 PYTHONPATH=core python3 -m heiss_core --profiles profiles profile list
@@ -39,18 +39,16 @@ PYTHONPATH=core python3 -m heiss_core --profiles profiles profile apply --dry-ru
 
 `/var/lib/heiss/state.json` lists what Heiss installed. A profile change removes only packages in that list that no selected manifest wants and that no other installed package requires; the rest is reported as "kept". Packages already on the system (for example everything on the ISO) are not Heiss-owned unless adopted with `--adopt`, which claims only explicitly installed packages named in the selected manifests. Delivery option (a) needs this adoption step on first boot so that "Custom" can remove Base extras; the call is part of the wizard work (Phase 5).
 
-## Metapackages
+## Packages
 
-`heiss-profile-essentials`, `-base`, `-cyber`, `-developer` are generated from the manifests by `scripts/gen-profile-packages.py` (TOML -> PKGBUILD; never edit `packages/heiss-profile-*` by hand, CI runs `--check`). Each package:
+`packages/` holds six packages, built by `scripts/heiss-packages-build.sh` from git HEAD into `[heiss-local]` (uncommitted changes are not included):
 
-- depends on the packages of its manifest and on the metapackage of each manifest it requires (cyber -> base -> essentials);
-- ships only its manifest, at `/usr/share/heiss/profiles/<id>.toml`; it enables no services and has no install scripts. Services, drop-ins and KDE settings are applied by the Heiss engine;
-- is `arch=any`, GPL-3.0-or-later, version from `packages/pkgrel.json`.
+- `heiss-core`: the Python engine, the `heiss` command, ALL manifests (`/usr/share/heiss/profiles`, so every profile and add-on is known before its metapackage is installed) and the hardware profiles (`/usr/share/heiss/hardware`).
+- `heiss-helper`: the privileged D-Bus service, its D-Bus policy and activation file, the systemd unit and the polkit actions. Depends on `heiss-core`, `python-gobject`, `polkit`, `dbus`.
+- `heiss-profile-essentials`, `-base`, `-cyber`, `-developer`: generated from the manifests by `scripts/gen-profile-packages.py` (TOML -> PKGBUILD; never edit by hand, CI runs `--check`). They are EMPTY: they only depend on the packages of their manifest and on the metapackage of each manifest they require (cyber -> base -> essentials). They enable no services and have no install scripts; services, drop-ins and KDE settings are applied by the engine.
 
-Not packaged: `custom` and the add-ons (the engine installs their packages directly).
+Not packaged as metapackages: `custom` and the add-ons (the engine installs their packages directly).
 
-Bump the matching value in `packages/pkgrel.json` whenever the dependency list of a package changes, otherwise installed systems will not see an update.
+Bump the matching value in `packages/pkgrel.json` whenever a package's dependency list or content changes, otherwise installed systems will not see an update. `heiss-core` and `heiss-helper` take their version from `__version__` in the code (a test checks that the PKGBUILDs agree).
 
-Build into the local repository: `scripts/heiss-profile-build.sh` (normal user, uses `makepkg -d` because the dependencies are ordinary repository packages). Verified: all four build with makepkg 7.1.0 on the build VM and contain exactly the manifest file.
-
-Relation to the engine (first iteration): the engine still installs the manifest packages explicitly and records them in the state file, so removal stays precise. The metapackages serve the ISO build, the hosted repository and update-time pulls of newly added packages. The ISO does not contain them yet: `profile/packages.x86_64` is unchanged.
+Relation to the engine: the engine installs the manifest packages explicitly and records them in the state file, so removal stays precise. The ISO contains `heiss-core`, `heiss-helper` and `heiss-profile-base` (see `docs/ISO-E2E-TEST.md`); `scripts/check-iso-packages.py` (CI) checks every ISO list entry exists in the repositories or is a local package.

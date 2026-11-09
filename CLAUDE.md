@@ -32,7 +32,7 @@ Heiß OS (ASCII-вариант: Heiss, техническое имя: `heiss`, �
 sudo mkarchiso -v -w ~/archiso-work -o out profile
 ```
 
-Каталоги `out/` и рабочий каталог не коммитятся. Перед сборкой пакет Calamares должен лежать в `~/localrepo` (создаётся `scripts/heiss-calamares-build.sh`).
+Каталоги `out/` и рабочий каталог не коммитятся. Перед сборкой пакет Calamares должен лежать в `~/localrepo` (создаётся `scripts/heiss-calamares-build.sh`). Пакеты Heiss (`heiss-core`, `heiss-helper`, `heiss-profile-*`) собираются в тот же репозиторий скриптом `scripts/heiss-packages-build.sh` (из git HEAD, без незакоммиченных изменений); без этого сборка ISO не найдёт их. Проверка движка и помощника в виртуальной машине: `docs/ISO-E2E-TEST.md`.
 
 Путь локального репозитория: в `profile/pacman.conf` стоит `file://@LOCALREPO@`, `scripts/heiss-build.sh` подставляет `$LOCALREPO` (по умолчанию `$HOME/localrepo`) в отрендеренной копии профиля. Старая проблема с абсолютным путём решена.
 

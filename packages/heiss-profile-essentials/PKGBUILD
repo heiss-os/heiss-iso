@@ -2,7 +2,7 @@
 # Maintainer: Heiss OS <https://github.com/heiss-os>
 pkgname=heiss-profile-essentials
 pkgver=0.1.0
-pkgrel=1
+pkgrel=2
 pkgdesc='Heiss OS profile Essentials: The minimum for a usable, secure and good-looking system'
 arch=('any')
 url='https://github.com/heiss-os/heiss-iso'
@@ -58,9 +58,7 @@ depends=(
   'firewalld'
   'plasma-firewall'
 )
-source=('essentials.toml')
-sha256sums=('07c7148756c15d1f93322f676e5b03398d407dd854c5a4c72e82eb5993cd234c')
 
 package() {
-  install -Dm644 "$srcdir/essentials.toml" "$pkgdir/usr/share/heiss/profiles/essentials.toml"
+  :   # metapackage: dependencies only; manifests are shipped by heiss-core
 }

@@ -32,28 +32,39 @@ jobs:
         run: pacman -Syu --noconfirm python git
       - uses: actions/checkout@v4
       - run: python3 scripts/check-packages.py
+      - name: ISO package list is valid
+        run: python3 scripts/check-iso-packages.py
 
-  build-metapackages:
-    name: heiss-profile-* metapackages build (makepkg)
+  build-packages:
+    name: heiss packages build (makepkg) and packaged layout works
     runs-on: ubuntu-latest
     container: archlinux:latest
     steps:
       - name: Install tools
         run: pacman -Syu --noconfirm base-devel git python
       - uses: actions/checkout@v4
-      - name: Build as an unprivileged user and inspect
+      - name: Build all packages with the build script as an unprivileged user
         run: |
           useradd -m builder
           cp -r "$GITHUB_WORKSPACE" /home/builder/src
           chown -R builder /home/builder/src
-          su builder -c 'set -e; mkdir -p /home/builder/out
-            for d in /home/builder/src/packages/heiss-profile-*/; do
-              (cd "$d" && PKGDEST=/home/builder/out makepkg -d -f -C --noconfirm)
-            done'
-          for p in /home/builder/out/*.pkg.tar.zst; do
-            pacman -Qip "$p" | grep -E '^(Name|Version|Depends On)'
-            bsdtar -tf "$p" | grep -q 'usr/share/heiss/profiles/.*\.toml'
-          done
+          su builder -c 'cd /home/builder/src && git config --global --add safe.directory /home/builder/src && LOCALREPO=/home/builder/localrepo bash scripts/heiss-packages-build.sh'
+          ls /home/builder/localrepo
+      - name: Inspect packages and run the engine from the extracted packages
+        run: |
+          cd /home/builder/localrepo
+          for p in heiss-*.pkg.tar.zst; do pacman -Qip "$p" | grep -E '^(Name|Version|Depends On)'; done
+          mkdir /tmp/x
+          bsdtar -xf heiss-core-*.pkg.tar.zst -C /tmp/x
+          bsdtar -xf heiss-helper-*.pkg.tar.zst -C /tmp/x
+          SP=$(ls -d /tmp/x/usr/lib/python3*/site-packages)
+          export PYTHONPATH="$SP"
+          python3 -m heiss_core --profiles /tmp/x/usr/share/heiss/profiles profile list
+          python3 -m heiss_core --profiles /tmp/x/usr/share/heiss/profiles profile apply --dry-run --profile cyber
+          python3 -m heiss_core hw detect --hardware /tmp/x/usr/share/heiss/hardware
+          test -f /tmp/x/usr/share/polkit-1/actions/org.heiss.helper.policy
+          test -f /tmp/x/usr/share/dbus-1/system.d/org.heiss.Helper1.conf
+          test -f /tmp/x/usr/lib/systemd/system/heiss-helper.service
 
   helper-dbus:
     name: heiss-helper D-Bus glue on a private bus
