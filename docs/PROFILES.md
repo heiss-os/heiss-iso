@@ -33,7 +33,7 @@ PYTHONPATH=core python3 -m heiss_core --profiles profiles profile diff --profile
 PYTHONPATH=core python3 -m heiss_core --profiles profiles profile apply --dry-run --profile base
 ```
 
-`apply` without `--dry-run` refuses until the privileged helper exists (Phase 3). `diff` and `apply --dry-run` read the real system (`pacman`, `systemctl`) and `/var/lib/heiss/state.json`; override with `HEISS_STATE` and `HEISS_ETC`.
+`apply` shows the plan, asks `Apply these changes? [y/N]` (`--yes` skips the question; without a terminal and without `--yes` it refuses), then runs the plan through the privileged helper. Order: claim (`--adopt`), install, enable services, write drop-ins, disable services, remove, post actions; removals come last so a failed install never strips the system. KDE settings from manifests are written as the user afterwards. Before anything changes it refuses when the plan contains Flatpak changes (not supported yet) or when packages must be downloaded and NetworkManager reports no connection. If a step fails it stops and says which step; earlier steps stay applied and `heiss profile diff` shows what is left. `apply` needs `python-gobject` and the helper installed. `diff` and `apply --dry-run` read the real system (`pacman`, `systemctl`) and `/var/lib/heiss/state.json`; override with `HEISS_STATE` and `HEISS_ETC`.
 
 ## Ownership and removal
 

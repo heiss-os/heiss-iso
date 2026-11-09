@@ -1,6 +1,7 @@
-"""heiss command line: profile list|show|diff|apply, answers validate.
+"""heiss command line: profile list|show|diff|apply, hw detect, answers validate.
 
-`apply` without --dry-run needs the privileged helper (Phase 3) and refuses for now.
+`apply` shows the plan, asks for confirmation and runs it through the privileged
+helper (D-Bus + polkit). `--dry-run` only prints the plan.
 """
 import argparse
 import json
@@ -8,6 +9,7 @@ import os
 import sys
 
 from . import answers as ans
+from . import apply as applymod
 from . import hardware as hw
 from . import manifest as mf
 from . import resolver, state as st
@@ -44,7 +46,21 @@ def _build(args, system=None):
     return plan
 
 
-def main(argv=None, system=None, out=sys.stdout):
+def _ask(prompt):
+    if not sys.stdin.isatty():
+        raise HeissError("not a terminal: pass --yes to apply without asking")
+    return input(prompt).strip().lower() in ("y", "yes")
+
+
+def _real_helper():
+    try:
+        from heiss_helper.client import GioHelperClient
+    except (ImportError, ValueError) as e:  # python-gobject or the helper package missing
+        raise HeissError("the helper client is not available (needs python-gobject and heiss-helper): %s" % e)
+    return GioHelperClient()
+
+
+def main(argv=None, system=None, out=sys.stdout, helper=None, confirm=None):
     p = argparse.ArgumentParser(prog="heiss")
     p.add_argument("--profiles", help="directory with manifests")
     p.add_argument("--json", action="store_true")
@@ -60,6 +76,7 @@ def main(argv=None, system=None, out=sys.stdout):
         sp.add_argument("--adopt", action="store_true", help="claim already installed profile packages")
         if name == "apply":
             sp.add_argument("--dry-run", action="store_true")
+            sp.add_argument("--yes", action="store_true", help="do not ask for confirmation")
     hwp = sub.add_parser("hw").add_subparsers(dest="sub", required=True)
     det = hwp.add_parser("detect", help="read-only hardware detection and proposals")
     det.add_argument("--hardware", help="directory with hardware profiles")
@@ -69,6 +86,7 @@ def main(argv=None, system=None, out=sys.stdout):
     v = av.add_parser("validate")
     v.add_argument("file")
     args = p.parse_args(argv)
+    system = system or PacmanSystem()
     try:
         if args.cmd == "hw":
             profiles = hw.load_profiles(args.hardware or os.environ.get("HEISS_HARDWARE", DEFAULT_HARDWARE))
@@ -90,7 +108,17 @@ def main(argv=None, system=None, out=sys.stdout):
                 raise HeissError("unknown manifest %r" % args.id)
             out.write(json.dumps(m.__dict__, indent=2, ensure_ascii=False) + "\n")
         elif args.sub == "apply" and not args.dry_run:
-            raise HeissError("applying changes needs the privileged helper (not implemented yet); use --dry-run")
+            plan = _build(args, system)
+            out.write(plan.to_text() + "\n")
+            if plan.is_empty():
+                out.write("nothing to apply\n")
+                return 0
+            if not args.yes and not (confirm or _ask)("Apply these changes? [y/N] "):
+                out.write("cancelled, nothing was changed\n")
+                return 1
+            applymod.apply_plan(plan, helper or _real_helper(), system, lambda line: out.write("  " + line + "\n"),
+                                on_step=lambda n, total, desc: out.write("[%d/%d] %s\n" % (n, total, desc)))
+            out.write("done\n")
         else:
             plan = _build(args, system)
             out.write((json.dumps(plan.to_dict(), indent=2) + "\n") if args.json else plan.to_text() + "\n")

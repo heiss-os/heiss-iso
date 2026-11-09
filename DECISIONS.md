@@ -56,3 +56,10 @@ Format: date, what, why. Newest at the bottom.
 - **polkit defaults `auth_admin_keep`** for all actions: one authentication per apply run. Trade-off: the dialog text does not list package names; the GUI summary page must.
 - **Package-name regex tightened** in the manifest validator (no leading `-` or `.`), which also protects `heiss-core`.
 - **`SECURITY.md` points to GitHub private vulnerability reporting**; I did not invent a contact address. The owner must enable that feature.
+
+## 2026-11-10 (apply wiring, made by the assistant)
+
+- **`heiss profile apply` runs through the helper** with confirmation (`--yes` to skip; refuses without a terminal). Order: adopt, install, enable, drop-ins, disable, remove, post actions; KDE settings last as the user. Why: removals last so a failure never strips the system; KDE settings only after the privileged part succeeded.
+- **Pre-flight refusals before any change:** Flatpak changes (unsupported), downloads while NetworkManager says offline (`nmcli`, no probing of the network by us; unknown counts as online and pacman reports the real failure).
+- **Client sends only names and ids**, never file content; the helper reads content from its own manifests.
+- **Gaps recorded:** the answers file is not saved by `apply` (needs a helper method), state entries of vanished packages are not forgotten, no cancel.

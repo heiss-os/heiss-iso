@@ -47,3 +47,11 @@ class PacmanSystem:
     def kde_value(self, file, group, key):
         rc, out = _run(["kreadconfig6", "--file", file, "--group", group, "--key", key])
         return out.rstrip("\n") if rc == 0 else None
+
+    def network_connected(self):
+        """True when NetworkManager reports full connectivity. Unknown (no nmcli) counts as connected:
+        pacman will report a real failure. Does not probe the network itself."""
+        rc, out = _run(["nmcli", "-t", "-f", "STATE", "general"])
+        if rc != 0:
+            return True
+        return out.strip() == "connected"
