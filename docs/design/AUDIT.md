@@ -13,7 +13,7 @@ Method: reading the repository at `main` (`e0eeb08`) and querying the package da
 | 5 | Installed filesystem | `partition.conf`: `defaultFileSystemType: "ext4"`. No snapper, no btrfs subvolume layout. | Snapshots are not available on installs today. Enabling Btrfs is a Tier A change (Calamares) needing an approved item. |
 | 6 | Wallpapers: Heiss-Everyday, Heiss-Everyday-Light | Both exist under `usr/share/wallpapers`. `branding/wallpapers` holds four old PNGs (developer, everyday-dark, security, universal). | OK. Sources for Developer/Security/Universal exist but are not packaged. |
 | 7 | Docs, CI, DECISIONS.md | None existed: no `docs/`, no `.github/`, no `DECISIONS.md`. | Created in this PR (docs) and Phase 1 (CI). |
-| 8 | README profile names | README still says Everyday / Security / Developer / Universal. | Separate docs PR (rename), Phase 2. |
+| 8 | README profile names | README still says Everyday / Security / Developer / Universal. | Fixed in the profile-rename docs PR (README, CLAUDE.md). |
 | 9 | Branch name | Owner asked for `docs/phase-0-aduit` (sic). | Kept as requested. |
 
 ## 2. Tier assignment of the main paths

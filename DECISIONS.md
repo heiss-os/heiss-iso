@@ -42,3 +42,8 @@ Format: date, what, why. Newest at the bottom.
 - **Metapackages ship only the manifest and enable nothing.** Services and configuration stay in the engine so that every change is planned, audited and reversible through the state file.
 - **pkgrel is manual** (`packages/pkgrel.json`), because pacman needs a version change to see an update. Risk: forgetting to bump. Mitigation idea for later: CI comparing the dependency list with the previous release.
 - **`profile/packages.x86_64` is not changed** in this PR: putting the metapackages into the ISO changes the image and needs a rebuild and VM test (Phase 10).
+
+## 2026-11-10 (docs rename, made by the assistant)
+
+- **README and CLAUDE.md use Base, Cyber, Developer, Custom**, with a one-line mapping from the old names. The wallpaper packages keep the internal name `Heiss-Everyday` (protected, not renamed).
+- **CLAUDE.md now carries the working rules from the master plan** (section 0 asked to copy them in Phase 0, which I had missed): owner merges PRs (the old "second approver" wording is removed), Tier A protection, no unverified claims, official repositories only. Also fixed the outdated note about an absolute path in `pacman.conf`.

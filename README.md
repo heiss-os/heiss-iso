@@ -14,12 +14,14 @@
 
 | Профиль | Для чего |
 |---|---|
-| **Everyday** | Учёба, интернет, мультимедиа и повседневная работа |
-| **Security** | Пентестинг, анализ сетей, форензика и лаборатории |
-| **Developer** | Программирование, Git, компиляторы и контейнеры |
-| **Universal** | Сбалансированный набор для разных задач |
+| **Base** | Учёба, интернет, мультимедиа и повседневная работа (основа для Cyber и Developer) |
+| **Cyber** | Base плюс инструменты для анализа сетей, реверс-инжиниринга и форензики |
+| **Developer** | Base плюс всё для программирования: Git, компиляторы, контейнеры |
+| **Custom** | Только основа системы, остальное вы выбираете из списка дополнений |
 
-Профили будут реализованы как метапакеты поверх одного образа. Их можно будет менять и сочетать после установки.
+Профили реализованы как метапакеты `heiss-profile-*` и декларативные манифесты (`profiles/`) поверх одного образа. Профиль можно сменить после установки.
+
+*Старые названия: Everyday → Base, Security → Cyber, Universal → Custom (набор «на все случаи» заменён выбором дополнений). Название набора обоев «Everyday» остаётся внутренним идентификатором.*
 
 ## Ключевые решения
 
@@ -35,7 +37,7 @@
 
 ## Дорожная карта
 
-1. **MVP:** загрузочный ISO с KDE, брендингом и Calamares, профиль Everyday.
+1. **MVP:** загрузочный ISO с KDE, брендингом и Calamares, профиль Base.
 2. **v0.2:** Btrfs-снапшоты, собственный репозиторий пакетов, Welcome-приложение.
 3. **v0.3:** остальные профили.
 4. **v0.4:** Security Center v0.1.
@@ -60,4 +62,4 @@
 
 ## English summary
 
-**Heiß OS** is an early-stage, Arch-based Linux distribution with KDE Plasma, a graphical installer (Calamares) and profile-based setup (Everyday, Security, Developer, Universal). It will ship its own security tooling: *Security Center* (system hardening checks with plain-language fixes) and *Security Labs* (isolated labs for learning and testing). No telemetry. Heiß OS is an independent project and is not affiliated with Arch Linux.
+**Heiß OS** is an early-stage, Arch-based Linux distribution with KDE Plasma, a graphical installer (Calamares) and profile-based setup (Base, Cyber, Developer, Custom). It will ship its own security tooling: *Security Center* (system hardening checks with plain-language fixes) and *Security Labs* (isolated labs for learning and testing). No telemetry. Heiß OS is an independent project and is not affiliated with Arch Linux.

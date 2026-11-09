@@ -7,7 +7,7 @@ Heiß OS (ASCII-вариант: Heiss, техническое имя: `heiss`, �
 ## Решения, которые уже приняты
 
 - База Arch Linux, образ собирается через `archiso` (профиль основан на `releng`).
-- Первая версия только с KDE Plasma (SDDM как менеджер входа). Профили Developer, Security, Universal отложены: сейчас делаем только **Everyday**.
+- Первая версия только с KDE Plasma (SDDM как менеджер входа). Профили называются **Base, Cyber, Developer, Custom** (раньше: Everyday, Security, Developer, Universal; соответствие Everyday → Base, Security → Cyber, Universal → Custom). Внутренние идентификаторы в готовых ресурсах не переименовываются: пакеты обоев `Heiss-Everyday` и `Heiss-Everyday-Light` остаются как есть. Состав профилей: `profiles/*.toml`, описание: `docs/PROFILES.md`.
 - Установщик графический: Calamares 3.4.x (Qt6). В репозиториях Arch его нет, пакет собирается из AUR скриптом `scripts/heiss-calamares-build.sh` в локальный репозиторий `~/localrepo`.
 - Без телеметрии. Безопасность по умолчанию: root заблокирован после установки, live-настройки не попадают в установленную систему.
 - Единый стиль пока один: **Heiss Dark** (по умолчанию) и **Heiss Light**, нейтральная палитра с песочным акцентом (тёмная `#C9B28A`, светлая `#8C7448`). Шрифты: Inter (интерфейс), JetBrains Mono (код).
@@ -20,8 +20,11 @@ Heiß OS (ASCII-вариант: Heiss, техническое имя: `heiss`, �
 - `profile/` профиль archiso: `packages.x86_64`, `pacman.conf`, `profiledef.sh`, `syslinux/`, `efiboot/`, `grub/`.
 - `profile/airootfs/` файлы, попадающие в образ: настройки Calamares (`etc/calamares/`), тема KDE (`usr/share/color-schemes/`, `usr/share/plasma/look-and-feel/`), автозапуск (`etc/xdg/autostart/`), скрипты (`usr/local/bin/`), брендинг установщика (`usr/share/calamares/branding/heiss/`).
 - `profile/hooks/` pacman-хуки только для сборки (не попадают в образ), см. ниже про os-release.
-- `scripts/` вспомогательные скрипты сборки.
-- `branding/` исходники бренда: логотипы (`logo/`), обои (`wallpapers/`).
+- `scripts/` вспомогательные скрипты сборки и генераторы (`gen-theme.py`, `gen-profile-packages.py`, `check-*.py`).
+- `branding/` исходники бренда: логотипы (`logo/`), обои (`wallpapers/`), токены дизайна (`tokens/`, источник правды для цветов и генерируемых тем).
+- `core/` движок профилей `heiss-core` (Python, без GUI), `profiles/` манифесты профилей и дополнений, `hardware/` профили железа, `packages/` PKGBUILD (метапакеты генерируются).
+- `docs/` документация: `PLAN-STATE.md` (читать в начале каждой сессии), `ARCHITECTURE.md`, `PROFILES.md`, `design/`, `hardware/`, `infra/`. Решения и причины: `DECISIONS.md`.
+- Мастер-план: `~/share/heiss-master-prompt.md` (вне репозитория).
 
 ## Как собрать образ
 
@@ -31,7 +34,7 @@ sudo mkarchiso -v -w ~/archiso-work -o out profile
 
 Каталоги `out/` и рабочий каталог не коммитятся. Перед сборкой пакет Calamares должен лежать в `~/localrepo` (создаётся `scripts/heiss-calamares-build.sh`).
 
-Известная проблема: в `profile/pacman.conf` репозиторий `[heiss-local]` указан по абсолютному пути `/home/heiss-os/localrepo` (так было в виртуальной машине сборки). Нужно сделать путь независимым от пользователя.
+Путь локального репозитория: в `profile/pacman.conf` стоит `file://@LOCALREPO@`, `scripts/heiss-build.sh` подставляет `$LOCALREPO` (по умолчанию `$HOME/localrepo`) в отрендеренной копии профиля. Старая проблема с абсолютным путём решена.
 
 ## os-release и конфликты с пакетами
 
@@ -41,16 +44,31 @@ sudo mkarchiso -v -w ~/archiso-work -o out profile
 
 Тест в VirtualBox: режим BIOS, 4 ГБ ОЗУ, Video Memory 128 МБ, чистый диск 20-40 ГБ. Ожидается:
 1. В меню загрузки Heiss OS, без логотипа Arch.
-2. Рабочий стол KDE в нейтральной теме с песочным акцентом, обои Everyday, внизу плавающий док.
+2. Рабочий стол KDE в нейтральной теме с песочным акцентом, обои Heiss-Everyday, внизу плавающий док.
 3. Установщик Calamares открывается сам, в стиле Heiss.
 4. После установки на пустой диск и загрузки с диска: сеть работает (`nmcli general status`), `systemctl --failed` пуст, `sudo passwd -S root` показывает `L`, пользователя `liveuser` нет.
 
 ## Правила работы с Git
 
-- Ветка `main` защищена: только через Pull Request с одобрением второго человека. Прямые коммиты в `main` запрещены.
-- Название веток: `feat/...`, `fix/...`, `docs/...`. Коммиты: `feat:`, `fix:`, `docs:`, `chore:`.
+- Ветка `main` защищена: только через Pull Request, прямые коммиты и force push запрещены. Pull Request вливает владелец проекта сам (второго одобряющего нет).
+- Название веток: `feat/...`, `fix/...`, `docs/...`, `build/...`. Коммиты: `feat:`, `fix:`, `docs:`, `chore:`, `ci:`, `build:`, `refactor:`, `test:`.
+- Каждый PR небольшой (ориентир до 600 строк без генерируемых файлов) и содержит: что и зачем, «Protected files touched», «Not verified», откат одной строкой.
 - В репозиторий не попадают секреты, ключи, образы и файлы больше 20 МБ.
 - Организация на GitHub: `heiss-os`, репозиторий `heiss-iso`.
+
+## Защищённые файлы (Tier A)
+
+Утверждённый вид и загрузочная цепочка защищены: список путей в `docs/design/protected-paths.txt`, контрольные суммы в `docs/design/protected.sha256`, проверка `scripts/check-protected.py verify` и задача CI `protected-paths`. Менять такие файлы можно только по явному пункту, одобренному владельцем (метка PR `design-approved`). Подробности: `docs/design/PROTECTION.md`. Существующие значения палитры, шрифты, песочный акцент и последовательность модулей Calamares не менять. Tier B (панель, док, настройки Plasma) только после «ok» по конкретному пункту, Tier C свободен.
+
+## Рабочие правила
+
+- Не выдумывать. Каждый пакет проверять через `pacman -Si`. Что нельзя проверить (UEFI, Secure Boot, реальное железо, поведение в VirtualBox), так и писать.
+- Не писать «выглядит хорошо» или «проверено» без скриншота, записи или измерения. Скриншотов в ВМ сборки сделать нельзя: просить владельца и считать непроверенным.
+- Только официальные репозитории Arch и свой репозиторий. AUR, KDE Store, GitHub-проекты только с явного одобрения по каждому пункту и записью в `DECISIONS.md`.
+- Без телеметрии. Ничего нового не должно обращаться в сеть само, кроме pacman и flatpak.
+- Секреты и закрытый ключ подписи никогда не попадают в репозиторий и в сессии ассистента.
+- Вопросы владельцу: нумерованным списком с вариантами и рекомендованным ответом, коротко. Команды давать файлом или готовыми строками.
+- После каждой фазы обновлять `docs/PLAN-STATE.md` и `DECISIONS.md`.
 
 ## Осторожно с командами
 
