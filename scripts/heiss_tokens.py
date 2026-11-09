@@ -301,3 +301,26 @@ def text_pairs(tokens, theme):
     pairs.append(("terminal fg on terminal bg", t["fg"], t["bg"], 4.5))
     pairs.append(("terminal selection_fg on selection_bg", t["selection_fg"], t["selection_bg"], 4.5))
     return pairs
+
+
+def render_konsole_profile(tokens, theme):
+    t = tokens["themes"][theme]
+    size = tokens["font"]["sizes_pt"]["terminal"]
+    font = "%s,%d,-1,5,400,0,0,0,0,0,0,0,0,0,0,1" % (tokens["font"]["mono"], size)
+    return "\n".join(["# " + HEADER, "[Appearance]", "ColorScheme=%s" % t["scheme_id"], "Font=%s" % font, "",
+                      "[General]", "Name=%s" % t["name"], "Parent=FALLBACK/", ""])
+
+
+def render_konsolerc():
+    return "# " + HEADER + "\n[Desktop Entry]\nDefaultProfile=Heiss-Dark.profile\n"
+
+
+def render_kitty_conf(tokens):
+    size = tokens["font"]["sizes_pt"]["terminal"]
+    return "\n".join([
+        "# " + HEADER,
+        "# System-wide kitty defaults for Heiss OS. Colors come from the *-theme.auto.conf files, which kitty",
+        "# applies according to the desktop color scheme (the portal setting).",
+        "font_family      %s" % tokens["font"]["mono"], "font_size        %d" % size,
+        "window_padding_width 8", "cursor_shape     block", "background_opacity 1.0",
+        "enable_audio_bell no", ""])

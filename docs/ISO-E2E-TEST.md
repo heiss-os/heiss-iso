@@ -69,3 +69,16 @@ The terminal output of steps 1-7, `systemctl --failed`, `journalctl -u heiss-hel
 - The helper's systemd options (`PrivateTmp`, `ProtectHome`) against pacman hooks.
 - `fakeroot` printed `payload not recognized` during `makepkg` on the build VM: the packages were still created and inspected, but the cause is unknown.
 - Everything about the real polkit call: it was only tested against a fake in CI.
+
+## Theme sync and terminals (added with `heiss theme sync`)
+
+In the desktop session:
+
+```bash
+heiss theme status                       # report only, changes nothing
+# System Settings -> Appearance -> Global Theme -> Heiss Light, wait 5 s, then:
+journalctl --user -u heiss-theme-sync --no-pager | tail -20
+cat ~/.local/state/heiss/theme-sync.log
+```
+
+Open a NEW Konsole window and keep one that was open before the switch: both must show the Light colors. Switch back to Heiss Dark and repeat. Expected in the log: six `theme-sync:` lines per switch; anything marked `warn` or `failed` is what I need to see. Details and the list of unverified assumptions: `docs/design/THEME-SYNC.md`.

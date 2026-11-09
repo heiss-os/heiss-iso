@@ -25,6 +25,11 @@ def outputs(tokens):
         files["gtk-4.0/heiss-%s.css" % th] = h.render_gtk(tokens, th, gtk4=True)
         files["kitty/heiss-%s.conf" % th] = h.render_kitty(tokens, th)
         files["konsole/%s.colorscheme" % sid] = h.render_konsole(tokens, th)
+        files["konsole/Heiss-%s.profile" % th.capitalize()] = h.render_konsole_profile(tokens, th)
+        files["kitty/%s-theme.auto.conf" % th] = h.render_kitty(tokens, th)
+    files["konsole/konsolerc"] = h.render_konsolerc()
+    files["kitty/kitty.conf"] = h.render_kitty_conf(tokens)
+    files["kitty/no-preference-theme.auto.conf"] = h.render_kitty(tokens, "dark")   # no preference: dark is the default look
     return files
 
 

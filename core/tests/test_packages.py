@@ -110,3 +110,31 @@ class EnginePackages(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ThemePackage(unittest.TestCase):
+    def test_installs_every_generated_terminal_file(self):
+        import fnmatch
+        pk = pkgbuild("heiss-theme")
+        patterns = {"konsole": ["*.colorscheme", "*.profile", "konsolerc"],
+                    "kitty": ["kitty.conf", "*-theme.auto.conf", "heiss-dark.conf", "heiss-light.conf"]}
+        gen_dir = os.path.join(REPO, "branding", "tokens", "generated")
+        for sub, pats in patterns.items():
+            for pat in pats:
+                self.assertIn(sub + "/" + pat, pk, pat)          # the PKGBUILD installs this pattern
+            for f in os.listdir(os.path.join(gen_dir, sub)):
+                self.assertTrue(any(fnmatch.fnmatch(f, pat) for pat in pats), "generated %s/%s is not installed" % (sub, f))
+
+    def test_konsole_default_profile_exists_in_the_package(self):
+        rc = open(os.path.join(REPO, "branding", "tokens", "generated", "konsole", "konsolerc")).read()
+        self.assertIn("DefaultProfile=Heiss-Dark.profile", rc)
+        self.assertTrue(os.path.exists(os.path.join(REPO, "branding", "tokens", "generated", "konsole", "Heiss-Dark.profile")))
+
+    def test_config_files_are_marked_as_backup_and_no_overwrites_of_other_packages(self):
+        pk = pkgbuild("heiss-theme")
+        self.assertIn("backup=('etc/xdg/konsolerc' 'etc/xdg/kitty/kitty.conf')", pk)
+        self.assertNotIn("/usr/share/konsole/Konsole", pk)
+
+    def test_iso_lists_the_theme_package(self):
+        with open(os.path.join(REPO, "profile", "packages.x86_64")) as f:
+            self.assertIn("heiss-theme", {l.split("#")[0].strip() for l in f})
