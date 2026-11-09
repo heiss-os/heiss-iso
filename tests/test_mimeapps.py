@@ -23,10 +23,14 @@ class Mimeapps(unittest.TestCase):
     def test_file_is_well_formed(self):
         self.assertEqual(self.problems, [])
 
-    def test_mime_types_exist_when_database_is_present(self):
+    def test_mime_types_exist_when_asked_to(self):
+        # The type names follow the CURRENT shared-mime-info (Arch). Older databases (for example on an
+        # Ubuntu CI runner) know fewer names, so this runs only with HEISS_CHECK_MIME_TYPES=1;
+        # scripts/check-mimeapps.py does the same check in the Arch CI job.
+        if os.environ.get("HEISS_CHECK_MIME_TYPES") != "1":
+            self.skipTest("set HEISS_CHECK_MIME_TYPES=1 on a machine with a current shared-mime-info")
         known = cm.known_mime_types()
-        if known is None:
-            self.skipTest("no shared-mime-info on this machine")
+        self.assertIsNotNone(known)
         self.assertEqual(cm.mime_problems(self.data, known), [])
 
     def test_only_expected_applications_and_all_in_base(self):
