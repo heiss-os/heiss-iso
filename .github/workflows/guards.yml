@@ -1,0 +1,37 @@
+name: guards
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  tokens:
+    name: tokens (regeneration, contrast, tests)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generated files are up to date
+        run: python3 scripts/gen-theme.py --check
+      - name: Contrast assertions (WCAG AA)
+        run: python3 scripts/check-contrast.py
+      - name: Unit tests (generators reproduce the existing color schemes)
+        run: python3 -m unittest discover -s tests -v
+
+  protected-paths:
+    name: protected-paths
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Tier A files unchanged
+        if: ${{ !contains(github.event.pull_request.labels.*.name, 'design-approved') }}
+        run: python3 scripts/check-protected.py verify
+      - name: Label design-approved present, checksums only reported
+        if: ${{ contains(github.event.pull_request.labels.*.name, 'design-approved') }}
+        run: |
+          echo "::notice::Label design-approved: Tier A change allowed. Keep docs/design/protected.sha256 in sync."
+          python3 scripts/check-protected.py verify || true
