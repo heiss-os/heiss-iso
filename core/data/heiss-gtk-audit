@@ -1,0 +1,89 @@
+#!/bin/sh
+# Heiss OS: read-only report on how GTK applications get their theme in this session.
+# Changes nothing, makes no network calls. Run inside the desktop session as the normal user:
+#   heiss-gtk-audit dark      (then switch to Heiss Light in System Settings and run:)
+#   heiss-gtk-audit light
+# The report is written to ~/heiss-gtk-audit-<label>.txt and printed. Send both files back.
+label="${1:-now}"
+case "$label" in *[!A-Za-z0-9_-]*) echo "label may contain letters, digits, - and _ only" >&2; exit 2 ;; esac
+out="$HOME/heiss-gtk-audit-$label.txt"
+
+have() { command -v "$1" >/dev/null 2>&1; }
+section() { printf '\n== %s\n' "$1"; }
+show_file() {
+  if [ -e "$1" ]; then
+    printf '%s  (modified %s, %s bytes)\n' "$1" "$(date -r "$1" '+%F %T' 2>/dev/null)" "$(wc -c < "$1")"
+    head -n 40 "$1" | sed 's/^/    /'
+  else
+    printf '%s  (missing)\n' "$1"
+  fi
+}
+
+{
+  echo "Heiss GTK audit, label: $label, $(date '+%F %T')"
+  section "Session"
+  printf 'XDG_CURRENT_DESKTOP=%s XDG_SESSION_TYPE=%s\nGTK_THEME=%s GTK2_RC_FILES=%s GDK_BACKEND=%s\n' \
+    "$XDG_CURRENT_DESKTOP" "$XDG_SESSION_TYPE" "$GTK_THEME" "$GTK2_RC_FILES" "$GDK_BACKEND"
+  have plasmashell && plasmashell --version
+
+  section "KDE color scheme and accent"
+  if have kreadconfig6; then
+    echo "ColorScheme=$(kreadconfig6 --file kdeglobals --group General --key ColorScheme)"
+    echo "AccentColor=$(kreadconfig6 --file kdeglobals --group General --key AccentColor)"
+    echo "icon theme=$(kreadconfig6 --file kdeglobals --group Icons --key Theme)"
+    echo "font=$(kreadconfig6 --file kdeglobals --group General --key font)"
+  else
+    echo "kreadconfig6 not available"
+  fi
+
+  section "Package versions"
+  if have pacman; then
+    pacman -Q gtk3 gtk4 libadwaita kde-gtk-config breeze-gtk xdg-desktop-portal xdg-desktop-portal-kde xdg-desktop-portal-gtk firefox 2>&1
+  fi
+
+  section "Portal: appearance settings (color-scheme: 0 none, 1 dark, 2 light)"
+  if have busctl; then
+    busctl --user call org.freedesktop.portal.Desktop /org/freedesktop/portal/desktop \
+      org.freedesktop.portal.Settings Read ss org.freedesktop.appearance color-scheme 2>&1
+    busctl --user call org.freedesktop.portal.Desktop /org/freedesktop/portal/desktop \
+      org.freedesktop.portal.Settings Read ss org.freedesktop.appearance accent-color 2>&1
+  fi
+
+  section "GSettings (what GTK and libadwaita apps may read)"
+  if have gsettings; then
+    for k in color-scheme gtk-theme icon-theme cursor-theme font-name; do
+      printf '%s = %s\n' "$k" "$(gsettings get org.gnome.desktop.interface "$k" 2>&1)"
+    done
+  else
+    echo "gsettings not available"
+  fi
+
+  section "kded: is the GTK config module loaded (kde-gtk-config)?"
+  if have busctl; then
+    busctl --user call org.kde.kded6 /kded org.kde.kded6 loadedModules 2>&1 | tr ' ' '\n' | grep -i -E 'gtk|^as$' | head
+  fi
+
+  section "System-wide GTK defaults"
+  for f in /etc/xdg/gtk-3.0/settings.ini /etc/xdg/gtk-4.0/settings.ini /etc/gtk-3.0/settings.ini /etc/gtk-4.0/settings.ini; do
+    [ -e "$f" ] && show_file "$f"
+  done
+  ls -d /usr/share/themes/* 2>/dev/null | head -20
+
+  section "Per-user GTK files"
+  for f in "$HOME/.config/gtk-3.0/settings.ini" "$HOME/.config/gtk-3.0/gtk.css" "$HOME/.config/gtk-3.0/colors.css" \
+           "$HOME/.config/gtk-4.0/settings.ini" "$HOME/.config/gtk-4.0/gtk.css" "$HOME/.config/gtk-4.0/colors.css" \
+           "$HOME/.gtkrc-2.0"; do
+    show_file "$f"
+  done
+
+  section "Manual checks (please do these and send screenshots, Dark and Light)"
+  cat <<'EOF'
+  1. Firefox: start page with the toolbar and a menu open.
+  2. A GTK file dialog (in Firefox: Ctrl+O).
+  3. Window buttons of a GTK app with client-side decorations, next to Dolphin's.
+  4. If installed: any libadwaita app (accent, sidebar, buttons, switches).
+  Note anything that stays light in the dark theme or the other way round.
+EOF
+} 2>&1 | tee "$out"
+echo
+echo "Report saved to $out"

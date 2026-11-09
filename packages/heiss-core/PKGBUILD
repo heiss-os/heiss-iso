@@ -2,7 +2,7 @@
 # Built from the repository HEAD by scripts/heiss-packages-build.sh (it creates heiss-src.tar.gz).
 pkgname=heiss-core
 pkgver=0.1.0
-pkgrel=1
+pkgrel=2
 pkgdesc='Heiss OS profile engine: manifests, resolver, hardware detection and the heiss command'
 arch=('any')
 url='https://github.com/heiss-os/heiss-iso'
@@ -21,6 +21,7 @@ package() {
   cp -r core/heiss_core "$pkgdir$sp/"
   find "$pkgdir$sp" -name __pycache__ -prune -exec rm -rf {} +
   install -Dm755 core/data/heiss "$pkgdir/usr/bin/heiss"
+  install -Dm755 core/data/heiss-gtk-audit "$pkgdir/usr/bin/heiss-gtk-audit"
   # all manifests live here, so every profile and add-on is known before it is installed
   install -Dm644 -t "$pkgdir/usr/share/heiss/profiles" profiles/*.toml
   install -Dm644 -t "$pkgdir/usr/share/heiss/hardware" hardware/*.toml
