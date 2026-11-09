@@ -1,0 +1,8 @@
+schema_version = 1
+id = "addon-cyber-extended"
+kind = "addon"
+tier = "extended"
+name = { en = "Cyber: extended tools", ru = "Кибербезопасность: расширенный набор" }
+description = { en = "Hash cracking, memory forensics and the Ghidra suite (very large: about 740 MiB for Ghidra).", ru = "Подбор хешей, анализ памяти и пакет Ghidra (очень большой: около 740 МиБ только Ghidra)." }
+requires = ["cyber"]
+packages = ["hashcat", "volatility3", "ghidra"]

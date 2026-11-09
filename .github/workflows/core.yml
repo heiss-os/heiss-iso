@@ -1,0 +1,31 @@
+name: core
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  unit-tests:
+    name: heiss-core unit tests and manifest validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 -m unittest discover -s core/tests -v
+      - name: Manifests load and validate
+        run: python3 -m heiss_core --profiles profiles profile list
+        env:
+          PYTHONPATH: core
+
+  packages-exist:
+    name: every manifest package exists (pacman -Si)
+    runs-on: ubuntu-latest
+    container: archlinux:latest
+    steps:
+      - name: Install tools
+        run: pacman -Syu --noconfirm python git
+      - uses: actions/checkout@v4
+      - run: python3 scripts/check-packages.py

@@ -1,0 +1,6 @@
+schema_version = 1
+id = "addon-kitty"
+kind = "addon"
+name = { en = "Kitty terminal", ru = "Терминал Kitty" }
+description = { en = "GPU terminal, themed like the system. Konsole stays the default.", ru = "Терминал с ускорением на GPU в стиле системы. Konsole остаётся терминалом по умолчанию." }
+packages = ["kitty"]

@@ -1,0 +1,6 @@
+schema_version = 1
+id = "addon-thunar"
+kind = "addon"
+name = { en = "Thunar file manager", ru = "Файловый менеджер Thunar" }
+description = { en = "Alternative file manager. Dolphin stays the default.", ru = "Альтернативный файловый менеджер. Dolphin остаётся основным." }
+packages = ["thunar", "thunar-volman", "gvfs"]

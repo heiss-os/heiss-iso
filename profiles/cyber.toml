@@ -1,0 +1,8 @@
+schema_version = 1
+id = "cyber"
+kind = "profile"
+tier = "important"
+name = { en = "Cyber", ru = "Кибербезопасность" }
+description = { en = "Base plus tools for network analysis, reverse engineering and forensics. Use only on systems you own or have permission to test.", ru = "Базовый набор плюс инструменты анализа сетей, реверс-инжиниринга и форензики. Используйте только на системах, которые вам принадлежат или на проверку которых у вас есть разрешение." }
+requires = ["base"]
+packages = ["nmap", "tcpdump", "wireshark-qt", "aircrack-ng", "john", "radare2", "gdb", "binwalk", "sleuthkit", "podman", "distrobox"]

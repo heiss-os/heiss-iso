@@ -1,0 +1,7 @@
+schema_version = 1
+id = "addon-lts-kernel"
+kind = "addon"
+name = { en = "LTS kernel (fallback)", ru = "Ядро LTS (запасное)" }
+description = { en = "A second, long-term-support kernel to boot if the main one fails. About 156 MiB.", ru = "Второе ядро с долгой поддержкой на случай сбоя основного. Около 156 МиБ." }
+packages = ["linux-lts"]
+post_actions = ["grub-mkconfig"]

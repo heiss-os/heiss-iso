@@ -1,0 +1,6 @@
+schema_version = 1
+id = "addon-mail"
+kind = "addon"
+name = { en = "Mail and calendar", ru = "Почта и календарь" }
+description = { en = "Thunderbird, about 300 MiB.", ru = "Thunderbird, около 300 МиБ." }
+packages = ["thunderbird"]

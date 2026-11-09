@@ -21,3 +21,10 @@ Format: date, what, why. Newest at the bottom.
 
 - **Keep every existing palette value unchanged; add derived AA text tokens.** Added `accent_text`, `positive_text`, `neutral_text`, `negative_text`, `info_text` (computed, not hand-picked: the frozen color mixed toward the theme text color in 5% steps until 4.5:1 on window, view, panel and button). Light accent_text = #6D5D3F. Why: the Light accent #8C7448 and the frozen semantic colors fail AA as text; the owner wants them fixed without changing the palette. How to apply: use `*_text` for text and icons, frozen colors for fills and the KDE scheme. Remaining failures of the frozen colors used directly stay listed as known exceptions.
 - **Dark `negative_text` differs from `negative`** (#E38C84 vs #E06C64) because the frozen red does not reach 4.5:1 on the button color. Derived value only, scheme untouched.
+
+## 2026-11-10 (Phase 2, made by the assistant)
+
+- **Manifests are TOML, not YAML.** Why: `tomllib` is in the Python standard library, so `heiss-core` and CI need no extra dependency and use a parser without code-execution features; PyYAML (`python-yaml` 6.0.3) is not installed here and I cannot install packages without the owner's sudo password. Direction for metapackages: TOML manifest -> generated PKGBUILD (single source of truth). Reconsider YAML only if the owner insists.
+- **State and ownership:** only packages recorded in `/var/lib/heiss/state.json` can be removed; preinstalled packages become owned only through an explicit `--adopt` of explicitly installed packages named in a manifest.
+- **`heiss profile apply` without `--dry-run` refuses** until the privileged helper (Phase 3) exists.
+- **Profile contents** follow the Phase 0 recommendations the owner accepted (haruna, keepassxc, no mail and office in Base, `code` not shipped, kitty/Thunar/LTS kernel/office/mail as add-ons).
