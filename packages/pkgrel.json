@@ -1,0 +1,8 @@
+{
+  "comment": "pkgrel per package. Bump a value when the dependency list or manifest of that package changes (pacman only sees an update when the version changes).",
+  "pkgver": "0.1.0",
+  "heiss-profile-essentials": 1,
+  "heiss-profile-base": 1,
+  "heiss-profile-cyber": 1,
+  "heiss-profile-developer": 1
+}

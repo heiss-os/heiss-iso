@@ -15,6 +15,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: python3 -m unittest discover -s core/tests -v
+      - name: Generated metapackage files are up to date
+        run: python3 scripts/gen-profile-packages.py --check
       - name: Manifests load and validate
         run: python3 -m heiss_core --profiles profiles profile list
         env:
@@ -29,3 +31,25 @@ jobs:
         run: pacman -Syu --noconfirm python git
       - uses: actions/checkout@v4
       - run: python3 scripts/check-packages.py
+
+  build-metapackages:
+    name: heiss-profile-* metapackages build (makepkg)
+    runs-on: ubuntu-latest
+    container: archlinux:latest
+    steps:
+      - name: Install tools
+        run: pacman -Syu --noconfirm base-devel git python
+      - uses: actions/checkout@v4
+      - name: Build as an unprivileged user and inspect
+        run: |
+          useradd -m builder
+          cp -r "$GITHUB_WORKSPACE" /home/builder/src
+          chown -R builder /home/builder/src
+          su builder -c 'set -e; mkdir -p /home/builder/out
+            for d in /home/builder/src/packages/heiss-profile-*/; do
+              (cd "$d" && PKGDEST=/home/builder/out makepkg -d -f -C --noconfirm)
+            done'
+          for p in /home/builder/out/*.pkg.tar.zst; do
+            pacman -Qip "$p" | grep -E '^(Name|Version|Depends On)'
+            bsdtar -tf "$p" | grep -q 'usr/share/heiss/profiles/.*\.toml'
+          done

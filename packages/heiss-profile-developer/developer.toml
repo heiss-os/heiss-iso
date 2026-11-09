@@ -1,0 +1,11 @@
+schema_version = 1
+id = "developer"
+kind = "profile"
+tier = "important"
+name = { en = "Developer", ru = "Разработчик" }
+description = { en = "Base plus compilers, version control, editors, containers and modern command-line tools.", ru = "Базовый набор плюс компиляторы, контроль версий, редакторы, контейнеры и современные утилиты командной строки." }
+requires = ["base"]
+packages = [
+  "base-devel", "git", "cmake", "ninja", "clang", "gdb", "rustup", "go", "nodejs", "npm", "python-pip",
+  "neovim", "ripgrep", "fd", "bat", "eza", "fzf", "zoxide", "podman", "distrobox",
+]

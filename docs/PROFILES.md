@@ -38,3 +38,19 @@ PYTHONPATH=core python3 -m heiss_core --profiles profiles profile apply --dry-ru
 ## Ownership and removal
 
 `/var/lib/heiss/state.json` lists what Heiss installed. A profile change removes only packages in that list that no selected manifest wants and that no other installed package requires; the rest is reported as "kept". Packages already on the system (for example everything on the ISO) are not Heiss-owned unless adopted with `--adopt`, which claims only explicitly installed packages named in the selected manifests. Delivery option (a) needs this adoption step on first boot so that "Custom" can remove Base extras; the call is part of the wizard work (Phase 5).
+
+## Metapackages
+
+`heiss-profile-essentials`, `-base`, `-cyber`, `-developer` are generated from the manifests by `scripts/gen-profile-packages.py` (TOML -> PKGBUILD; never edit `packages/heiss-profile-*` by hand, CI runs `--check`). Each package:
+
+- depends on the packages of its manifest and on the metapackage of each manifest it requires (cyber -> base -> essentials);
+- ships only its manifest, at `/usr/share/heiss/profiles/<id>.toml`; it enables no services and has no install scripts. Services, drop-ins and KDE settings are applied by the Heiss engine;
+- is `arch=any`, GPL-3.0-or-later, version from `packages/pkgrel.json`.
+
+Not packaged: `custom` and the add-ons (the engine installs their packages directly).
+
+Bump the matching value in `packages/pkgrel.json` whenever the dependency list of a package changes, otherwise installed systems will not see an update.
+
+Build into the local repository: `scripts/heiss-profile-build.sh` (normal user, uses `makepkg -d` because the dependencies are ordinary repository packages). Verified: all four build with makepkg 7.1.0 on the build VM and contain exactly the manifest file.
+
+Relation to the engine (first iteration): the engine still installs the manifest packages explicitly and records them in the state file, so removal stays precise. The metapackages serve the ISO build, the hosted repository and update-time pulls of newly added packages. The ISO does not contain them yet: `profile/packages.x86_64` is unchanged.

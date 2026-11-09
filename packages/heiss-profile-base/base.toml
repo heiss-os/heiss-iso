@@ -1,0 +1,13 @@
+schema_version = 1
+id = "base"
+kind = "profile"
+tier = "important"
+name = { en = "Base", ru = "Базовый" }
+description = { en = "Everything for everyday use: web, media, images, PDF, archives, screenshots.", ru = "Всё для повседневной работы: интернет, медиа, изображения, PDF, архивы, скриншоты." }
+requires = ["essentials"]
+packages = [
+  "kate", "ark", "gwenview", "okular", "spectacle", "kcalc", "plasma-systemmonitor",
+  "haruna", "keepassxc", "kio-extras", "ffmpegthumbs", "kdegraphics-thumbnailers",
+  "filelight", "partitionmanager", "plasma-disks", "discover", "print-manager", "cups", "cups-filters", "sane-airscan",
+]
+post_actions = ["update-desktop-database"]
