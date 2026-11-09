@@ -39,6 +39,13 @@ jobs:
           pacman -S --noconfirm shared-mime-info
           pacman -Fy
           python3 scripts/check-mimeapps.py --require-file-db
+      - name: GTK integration facts from the package database (informational)
+        run: |
+          for p in kde-gtk-config breeze-gtk xdg-desktop-portal xdg-desktop-portal-kde xdg-desktop-portal-gtk; do
+            echo "=== $p"
+            pacman -Si "$p" | grep -E '^(Version|Depends On|Optional Deps)'
+            pacman -Fl "$p" | grep -i -E 'gtk|portal|kded|colors|settings' | cut -d' ' -f2 | head -50
+          done
 
   build-packages:
     name: heiss packages build (makepkg) and packaged layout works
