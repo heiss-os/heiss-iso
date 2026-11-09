@@ -1,0 +1,127 @@
+{
+  "schema_version": 1,
+  "comment": "Single source of truth for the Heiss design tokens. Existing palette values (the 'base' colors and kde_scheme) are FROZEN: they mirror profile/airootfs/usr/share/color-schemes/Heiss{Dark,Light}.colors and must never change. Derived values are computed by scripts/heiss_tokens.py with the rules in 'derive'. Edit this file, then run scripts/gen-theme.py.",
+  "themes": {
+    "dark": {
+      "name": "Heiss Dark",
+      "scheme_id": "HeissDark",
+      "base": {
+        "window": "#26282B",
+        "window_alt": "#2C2E32",
+        "view": "#1E1F21",
+        "view_alt": "#242527",
+        "panel": "#1E1F21",
+        "button": "#34373B",
+        "button_alt": "#3B3E43",
+        "text": "#ECEAE5",
+        "text_secondary": "#A9A7A1",
+        "accent": "#C9B28A",
+        "accent_alt": "#B79F78",
+        "visited": "#A8946F",
+        "on_accent": "#26282B",
+        "negative": "#E06C64",
+        "neutral": "#E2B050",
+        "positive": "#6FD0A8",
+        "on_accent_negative": "#78201A",
+        "on_accent_neutral": "#6E4600",
+        "on_accent_positive": "#0A5037"
+      },
+      "added": {
+        "info": "#7FA6D6"
+      },
+      "terminal": {
+        "bg": "view",
+        "fg": "text",
+        "cursor": "accent",
+        "selection_bg": "accent",
+        "selection_fg": "on_accent",
+        "ansi": [
+          "#6B6E73", "#E06C64", "#6FD0A8", "#E2B050", "#7FA6D6", "#C58FC2", "#6FC3C9", "#CFCDC8",
+          "#8A8D92", "#EE8F88", "#8FDDBB", "#EBC675", "#9DBDE4", "#D6A9D3", "#92D3D8", "#ECEAE5"
+        ]
+      }
+    },
+    "light": {
+      "name": "Heiss Light",
+      "scheme_id": "HeissLight",
+      "base": {
+        "window": "#F5F3EF",
+        "window_alt": "#EFEDE8",
+        "view": "#FAF9F6",
+        "view_alt": "#F3F1EC",
+        "panel": "#ECE9E3",
+        "button": "#DEDAD2",
+        "button_alt": "#D6D2C9",
+        "text": "#26282B",
+        "text_secondary": "#6B6963",
+        "accent": "#8C7448",
+        "accent_alt": "#7A6540",
+        "visited": "#6E5C3A",
+        "on_accent": "#F5F3EF",
+        "negative": "#C0392B",
+        "neutral": "#B7791F",
+        "positive": "#1F8A65",
+        "on_accent_negative": "#FFD9D4",
+        "on_accent_neutral": "#FFE9B8",
+        "on_accent_positive": "#CFF5E5"
+      },
+      "added": {
+        "info": "#2F6EA8"
+      },
+      "terminal": {
+        "bg": "view",
+        "fg": "text",
+        "cursor": "accent",
+        "selection_bg": "accent_alt",
+        "selection_fg": "on_accent",
+        "ansi": [
+          "#3B3D41", "#C0392B", "#1F7A58", "#8F5F14", "#2F6EA8", "#8E4F8B", "#1F7077", "#6B6963",
+          "#7A7872", "#A8301F", "#1A6B4C", "#7A5210", "#255C8E", "#7A3F77", "#1A5F65", "#26282B"
+        ]
+      }
+    }
+  },
+  "kde_scheme": {
+    "comment": "How base colors map into the KDE color scheme. Values: token names. Layout identical for both themes.",
+    "standard_sections": {
+      "Colors:Button": {"bg": "button", "bg_alt": "button_alt"},
+      "Colors:Complementary": {"bg": "panel", "bg_alt": "panel"},
+      "Colors:Header": {"bg": "panel", "bg_alt": "panel"},
+      "Colors:Tooltip": {"bg": "panel", "bg_alt": "panel"},
+      "Colors:View": {"bg": "view", "bg_alt": "view_alt"},
+      "Colors:Window": {"bg": "window", "bg_alt": "window_alt"}
+    }
+  },
+  "derive": {
+    "comment": "Rules (integer math, round half up). mix(a,b,p) = a*(1-p)+b*p per channel.",
+    "hover": "mix(button, text, 0.08)",
+    "pressed": "mix(button, text, 0.14)",
+    "border": "mix(window, text, 0.14)",
+    "disabled_text": "mix(text, window, 0.55)",
+    "focus_ring": "accent",
+    "selection": "accent",
+    "elevation_shadow": "rgba(0,0,0,0.30) dark, rgba(38,40,43,0.16) light"
+  },
+  "known_exceptions": {
+    "comment": "Contrast findings caused by FROZEN existing palette values (Tier A). They are reported, not hidden, and need an owner decision (Tier A/B item) before anything changes. A pair that fails and is not listed here fails CI.",
+    "light": [
+      "accent on window", "accent on view", "accent on panel", "accent on button",
+      "text_secondary on button", "on_accent on accent",
+      "neutral on window", "positive on window"
+    ],
+    "dark": []
+  },
+  "radius": {"control": 8, "card": 12, "icon_tile_percent": 24},
+  "spacing": {"grid": 8, "scale": [4, 8, 12, 16, 24, 32, 48]},
+  "font": {
+    "ui": "Inter",
+    "mono": "JetBrains Mono",
+    "title": "Inter ExtraBold Italic",
+    "sizes_pt": {"small": 9, "body": 10, "large": 12, "title": 20}
+  },
+  "motion": {
+    "comment": "Proposal approved in Phase 0 (not yet used anywhere). Reduced/Off scale all durations by 0.",
+    "duration_ms": {"fast": 120, "normal": 200, "slow": 300},
+    "easing": "cubic-bezier(0.2, 0, 0, 1)"
+  }
+}
