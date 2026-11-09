@@ -1,0 +1,9 @@
+schema_version = 1
+id = "vm-vmware"
+name = { en = "VMware guest tools", ru = "Гостевые службы VMware" }
+description = { en = "Open VM Tools for VMware.", ru = "Open VM Tools для VMware." }
+safe_by_default = true
+packages = ["open-vm-tools"]
+services = ["vmtoolsd.service", "vmware-vmblock-fuse.service"]
+[match]
+virt = "vmware"

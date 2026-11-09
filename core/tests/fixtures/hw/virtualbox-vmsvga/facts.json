@@ -1,0 +1,10 @@
+{
+  "chassis_type": 1,
+  "cpu_vendor": "GenuineIntel",
+  "has_battery": false,
+  "has_bluetooth": false,
+  "product_name": "VirtualBox",
+  "synthetic": false,
+  "sys_vendor": "innotek GmbH",
+  "virt": "oracle"
+}

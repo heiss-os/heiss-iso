@@ -1,0 +1,10 @@
+schema_version = 1
+id = "wifi-broadcom"
+name = { en = "Broadcom Wi-Fi", ru = "Wi-Fi Broadcom" }
+description = { en = "Broadcom wireless adapter found. Firmware is installed; some models need an out-of-tree driver.", ru = "Найден адаптер Wi-Fi Broadcom. Прошивки устанавливаются; некоторым моделям нужен внешний драйвер." }
+safe_by_default = true
+packages = ["linux-firmware-broadcom"]
+warnings = { en = "Older Broadcom chips (for example BCM4360, BCM4331) need the out-of-tree wl driver, which Heiss does not install automatically. Use a wired connection or USB tethering and see the documentation.", ru = "Старым чипам Broadcom (например BCM4360, BCM4331) нужен внешний драйвер wl, который Heiss не ставит автоматически. Используйте кабель или USB-модем и прочтите документацию." }
+[match]
+virt = "none"
+pci = [{ vendor = "14e4", class = "network" }]

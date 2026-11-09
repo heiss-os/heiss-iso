@@ -1,0 +1,3 @@
+00:00.0 "Host bridge [0600]" "Intel Corporation [8086]" "Host bridge [0000]" -p00 "" ""
+00:02.0 "VGA compatible controller [0300]" "Intel Corporation [8086]" "TigerLake-LP GT2 [Iris Xe Graphics] [9a49]" -p00 "" ""
+01:00.0 "3D controller [0302]" "NVIDIA Corporation [10de]" "GA107M [GeForce RTX 3050 Mobile] [25a2]" -p00 "" ""

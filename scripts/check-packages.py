@@ -10,6 +10,7 @@ import subprocess
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "core"))
+from heiss_core import hardware as hw  # noqa: E402
 from heiss_core import manifest as mf  # noqa: E402
 
 UNITS = {"KiB": 1 / 1024, "MiB": 1.0, "GiB": 1024.0}
@@ -28,7 +29,8 @@ def info(pkg):
 
 def main():
     root = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "profiles")
-    manifests = mf.load_dir(root)
+    manifests = dict(mf.load_dir(root))
+    manifests.update(hw.load_profiles(os.path.join(root, "..", "hardware")))
     missing, cache = [], {}
     for m in manifests.values():
         dl = inst = 0.0

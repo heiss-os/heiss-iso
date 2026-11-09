@@ -1,0 +1,2 @@
+00:00.0 "Host bridge [0600]" "Intel Corporation [8086]" "Host bridge [0000]" -p00 "" ""
+01:00.0 "VGA compatible controller [0300]" "NVIDIA Corporation [10de]" "GP107 [GeForce GTX 1050 Ti] [1c82]" -p00 "" ""

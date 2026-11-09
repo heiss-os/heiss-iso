@@ -1,0 +1,9 @@
+schema_version = 1
+id = "vm-virtualbox"
+name = { en = "VirtualBox guest tools", ru = "Гостевые службы VirtualBox" }
+description = { en = "Shared clipboard, resizing and shared folders inside VirtualBox.", ru = "Общий буфер обмена, смена разрешения и общие папки в VirtualBox." }
+safe_by_default = true
+packages = ["virtualbox-guest-utils"]
+services = ["vboxservice.service"]
+[match]
+virt = "oracle"

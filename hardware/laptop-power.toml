@@ -1,0 +1,9 @@
+schema_version = 1
+id = "laptop-power"
+name = { en = "Laptop power profiles", ru = "Режимы питания ноутбука" }
+description = { en = "Power profile switching (balanced, power saver, performance) for laptops.", ru = "Переключение режимов питания (сбалансированный, экономия, производительность) для ноутбуков." }
+safe_by_default = true
+packages = ["power-profiles-daemon"]
+services = ["power-profiles-daemon.service"]
+[match]
+form_factor = "laptop"

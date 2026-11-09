@@ -1,0 +1,14 @@
+schema_version = 1
+id = "gpu-nvidia-open"
+name = { en = "NVIDIA graphics (open kernel modules)", ru = "Графика NVIDIA (открытые модули ядра)" }
+description = { en = "NVIDIA driver with open kernel modules for GeForce RTX/GTX 16 series (Turing) and newer.", ru = "Драйвер NVIDIA с открытыми модулями ядра для GeForce RTX и GTX 16 (Turing) и новее." }
+packages = ["nvidia-open", "nvidia-utils"]
+kernel_params = ["nvidia-drm.modeset=1"]
+post_actions = ["mkinitcpio"]
+warnings = { en = "Built for the standard kernel only. With the LTS kernel use the DKMS variant. If the screen stays black, choose the safe graphics boot entry. Generation support is decided by a PCI ID threshold (0x1e00) that has not been verified against the package.", ru = "Собран только для обычного ядра. Для ядра LTS нужен вариант DKMS. Если экран чёрный, выберите безопасный режим графики в меню загрузки. Поддержка поколения определяется порогом идентификатора PCI (0x1e00), который не проверен по пакету." }
+[match]
+virt = "none"
+pci = [{ vendor = "10de", class = "display", device_min = "1e00" }]
+[[dropins]]
+path = "/etc/mkinitcpio.conf.d/heiss-nvidia.conf"
+content = "MODULES+=(nvidia nvidia_modeset nvidia_uvm nvidia_drm)\n"
