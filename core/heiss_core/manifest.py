@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 from .errors import ValidationError
 
 ID_RE = re.compile(r"^[a-z][a-z0-9-]{0,40}$")
-PKG_RE = re.compile(r"^[a-z0-9@._+-]{1,100}$")
+PKG_RE = re.compile(r"^[a-z0-9@_+][a-z0-9@._+-]{0,99}$")   # never starts with - or . (option injection)
 FLATPAK_RE = re.compile(r"^[A-Za-z0-9._-]{3,200}$")
 UNIT_RE = re.compile(r"^[A-Za-z0-9@:._-]{1,100}\.(service|timer|socket)$")
 KINDS = ("profile", "addon")

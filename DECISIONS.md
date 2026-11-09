@@ -47,3 +47,12 @@ Format: date, what, why. Newest at the bottom.
 
 - **README and CLAUDE.md use Base, Cyber, Developer, Custom**, with a one-line mapping from the old names. The wallpaper packages keep the internal name `Heiss-Everyday` (protected, not renamed).
 - **CLAUDE.md now carries the working rules from the master plan** (section 0 asked to copy them in Phase 0, which I had missed): owner merges PRs (the old "second approver" wording is removed), Tier A protection, no unverified claims, official repositories only. Also fixed the outdated note about an absolute path in `pacman.conf`.
+
+## 2026-11-10 (Phase 3, made by the assistant)
+
+- **Helper transport: GDBus through python-gobject (`gi`/Gio), not `python-dbus`.** Why: official package, current API, no extra bindings. Cost: it could not be run on the build VM, so the glue is tested only in CI on a private bus. Correction of my own earlier mistake: `import gi` on this VM only found an empty namespace directory, python-gobject is NOT installed here.
+- **Helper maintains the ownership state itself** (after successful steps) and offers `AdoptPackages` for the ISO content. Why: otherwise removal through the helper could never work and a client could claim packages.
+- **No client-supplied content anywhere**: drop-in content comes from manifests; post-actions are four fixed ids.
+- **polkit defaults `auth_admin_keep`** for all actions: one authentication per apply run. Trade-off: the dialog text does not list package names; the GUI summary page must.
+- **Package-name regex tightened** in the manifest validator (no leading `-` or `.`), which also protects `heiss-core`.
+- **`SECURITY.md` points to GitHub private vulnerability reporting**; I did not invent a contact address. The owner must enable that feature.

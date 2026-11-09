@@ -1,0 +1,14 @@
+[Unit]
+Description=Heiss OS privileged helper
+
+[Service]
+Type=dbus
+BusName=org.heiss.Helper1
+ExecStart=/usr/bin/python3 -m heiss_helper
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectHome=yes
+ProtectControlGroups=yes
+ProtectKernelTunables=yes
+RestrictRealtime=yes
+LockPersonality=yes
