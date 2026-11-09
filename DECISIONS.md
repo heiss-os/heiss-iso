@@ -35,3 +35,10 @@ Format: date, what, why. Newest at the bottom.
 - **NVIDIA generation rule = PCI device ID >= 0x1e00** (Turing and newer) for open modules; older cards stay on nouveau with a message, never AUR. Heuristic, not verified against the package; revisit when `supported-gpus.json` can be read.
 - **Guest tools only for the detected hypervisor**; microcode and GPU drivers never proposed in a VM.
 - **USB detection deferred** (`lsusb` missing on the build VM; no rule needs it yet).
+
+## 2026-11-10 (metapackages, made by the assistant)
+
+- **TOML manifest -> generated PKGBUILD** (the direction left open in Phase 0). One source of truth; CI fails if committed package files differ from regeneration.
+- **Metapackages ship only the manifest and enable nothing.** Services and configuration stay in the engine so that every change is planned, audited and reversible through the state file.
+- **pkgrel is manual** (`packages/pkgrel.json`), because pacman needs a version change to see an update. Risk: forgetting to bump. Mitigation idea for later: CI comparing the dependency list with the previous release.
+- **`profile/packages.x86_64` is not changed** in this PR: putting the metapackages into the ISO changes the image and needs a rebuild and VM test (Phase 10).

@@ -1,0 +1,22 @@
+schema_version = 1
+id = "essentials"
+kind = "profile"
+tier = "essential"
+name = { en = "Essentials", ru = "Основа" }
+description = { en = "The minimum for a usable, secure and good-looking system.", ru = "Минимум для удобной, безопасной и красивой системы." }
+packages = [
+  "base", "linux", "linux-firmware", "intel-ucode", "amd-ucode", "grub", "os-prober", "efibootmgr", "sudo", "nano",
+  "mesa", "xorg-xwayland", "vulkan-radeon", "vulkan-intel",
+  "networkmanager", "plasma-nm", "wireless-regdb",
+  "pipewire", "pipewire-pulse", "pipewire-alsa", "wireplumber", "plasma-pa", "alsa-utils",
+  "bluez", "bluez-utils", "bluedevil",
+  "plasma-desktop", "plasma-workspace", "kwin", "sddm", "kscreen", "powerdevil", "kinfocenter",
+  "polkit-kde-agent", "xdg-desktop-portal-kde", "xdg-desktop-portal-gtk", "kde-gtk-config", "breeze-gtk",
+  "konsole", "dolphin", "firefox", "noto-fonts", "ttf-jetbrains-mono", "plymouth",
+  "reflector", "zram-generator", "fwupd", "firewalld", "plasma-firewall",
+]
+services = ["NetworkManager.service", "sddm.service", "bluetooth.service", "firewalld.service", "fstrim.timer"]
+
+[[dropins]]
+path = "/etc/systemd/zram-generator.conf.d/heiss.conf"
+content = "[zram0]\nzram-size = min(ram / 2, 4096)\n"
