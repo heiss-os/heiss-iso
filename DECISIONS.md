@@ -131,3 +131,12 @@ Format: date, what, why. Newest at the bottom.
 
 - **Project subagent `reviewer` (`.claude/agents/reviewer.md`), read-only (Read, Grep, Glob, Bash).** Why: the owner asked for a self-check of every PR against CLAUDE.md, DECISIONS.md, PLAN-STATE and the Tier A list, including unbacked "verified" claims. Run before each PR; its findings go into the PR text. It does not replace CI guards or the owner's review.
 - **Path note:** the checksum file is `docs/design/protected.sha256` (the task text said `branding/tokens/`); the agent uses the real path.
+
+## 2026-11-10 (heiss check, made by the assistant)
+
+- **`heiss check` lives in heiss-core, no new package.** `heiss` is already in `heiss-core` (ISO and Base); a separate `heiss-check` package would only add a dependency. `heiss-core` pkgrel 3 -> 4 so pacman sees the update.
+- **Statuses:** FAIL = a defect the owner must look at; WARN = cannot be judged here (no desktop session, not root, tool missing, live session) or a possible false positive (duplicate visible menu names, a removed package present on a non-Base profile). Exit code 1 only on FAIL.
+- **Removed packages:** a package that Heiss installed itself (listed in the state file) is expected on Cyber and is not reported. On Base or with no state file a present one is FAIL.
+- **Root lock** needs `/etc/shadow`: without root the item is WARN, not OK. The report is only a file the user asks for; nothing is sent anywhere.
+- **Duplicated knowledge:** the removed-package list, hide-stub ids and shortcut rows are constants in `check.py` (the installed system has no repository scripts). Tests compare the removed list to the ISO package list; the stub list and shortcuts follow docs/apps/LAUNCHER.md and docs/design/SHORTCUTS.md by hand.
+- `state.parse(text)` split out of `state.load` so the check validates the state file with the same strict rules.

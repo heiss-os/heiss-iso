@@ -87,3 +87,7 @@ Next: Phase 5 (Welcome wizard) after the owner's reply.
 ## Round 15, item 1 (2026-11-10)
 
 PR "feat/reviewer-agent": `.claude/agents/reviewer.md` and a paragraph in CLAUDE.md. Next: item 2 `heiss check` (branch `feat/heiss-check`), only after the owner reports this PR merged. Then Phases 5-10 one PR at a time.
+
+## Round 15, item 2 (2026-11-10)
+
+PR "feat/heiss-check": `heiss check [--report FILE]` (`core/heiss_core/check.py`, `core/tests/test_check.py`), `docs/ISO-E2E-TEST.md` uses it. Waiting for: the owner's run of `heiss check` on an installed VM (never run on a real installed system yet). Next: Phase 5 plan (Welcome wizard) after the owner reports this PR merged.

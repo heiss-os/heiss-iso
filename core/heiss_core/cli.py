@@ -1,4 +1,4 @@
-"""heiss command line: profile list|show|diff|apply, hw detect, answers validate.
+"""heiss command line: profile list|show|diff|apply, hw detect, theme sync|status, check, answers validate.
 
 `apply` shows the plan, asks for confirmation and runs it through the privileged
 helper (D-Bus + polkit). `--dry-run` only prints the plan.
@@ -9,6 +9,7 @@ import os
 import sys
 
 from . import answers as ans
+from . import check as checkmod
 from . import apply as applymod
 from . import hardware as hw
 from . import manifest as mf
@@ -61,7 +62,7 @@ def _real_helper():
     return GioHelperClient()
 
 
-def main(argv=None, system=None, out=sys.stdout, helper=None, confirm=None, theme_env=None):
+def main(argv=None, system=None, out=sys.stdout, helper=None, confirm=None, theme_env=None, check_env=None):
     p = argparse.ArgumentParser(prog="heiss")
     p.add_argument("--profiles", help="directory with manifests")
     p.add_argument("--json", action="store_true")
@@ -88,6 +89,8 @@ def main(argv=None, system=None, out=sys.stdout, helper=None, confirm=None, them
     ts.add_argument("--no-wait", action="store_true", help="do not wait for plasmashell and the settings to settle")
     ts.add_argument("--dry-run", action="store_true")
     th.add_parser("status", help="like sync --dry-run --no-wait: report only")
+    ck = sub.add_parser("check", help="read-only health check of the installed system (exit 1 on any FAIL)")
+    ck.add_argument("--report", metavar="FILE", help="also save the full output and the exact commands to FILE")
     av = sub.add_parser("answers").add_subparsers(dest="sub", required=True)
     v = av.add_parser("validate")
     v.add_argument("file")
@@ -102,6 +105,18 @@ def main(argv=None, system=None, out=sys.stdout, helper=None, confirm=None, them
             log(line)
         _, rc = themesync.sync(env, wait=(args.sub == "sync" and not args.no_wait), dry_run=dry, say=say)
         return rc
+    if args.cmd == "check":
+        env = check_env or checkmod.CheckEnv()
+        items = checkmod.run_checks(env, theme_env or themesync.RealEnv(), args.profiles or os.environ.get("HEISS_PROFILES", DEFAULT_PROFILES))
+        out.write(json.dumps([i.to_dict() for i in items], indent=2) + "\n" if args.json else checkmod.render(items))
+        if args.report:
+            try:
+                with open(os.path.expanduser(args.report), "w", encoding="utf-8") as f:
+                    f.write(checkmod.render_report(items, env, "exit code %d" % checkmod.exit_code(items)))
+            except OSError as e:
+                sys.stderr.write("heiss: cannot write report: %s\n" % e)
+                return 1
+        return checkmod.exit_code(items)
     system = system or PacmanSystem()
     try:
         if args.cmd == "hw":

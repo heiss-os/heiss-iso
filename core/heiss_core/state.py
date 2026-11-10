@@ -35,11 +35,19 @@ def atomic_write(path, text):
 def load(path):
     try:
         with open(path, encoding="utf-8") as f:
-            doc = json.load(f)
+            text = f.read()
     except FileNotFoundError:
         return json.loads(json.dumps(EMPTY))
+    return parse(text)
+
+
+def parse(text):
+    try:
+        doc = json.loads(text)
     except json.JSONDecodeError as e:
         raise ValidationError("state: %s" % e)
+    if not isinstance(doc, dict):
+        raise ValidationError("state: top level must be an object")
     if doc.get("schema_version") != STATE_VERSION:
         raise ValidationError("state: unsupported schema_version %r" % doc.get("schema_version"))
     for k in ("packages", "services", "flatpaks"):
