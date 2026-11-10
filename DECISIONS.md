@@ -140,3 +140,11 @@ Format: date, what, why. Newest at the bottom.
 - **Root lock** needs `/etc/shadow`: without root the item is WARN, not OK. The report is only a file the user asks for; nothing is sent anywhere.
 - **Duplicated knowledge:** the removed-package list, hide-stub ids and shortcut rows are constants in `check.py` (the installed system has no repository scripts). Tests compare the removed list to the ISO package list; the stub list and shortcuts follow docs/apps/LAUNCHER.md and docs/design/SHORTCUTS.md by hand.
 - `state.parse(text)` split out of `state.load` so the check validates the state file with the same strict rules.
+
+## 2026-11-10 (Welcome wizard, step 5a, made by the assistant)
+
+- **The wizard logic is a GUI-free module in heiss-core (`wizard.py`), the QML app only draws it.** Why: Back/Skip/resume/queue rules can be tested without a display; the VM has none.
+- **Screen options without a key in the answers schema are `extras`, not answers.** Why: adding keys changes `profile.toml` (schema_version) and must come with something that applies them; documented as "not applied yet" in `docs/WELCOME.md`.
+- **Pending queue accepts only `apply-profile` with profile and add-on ids.** Why: it is read later and runs with the user's own rights through the helper; free-form commands would be an escalation path.
+- **Phase 5 split 5a-5e;** 5d/5e wait for the public package repository (`docs/infra/REPOSITORY.md` checklist; `heiss-os/heiss-repo` does not exist on GitHub as of 2026-11-10).
+- heiss-core pkgrel 4 -> 5.
