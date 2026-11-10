@@ -58,3 +58,7 @@ PR "feat/gtk-integration-audit": `heiss-gtk-audit`, GTK doc, prerequisite tests,
 ## Phase 4, part 4 (2026-11-10)
 
 PR "feat/theme-sync-extended" (stacked on the GTK audit PR): `heiss theme sync|status`, package `heiss-theme` (Konsole and kitty themes from tokens), file-conflict CI check. Waiting for: VM run (theme switch log and screenshots). Still open in Phase 4: icon fixes, clean launcher menu, shortcuts, releng leftovers (owner decision), "open terminal here" behaviour.
+
+## Phase 4, part 6 (2026-11-10)
+
+PR "fix/icons": `scripts/check-launchers.py` guard (CI), audit findings; no icon files changed (Tier A, no defect found without a screenshot). Needs from the owner: dock and installer-in-dock screenshots from the next ISO. Still open: file manager pins, clean launcher menu, shortcuts, "open terminal here".

@@ -93,3 +93,9 @@ Format: date, what, why. Newest at the bottom.
 - **New package `heiss-theme`** (generated from the tokens: Konsole schemes and profiles, `/etc/xdg/konsolerc`, kitty files) and it is in the ISO list. Terminal font size token `terminal` = 11 pt.
 - **CI guard against file conflicts:** no file of our packages may also be shipped by an official package (`pacman -F`), because pacstrap would fail the ISO build.
 - **Stacked on PR 47** (the GTK audit) because both bump the pkgrel of heiss-core.
+
+## 2026-11-10 (icon fixes, made by the assistant)
+
+- **No icon was changed or added.** Reading the packages showed no defect: every pinned desktop id exists in its package and every `Icon=` resolves in `hicolor`, `breeze` or `breeze-dark`. The only icon we ship for the installer lives under `hicolor/` (Tier A), so adding an SVG needs an approved item. I did not guess a fix without a screenshot.
+- **Added a guard instead:** `scripts/check-launchers.py` (pins identical in Dark and Light, no comma-joined or duplicated pins, pins shipped by a Base package, installer desktop files carry `StartupWMClass=calamares` and a shipped icon, the `/usr/local` override stays hidden). CI runs it with the file database.
+- **Open for the owner:** after the next ISO build, a screenshot of the dock (Dark and Light) and of the running installer decides whether there is a real problem left.
