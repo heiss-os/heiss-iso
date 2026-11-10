@@ -60,6 +60,22 @@ class Navigation(unittest.TestCase):
         with self.assertRaises(HeissError):
             w.next()     # the summary is left by applying or saving
 
+    def test_apply_and_finish_are_reachable_and_guarded(self):
+        w = wz.Wizard(MANIFESTS)
+        with self.assertRaises(HeissError):
+            w.start_apply()
+        with self.assertRaises(HeissError):
+            w.finish()
+        walk_to(w, "summary")
+        w.start_apply()
+        self.assertEqual(w.step_id, "applying")
+        w.finish()
+        self.assertEqual(w.step_id, "done")
+        w2 = wz.Wizard(MANIFESTS)
+        walk_to(w2, "summary")
+        w2.finish()            # save answers, apply later
+        self.assertEqual(w2.step_id, "done")
+
     def test_no_back_at_start_or_after_apply(self):
         w = wz.Wizard(MANIFESTS)
         with self.assertRaises(HeissError):
@@ -115,11 +131,22 @@ class Answers(unittest.TestCase):
                 w.set("profile", pid)
                 w.final_answers()
 
+    def test_section_paths_are_rejected_and_values_are_normalized(self):
+        w = wz.Wizard(MANIFESTS)
+        with self.assertRaises(ValidationError):
+            w.set("appearance", {"theme": "dark"})
+        w.set("addons", ["addon-kitty"])
+        w.set("appearance.theme", "dark")
+        self.assertEqual(w.answers["addons"], ["addon-kitty"])
+        self.assertEqual(set(w.answers["appearance"]), {"theme", "animations"})
+        self.assertEqual(w.touched, {"addons", "appearance.theme"})
+
     def test_extras_are_typed_and_limited(self):
         w = wz.Wizard(MANIFESTS)
         w.set("extra.accent", "sand")
         w.set("extra.font_scale", 1.25)
-        for path, val in (("extra.nosuch", "x"), ("extra.accent", 3), ("extra.hardware_toggles", ["x"])):
+        for path, val in (("extra.nosuch", "x"), ("extra.accent", 3), ("extra.hardware_toggles", ["x"]),
+                          ("extra.hardware_toggles", {"gpu": "yes"}), ("extra.font_scale", True)):
             with self.assertRaises(ValidationError, msg=path):
                 w.set(path, val)
         self.assertEqual(w.extras, {"accent": "sand", "font_scale": 1.25})
@@ -151,7 +178,12 @@ class Resume(unittest.TestCase):
             for text in ("{broken", "[]", json.dumps({"version": 99}),
                          json.dumps({"version": 1, "step": "nosuch", "answers": {}}),
                          json.dumps({"version": 1, "step": "profile", "answers": {"profile": "ghost"}}),
-                         json.dumps({"version": 1, "step": "profile", "answers": {}, "extras": {"evil": 1}})):
+                         json.dumps({"version": 1, "step": "profile", "answers": {}, "extras": {"evil": 1}}),
+                         json.dumps({"version": 1, "step": "profile", "answers": {}, "touched": 5}),
+                         json.dumps({"version": 1, "step": "profile", "answers": {}, "touched": [[1]]}),
+                         json.dumps({"version": 1, "step": "profile", "answers": 5}),
+                         json.dumps({"version": 1, "step": ["x"], "answers": {}}),
+                         json.dumps({"version": 1, "step": "profile", "answers": {}, "extras": {"accent": True}})):
                 with open(os.path.join(d, "wizard-state.json"), "w") as f:
                     f.write(text)
                 self.assertIsNone(store.load(MANIFESTS), text)
@@ -218,6 +250,33 @@ class Pending(unittest.TestCase):
         self.assertEqual((left[0]["status"], left[0]["error"]), ("failed", "no space left"))
         self.assertEqual(self.q.run(lambda i: None, online=True), ids[1:])   # retry works
         self.assertEqual(self.q.list(), [])
+
+    def test_unexpected_executor_error_still_saves_finished_items(self):
+        ids = [self.q.add("apply-profile", {"profile": p, "addons": []})["id"] for p in ("base", "cyber")]
+
+        def ex(item):
+            if item["payload"]["profile"] == "cyber":
+                raise OSError("disk gone")
+        with self.assertRaises(OSError):
+            self.q.run(ex, online=True)
+        self.assertEqual([i["id"] for i in self.q.list()], ids[1:])     # base is not applied twice
+
+    def test_payload_is_validated_when_added_and_when_read(self):
+        for bad in ({"cmd": "rm -rf"}, {"profile": "base"}, {"profile": "../x", "addons": []},
+                    {"profile": "base", "addons": ["-rf"]}, {"profile": "base", "addons": [], "x": 1}, "base"):
+            with self.assertRaises(ValidationError, msg=bad):
+                self.q.add("apply-profile", bad)
+        self.assertEqual(self.q.list(), [])
+        item = dict(id=1, kind="apply-profile", payload={"profile": "base", "addons": []}, created=1, status="pending", error="")
+        for tampered in ({"payload": {"cmd": "x"}}, {"kind": "shell"}, {"status": "weird"}, {"id": "1"}):
+            with open(self.q.path, "w") as f:
+                json.dump([dict(item, **tampered)], f)
+            with self.assertRaises(ValidationError, msg=tampered):
+                self.q.run(lambda i: None, online=True)
+        with open(self.q.path, "w") as f:
+            json.dump([{"kind": "apply-profile"}], f)
+        with self.assertRaises(ValidationError):
+            self.q.list()
 
     def test_queue_apply_stores_only_profile_and_addons(self):
         w = wz.Wizard(MANIFESTS)

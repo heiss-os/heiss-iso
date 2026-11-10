@@ -16,6 +16,7 @@ import os
 import time
 
 from . import answers as ans
+from . import manifest as mf
 from . import resolver
 from .errors import HeissError, ValidationError
 from .state import atomic_write
@@ -26,6 +27,7 @@ STEPS = (("welcome", False), ("profile", False), ("level", True), ("addons", Tru
          ("appearance", True), ("privacy", True), ("software", True), ("backups", True),
          ("summary", False), ("applying", False), ("done", False))
 SUMMARY, APPLYING, DONE = "summary", "applying", "done"
+IDS = [i for i, _ in STEPS]
 
 # per-profile defaults (only keys of the answers schema); the user's own choices are never overwritten
 PROFILE_DEFAULTS = {
@@ -35,6 +37,14 @@ PROFILE_DEFAULTS = {
     "custom": {"privacy": {"level": "standard"}},
 }
 EXTRA_KEYS = {"accent": str, "density": str, "font_scale": float, "hardware_toggles": dict, "backups": str}
+
+
+def _extra_ok(key, value):
+    if not isinstance(value, EXTRA_KEYS[key]) or isinstance(value, bool):
+        return False
+    if key == "hardware_toggles":
+        return all(isinstance(k, str) and isinstance(v, bool) for k, v in value.items())
+    return True
 PENDING_KINDS = ("apply-profile",)
 
 
@@ -75,6 +85,20 @@ class Wizard:
         self.step += 1
         return self.step_id
 
+    def start_apply(self):
+        """Summary -> applying. The answers must validate."""
+        if self.step_id != SUMMARY:
+            raise HeissError("apply starts from the summary, not from %r" % self.step_id)
+        self.final_answers()
+        self.step = IDS.index(APPLYING)
+
+    def finish(self):
+        """Applying -> done (apply finished), or summary -> done ('save answers and apply later')."""
+        if self.step_id not in (SUMMARY, APPLYING):
+            raise HeissError("nothing to finish at %r" % self.step_id)
+        self.final_answers()
+        self.step = IDS.index(DONE)
+
     def skip(self):
         if not self.can_skip():
             raise HeissError("step %r cannot be skipped" % self.step_id)
@@ -89,7 +113,7 @@ class Wizard:
 
     def skip_whole(self):
         self.answers, self.extras, self.touched, self.skipped = skip_all_answers(), {}, set(), True
-        self.step = [s for s, _ in STEPS].index(DONE)
+        self.step = IDS.index(DONE)
 
     def _check_step(self):
         if self.step_id == "profile" and self.answers["profile"] not in self.profiles:
@@ -101,7 +125,7 @@ class Wizard:
         """Set one answer by dotted path ("profile", "appearance.theme") or an extras key ("extra.accent")."""
         if path.startswith("extra."):
             key = path[6:]
-            if key not in EXTRA_KEYS or not isinstance(value, EXTRA_KEYS[key]):
+            if key not in EXTRA_KEYS or not _extra_ok(key, value):
                 raise ValidationError("unknown or badly typed option %r" % path)
             self.extras[key] = value
             return
@@ -110,11 +134,11 @@ class Wizard:
         *head, last = path.split(".")
         for p in head:
             node = node[p] if isinstance(node, dict) and p in node else self._bad(path)
-        if not isinstance(node, dict) or last not in node or last == "schema_version":
-            self._bad(path)
+        if not isinstance(node, dict) or last not in node or last == "schema_version" or isinstance(node[last], dict):
+            self._bad(path)     # whole sections cannot be replaced, only their keys
         node[last] = value
-        ans.validate(trial, self.profiles, self.addons)    # raises on a bad value; self.answers stays untouched
-        self.answers = trial
+        # raises on a bad value (self.answers stays untouched); the normalized result is what we keep
+        self.answers = ans.validate(trial, self.profiles, self.addons)
         self.touched.add(path)
         if path == "profile":
             self._apply_profile_defaults()
@@ -151,13 +175,18 @@ class Wizard:
         if not isinstance(doc, dict) or doc.get("version") != STATE_VERSION:
             raise ValidationError("wizard state: unsupported version")
         w = cls(manifests)
+        if not isinstance(doc.get("answers", {}), dict):
+            raise ValidationError("wizard state: answers must be an object")
         w.answers = ans.validate(doc.get("answers", {}), w.profiles, w.addons)
         extras = doc.get("extras", {})
-        if not isinstance(extras, dict) or any(k not in EXTRA_KEYS or not isinstance(v, EXTRA_KEYS[k]) for k, v in extras.items()):
+        if not isinstance(extras, dict) or any(k not in EXTRA_KEYS or not _extra_ok(k, v) for k, v in extras.items()):
             raise ValidationError("wizard state: bad extras")
-        w.extras, w.touched, w.skipped = extras, set(doc.get("touched", [])), bool(doc.get("skipped"))
-        ids = [s for s, _ in STEPS]
-        if doc.get("step") not in ids:
+        touched = doc.get("touched", [])
+        if not isinstance(touched, list) or not all(isinstance(t, str) for t in touched):
+            raise ValidationError("wizard state: touched must be a list of strings")
+        w.extras, w.touched, w.skipped = extras, set(touched), bool(doc.get("skipped"))
+        ids = IDS
+        if not isinstance(doc.get("step"), str) or doc.get("step") not in ids:
             raise ValidationError("wizard state: unknown step")
         # an interrupted apply restarts from the summary: the plan is recomputed against the real system
         w.step = ids.index(SUMMARY) if doc["step"] == APPLYING else ids.index(doc["step"])
@@ -188,7 +217,7 @@ class Store:
         try:
             with open(self.p("wizard-state.json"), encoding="utf-8") as f:
                 return Wizard.from_dict(json.load(f), manifests)
-        except (OSError, ValueError, HeissError):
+        except (OSError, ValueError, TypeError, KeyError, HeissError):
             return None
 
     def clear(self):
@@ -208,8 +237,18 @@ def summary_plan(wiz, manifests, state, system, adopt=True):
 
 # ---------- pending actions ----------
 
+def _valid_payload(kind, payload):
+    if kind == "apply-profile":
+        return (isinstance(payload, dict) and set(payload) == {"profile", "addons"}
+                and isinstance(payload["profile"], str) and mf.ID_RE.match(payload["profile"]) is not None
+                and isinstance(payload["addons"], list)
+                and all(isinstance(a, str) and mf.ID_RE.match(a) for a in payload["addons"]))
+    return False
+
+
 class PendingQueue:
-    """Actions that need the network or a later moment; run from the Control Center. Order is kept."""
+    """Actions that need the network or a later moment; run from the Control Center. Order is kept.
+    Every item is validated when added AND when read, so an edited file cannot smuggle in anything else."""
 
     def __init__(self, path):
         self.path = path
@@ -224,6 +263,12 @@ class PendingQueue:
             raise ValidationError("pending queue: %s" % e)
         if not isinstance(items, list):
             raise ValidationError("pending queue: must be a list")
+        for it in items:
+            if (not isinstance(it, dict) or set(it) != {"id", "kind", "payload", "created", "status", "error"}
+                    or not isinstance(it["id"], int) or it["kind"] not in PENDING_KINDS
+                    or it["status"] not in ("pending", "failed", "done") or not isinstance(it["error"], str)
+                    or not isinstance(it["created"], int) or not _valid_payload(it["kind"], it["payload"])):
+                raise ValidationError("pending queue: invalid item %r" % (it,))
         return items
 
     def _save(self, items):
@@ -233,10 +278,10 @@ class PendingQueue:
         return self._load()
 
     def add(self, kind, payload, now=None):
-        if kind not in PENDING_KINDS:
-            raise ValidationError("unknown pending action %r" % kind)
+        if kind not in PENDING_KINDS or not _valid_payload(kind, payload):
+            raise ValidationError("pending action %r with this payload is not allowed" % kind)
         items = self._load()
-        item = {"id": (max([i["id"] for i in items]) + 1) if items else 1, "kind": kind, "payload": payload,
+        item = {"id": (max([i["id"] for i in items]) + 1) if items else 1, "kind": kind, "payload": dict(payload),
                 "created": int(now if now is not None else time.time()), "status": "pending", "error": ""}
         self._save(items + [item])
         return item
@@ -246,21 +291,23 @@ class PendingQueue:
 
     def run(self, executor, online):
         """Run pending items in order. Offline: nothing runs. A failure stops the run and keeps the item
-        (status 'failed', with the message) so the user can retry or remove it. Returns the ids that were done."""
+        (status 'failed', with the message) so the user can retry or remove it. Any other exception also
+        stops the run, and the items that already finished are still removed before it propagates.
+        Returns the ids that were done."""
         if not online:
             return []
         items, done = self._load(), []
-        for it in items:
-            if it["status"] == "done":
-                continue
-            try:
-                executor(it)
-            except HeissError as e:
-                it["status"], it["error"] = "failed", str(e)
-                break
-            it["status"], it["error"] = "done", ""
-            done.append(it["id"])
-        self._save([i for i in items if i["status"] != "done"])
+        try:
+            for it in items:
+                try:
+                    executor(copy.deepcopy(it))
+                except HeissError as e:
+                    it["status"], it["error"] = "failed", str(e)
+                    break
+                it["status"], it["error"] = "done", ""
+                done.append(it["id"])
+        finally:
+            self._save([i for i in items if i["status"] != "done"])
         return done
 
 
