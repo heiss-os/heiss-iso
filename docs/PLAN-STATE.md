@@ -62,3 +62,7 @@ PR "feat/theme-sync-extended" (stacked on the GTK audit PR): `heiss theme sync|s
 ## Phase 4, part 5 (2026-11-10)
 
 PR "build/remove-releng-leftovers": 37 packages removed from `packages.x86_64` (Cyber tools, rescue and imaging tools, legacy VPN/dial-up, unused storage tools); see DECISIONS.md. Waiting for: an ISO rebuild and boot/install check. Still open in Phase 4: icon fixes, file manager pins, clean launcher menu, shortcuts, "open terminal here".
+
+## Phase 4, part 6 (2026-11-10)
+
+PR "fix/icons": `scripts/check-launchers.py` guard (CI), audit findings; no icon files changed (Tier A, no defect found without a screenshot). Needs from the owner: dock and installer-in-dock screenshots from the next ISO. Still open: file manager pins, clean launcher menu, shortcuts, "open terminal here".

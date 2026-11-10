@@ -101,3 +101,9 @@ Format: date, what, why. Newest at the bottom.
 - **Deliberately kept:** everything the installer, the boot menu and the live session need (`syslinux`, `memtest86+`, `edk2-shell`, `mkinitcpio-archiso`, `nbd`, `darkhttpd`, `nfs-utils`, filesystem tools for the Calamares partition page, `dmraid`, `mdadm`), plus `vim`, `tmux`, `screen`, `nano`, `less`. `heiss-cleanup.sh` is not touched: its removal list still covers the live-only packages.
 - **Consequence:** Calamares no longer offers JFS, NILFS2 and bcachefs for new partitions (their tools are gone). nmap and tcpdump return with the Cyber profile.
 - **Not verified:** ISO build, boot, installation. Needs a rebuild and the VM check from `docs/ISO-E2E-TEST.md`.
+
+## 2026-11-10 (icon fixes, made by the assistant)
+
+- **No icon was changed or added.** Reading the packages showed no defect: every pinned desktop id exists in its package and every `Icon=` resolves in `hicolor`, `breeze` or `breeze-dark`. The only icon we ship for the installer lives under `hicolor/` (Tier A), so adding an SVG needs an approved item. I did not guess a fix without a screenshot.
+- **Added a guard instead:** `scripts/check-launchers.py` (pins identical in Dark and Light, no comma-joined or duplicated pins, pins shipped by a Base package, installer desktop files carry `StartupWMClass=calamares` and a shipped icon, the `/usr/local` override stays hidden). CI runs it with the file database.
+- **Open for the owner:** after the next ISO build, a screenshot of the dock (Dark and Light) and of the running installer decides whether there is a real problem left.

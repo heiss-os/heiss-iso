@@ -38,11 +38,11 @@ Toolkit and theming path are from reading configs, not from running the system.
 | Plasma shell, panel/dock | QML | LnF `defaults`, layout JS | done, polish pending | B | propose indicator tuning with screenshots | medium |
 | Kickoff launcher icon | QML | theme-sync script | done | C | fold into extended sync | low |
 | Konsole | Qt6/KDE | color scheme + font from kdeglobals; default profile is stock | partial | C | Heiss profile + colorscheme from tokens | low |
-| Dolphin | Qt6/KDE | color scheme, `breeze-dark` icons | works, pinned icon looks generic (to verify) | C | check icon name / desktop file | low |
+| Dolphin | Qt6/KDE | color scheme, `breeze-dark` icons | pins and icon names checked statically (see section 4); look NOT verified | C | needs a screenshot from the new ISO | low |
 | Kate, Ark, Gwenview, Okular, Spectacle | Qt6/KDE | color scheme | expected fine (to verify) | C | screenshot audit | low |
 | Firefox | GTK | portal/GTK settings; no GTK theme configured by us | unknown | C | document limits; no userChrome | medium |
 | Calamares installer | Qt6 | stylesheet + QML | done | A | none | low |
-| Running installer in dock | n/a | StartupWMClass / desktop file | may show flat block or generic icon (to verify) | C | investigate desktop file `heiss-installer.desktop`, class name | low |
+| Running installer in dock | n/a | StartupWMClass / desktop file | desktop files consistent (class `calamares`, shipped icon, one visible entry; guarded by `check-launchers.py`); look NOT verified | C | needs a screenshot of the running installer in the dock | low |
 | System Settings (KCMs) | Qt6 | color scheme | expected fine | C | none | low |
 | GTK3/GTK4 apps | GTK | none configured (no `settings.ini`, no `gtk.css`) | not themed by us | C | generate from tokens, portal color-scheme | medium |
 | Tray icons | Qt | Breeze symbolic | weight/size may differ (to verify) | B | propose after screenshot | low |
@@ -52,8 +52,8 @@ Toolkit and theming path are from reading configs, not from running the system.
 
 All four are NOT verified (no screenshot of the running system). Needed captures are in section 6.
 
-1. Installer entry in the dock flat block / generic icon.
-2. Pinned file manager icon generic.
+1. Installer entry in the dock flat block / generic icon. Static findings (2026-11-10): the window class of Calamares 3.4.2 is `calamares` (strings of the binary); `heiss-installer.desktop` and the hidden override `calamares.desktop` both set `StartupWMClass=calamares` and `Icon=heiss-installer`, which exists only as 64 and 128 px PNG in hicolor (no SVG: icons under `hicolor/` are Tier A, so no icon was added). A flat block could still come from how that PNG is scaled; not reproducible without a screenshot.
+2. Pinned file manager icon generic. Static findings: the pin `org.kde.dolphin.desktop` exists in the `dolphin` package (26.08.3), its `Icon=org.kde.dolphin` is shipped by the same package in `hicolor/scalable`; `org.kde.konsole.desktop` uses `utilities-terminal` and `systemsettings.desktop` exists in `systemsettings`; both icon themes (`breeze`, `breeze-dark`) contain `utilities-terminal` and `preferences-system`. The generic icons in the owner's early screenshots (`~/share/heiss-dock-*.png`) come from the older dock script and from the comma-joined pin string that the layout script no longer produces. Whether the current layout still shows a generic icon is NOT verified.
 3. Tray icon weight/size inconsistency.
 4. GTK client-side decoration button style versus KWin.
 
