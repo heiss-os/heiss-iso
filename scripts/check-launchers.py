@@ -10,13 +10,15 @@ Always:
     the menu has one installer entry, not two.
 
 With --require-file-db (CI, archlinux container after `pacman -Fy`): every pinned desktop id is
-shipped by a package of the Base profile closure (pacman -F), or is one of our own files.
+shipped by a package of the Base profile closure including its dependencies (pacman -F), or is one of our own files.
 """
 import glob
 import os
 import re
+import shutil
 import subprocess
 import sys
+import tempfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "core"))
@@ -91,8 +93,23 @@ def owners(desktop_id):
 
 
 def base_packages():
+    """Packages named by the Base closure plus everything they pull in (systemsettings, for
+    example, arrives as a dependency of plasma-desktop and is in no manifest)."""
     manifests = mf.load_dir(os.path.join(ROOT, "profiles"))
-    return {p for mid in mf.closure(manifests, ["base"]) for p in manifests[mid].packages}
+    named = {p for mid in mf.closure(manifests, ["base"]) for p in manifests[mid].packages}
+    return named | dependencies(sorted(named))
+
+
+def dependencies(names):
+    """Names pacman would install for `names` in an empty root, or an empty set if it cannot tell."""
+    with tempfile.TemporaryDirectory() as tmp:
+        db = os.path.join(tmp, "db")
+        os.makedirs(db)
+        os.makedirs(os.path.join(tmp, "root"))
+        shutil.copytree("/var/lib/pacman/sync", os.path.join(db, "sync"))
+        r = subprocess.run(["pacman", "--root", os.path.join(tmp, "root"), "--dbpath", db, "-Sp", "--print-format", "%n"] + names,
+                           capture_output=True, text=True, env={"LC_ALL": "C", "PATH": "/usr/bin"})
+    return set(r.stdout.split()) if r.returncode == 0 else set()
 
 
 def read(rel):

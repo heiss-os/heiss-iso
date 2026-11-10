@@ -94,6 +94,14 @@ Format: date, what, why. Newest at the bottom.
 - **CI guard against file conflicts:** no file of our packages may also be shipped by an official package (`pacman -F`), because pacstrap would fail the ISO build.
 - **Stacked on PR 47** (the GTK audit) because both bump the pkgrel of heiss-core.
 
+## 2026-11-10 (releng leftovers, made by the assistant on the owner's instruction)
+
+- **37 packages removed from `profile/packages.x86_64`** (about 118 MiB installed, before squashfs compression; real ISO size NOT measured). Groups: Cyber tools (`nmap`, `tcpdump`, `ddrescue`, `testdisk`, `tpm2-tools`, `sequoia-sq`, `openpgp-card-tools`, `bind`, `ldns`, `ndisc6`), imaging and rescue (`clonezilla`, `partimage`, `partclone`, `fsarchiver`), terminal curiosities (`lynx`, `irssi`, `mc`, `lftp`), legacy dial-up and VPN clients (`pptpclient`, `wvdial`, `xl2tpd`, `vpnc`, `openconnect`, `openvpn`, `linux-atm`, `wireless_tools`), unused storage tools (`bcachefs-tools`, `jfsutils`, `nilfs-utils`, `open-iscsi`, `mmc-utils`, `sdparm`, `sg3_utils`, `lsscsi`, `b43-fwcutter`), `dnsmasq`, `usbmuxd`.
+- **Checked, not assumed:** the dependency closure of the remaining list plus the `essentials` and `base` manifests was resolved against the sync databases in an empty root; none of the removed packages is pulled in. Two candidates were kept for that reason: `ppp` and `pcsclite` are needed by other packages.
+- **Deliberately kept:** everything the installer, the boot menu and the live session need (`syslinux`, `memtest86+`, `edk2-shell`, `mkinitcpio-archiso`, `nbd`, `darkhttpd`, `nfs-utils`, filesystem tools for the Calamares partition page, `dmraid`, `mdadm`), plus `vim`, `tmux`, `screen`, `nano`, `less`. `heiss-cleanup.sh` is not touched: its removal list still covers the live-only packages.
+- **Consequence:** Calamares no longer offers JFS, NILFS2 and bcachefs for new partitions (their tools are gone). nmap and tcpdump return with the Cyber profile.
+- **Not verified:** ISO build, boot, installation. Needs a rebuild and the VM check from `docs/ISO-E2E-TEST.md`.
+
 ## 2026-11-10 (icon fixes, made by the assistant)
 
 - **No icon was changed or added.** Reading the packages showed no defect: every pinned desktop id exists in its package and every `Icon=` resolves in `hicolor`, `breeze` or `breeze-dark`. The only icon we ship for the installer lives under `hicolor/` (Tier A), so adding an SVG needs an approved item. I did not guess a fix without a screenshot.
