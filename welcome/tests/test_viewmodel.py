@@ -142,5 +142,72 @@ class Persistence(unittest.TestCase):
             self.assertFalse(store.is_done())
 
 
+
+class HardwareAndPrivacy(unittest.TestCase):
+    FIX = os.path.join(REPO, "core", "tests", "fixtures", "hw")
+
+    def detector(self, name):
+        from heiss_core import hardware as hw
+        return lambda: hw.detect(hw.load_fixture(os.path.join(self.FIX, name)),
+                                 hw.load_profiles(os.path.join(REPO, "hardware")))
+
+    def vm(self, d, detector):
+        vm, _ = build(d, PROFILES, detector)
+        vm.w.step = wz.IDS.index("hardware")
+        return vm
+
+    def fixture(self):
+        return "virtualbox-vmsvga"
+
+    def test_detected_machine_shows_facts_and_proposals(self):
+        with tempfile.TemporaryDirectory() as d:
+            vm = self.vm(d, self.detector(self.fixture()))
+            scr = vm.screen()
+            self.assertTrue(scr["facts"])
+            opts = [o for q in scr["questions"] for o in q["options"]]
+            self.assertTrue(opts)
+            self.assertTrue(all(o["path"] == "hardware" for o in opts))
+
+    def test_safe_proposals_start_ticked_and_toggle_into_extras(self):
+        with tempfile.TemporaryDirectory() as d:
+            vm = self.vm(d, self.detector(self.fixture()))
+            prop = vm.report().proposals[0]
+            first = vm.screen()["questions"][0]["options"][0]
+            self.assertEqual(first["selected"], prop.safe_by_default)
+            vm.toggle_hardware(prop.id)
+            self.assertEqual(vm.w.extras["hardware_toggles"][prop.id], not prop.safe_by_default)
+            self.assertNotIn("hardware_toggles", vm.w.final_answers())   # extras never leak into answers
+            vm2, _ = build(d, PROFILES)
+            self.assertEqual(vm2.w.extras["hardware_toggles"][prop.id], not prop.safe_by_default)
+
+    def test_unknown_proposal_is_rejected(self):
+        with tempfile.TemporaryDirectory() as d:
+            vm = self.vm(d, self.detector(self.fixture()))
+            self.assertTrue(vm.toggle_hardware("nosuch")["error"])
+            self.assertEqual(vm.w.extras, {})
+
+    def test_failed_or_missing_detection_does_not_block(self):
+        def boom():
+            raise OSError("lspci missing")
+        for det in (boom, None):
+            with tempfile.TemporaryDirectory() as d:
+                vm = self.vm(d, det)
+                scr = vm.screen()
+                self.assertEqual(scr["questions"], [])
+                self.assertTrue(scr["facts"])
+                self.assertEqual(vm.next()["id"], "appearance")
+
+    def test_privacy_marks_only_the_firewall_as_in_place(self):
+        with tempfile.TemporaryDirectory() as d:
+            vm, _ = build(d, PROFILES)
+            vm.w.step = wz.IDS.index("privacy")
+            done = strings.S["en"]["pv.done"]
+            facts = vm.screen()["facts"]
+            self.assertEqual([f["text"] for f in facts if f["badge"] == done], [strings.S["en"]["pv.firewall"]])
+            n = len(facts)
+            vm.choose("level", "advanced")
+            self.assertEqual(len(vm.screen()["facts"]), n + 1)   # linux-hardened shows for Advanced only
+
+
 if __name__ == "__main__":
     unittest.main()

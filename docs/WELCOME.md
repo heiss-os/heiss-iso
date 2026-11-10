@@ -8,7 +8,7 @@ Master plan section 7. Stack as in `docs/ARCHITECTURE.md`: PySide6 + QML (Kiriga
 |---|---|---|---|
 | 5a `feat/welcome-core` | GUI-free model `core/heiss_core/wizard.py`: step order, per-profile defaults, validation, Back/Next/Skip, skip-whole = Base, resume file, done marker, pending-actions queue, summary as a dry-run plan | no | merged (PR 56) |
 | 5b | `heiss-welcome` PySide6/QML app drawing the model; screens 0-11, en/ru strings, keyboard control | no (UI), but offline-only without it | this PR (see below) |
-| 5c | hardware screen wired to `heiss hw detect`, privacy screen items marked implemented / "coming soon" | no | not started |
+| 5c | hardware screen wired to `heiss hw detect`, privacy screen items marked implemented / "coming soon" | no | this PR |
 | 5d | `heiss-welcome.desktop` autostart in the installed system only, `heiss-cleanup.sh` step, `heiss-welcome` package | autostart: no; Apply of a non-Base profile: yes | blocked on the repository |
 | 5e | applying screen through the helper, pending queue run from the Control Center (Phase 6) | yes (profiles other than the ISO's Base come from `[heiss]`) | blocked on the repository |
 
@@ -29,6 +29,12 @@ Master plan section 7. Stack as in `docs/ARCHITECTURE.md`: PySide6 + QML (Kiriga
 - `app.py`: thin PySide6 glue (one `wizard` object for QML). `qml/Main.qml`: one data-driven window, Inter font, Heiss palette, sand accent, Back/Next/Skip, Alt+Left for Back, visible focus ring, accessible names.
 - Run by hand: `PYTHONPATH=core:welcome python -m heiss_welcome --force` (needs `pyside6`; config dir override `HEISS_CONFIG_DIR`, manifests `HEISS_PROFILES`).
 - **Not in this PR, on purpose:** Apply (needs the repository, 5e), so the summary offers only "Save answers, apply later" (writes `answers.toml` and one `apply-profile` queue item). The hardware and backups screens are "coming soon" placeholders (5c). Accent, density, font size and the per-item privacy toggles have no screen yet. No autostart, no package (5d). Wizard-side live preview of the theme is not done.
+
+## Hardware and privacy screens (5c)
+
+- Hardware: `ViewModel.report()` runs `heiss_core.hardware` detection once when the screen is first shown (live: `lspci`, `/sys`, `systemd-detect-virt`; read-only; a failure means "no proposals", never blocks). Facts (type, processor, virtualization, GPUs, hybrid graphics) are shown as text; each matching hardware profile is a toggle, ticked by default only when `safe_by_default`. Choices are stored in `extras.hardware_toggles` and are **not applied by anything yet** (no step reads them). Detection runs on the UI thread (a few subprocess calls); moving it to a worker is a follow-up.
+- Privacy: the level is a real answer; the item list below it is informational with a badge. Only the firewall (firewalld, enabled by the Essentials manifest at every level) is marked "In place"; DNS over TLS, MAC randomization, VPN/WireGuard, Bluetooth off at Maximum, screen lock and linux-hardened (Confident/Advanced only) are marked "Coming soon". Per-item toggles have no screen because nothing could act on them.
+- Not verified: the screens were never shown (no PySide6 here); detection was only tested with the fixtures in `core/tests/fixtures/hw`, not on real hardware or in VirtualBox through the wizard.
 
 ## Known small gaps
 
