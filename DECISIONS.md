@@ -126,3 +126,8 @@ Format: date, what, why. Newest at the bottom.
 - **Nothing is configured; behaviour documented and guarded.** Dolphin 26.08.3 has "Open Terminal Here", "Open Terminal" and a terminal panel (strings in the binary); the panel needs `konsolepart.so` from `konsole`; KIO falls back to `konsole` when `TerminalService`/`TerminalApplication` is unset. So Base works with no file, and kitty installed next to it does not take over. Pinning the key would mean editing `/etc/xdg/kdeglobals` (Tier B).
 - **Thunar add-on is the open question:** its action follows the Xfce preferred-terminal mechanism, which I could not verify. Recorded in `docs/apps/TERMINAL-HERE.md` with VM test steps.
 - **Test `core/tests/test_terminal.py`:** Base has Konsole and Dolphin and no second terminal or file manager; add-ons are outside every profile closure; `inode/directory` stays Dolphin.
+
+## 2026-11-10 (reviewer agent, made by the assistant)
+
+- **Project subagent `reviewer` (`.claude/agents/reviewer.md`), read-only (Read, Grep, Glob, Bash).** Why: the owner asked for a self-check of every PR against CLAUDE.md, DECISIONS.md, PLAN-STATE and the Tier A list, including unbacked "verified" claims. Run before each PR; its findings go into the PR text. It does not replace CI guards or the owner's review.
+- **Path note:** the checksum file is `docs/design/protected.sha256` (the task text said `branding/tokens/`); the agent uses the real path.

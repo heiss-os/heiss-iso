@@ -83,3 +83,7 @@ PR "docs/open-terminal-here": `docs/apps/TERMINAL-HERE.md`, test `core/tests/tes
 Waiting for the owner: merge the PRs; rebuild the ISO (`scripts/heiss-packages-build.sh`, then `heiss-build.sh`); VM run of `docs/ISO-E2E-TEST.md`; screenshots (Dark and Light): dock, running installer in the dock, Kickoff menu; output of `heiss-gtk-audit` and `heiss theme sync`; Plasma shortcut list; "open terminal here" results (steps in `docs/apps/TERMINAL-HERE.md`).
 Not done and why: Dolphin Places defaults (no verifiable system-wide mechanism in KIO), kitty/Thunar terminal configuration (needs the VM), GTK theming files (decided by the audit output).
 Next: Phase 5 (Welcome wizard) after the owner's reply.
+
+## Round 15, item 1 (2026-11-10)
+
+PR "feat/reviewer-agent": `.claude/agents/reviewer.md` and a paragraph in CLAUDE.md. Next: item 2 `heiss check` (branch `feat/heiss-check`), only after the owner reports this PR merged. Then Phases 5-10 one PR at a time.
