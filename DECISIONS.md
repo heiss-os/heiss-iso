@@ -148,3 +148,9 @@ Format: date, what, why. Newest at the bottom.
 - **Pending queue accepts only `apply-profile` with profile and add-on ids.** Why: it is read later and runs with the user's own rights through the helper; free-form commands would be an escalation path.
 - **Phase 5 split 5a-5e;** 5d/5e wait for the public package repository (`docs/infra/REPOSITORY.md` checklist; `heiss-os/heiss-repo` does not exist on GitHub as of 2026-11-10).
 - heiss-core pkgrel 4 -> 5.
+
+## 2026-11-11 (no tool attribution, owner's instruction)
+
+- **No attribution to a tool or an AI in commits, PR descriptions, issues, comments or docs.** Why: explicit instruction of the project owner. Rule in CLAUDE.md; `.claude/settings.json` sets `attribution.commit = ""`, `attribution.pr = ""`, `attribution.sessionUrl = false` and the older `includeCoAuthoredBy = false` (all four keys exist in the installed Claude Code 2.1.316; the old one is marked deprecated there).
+- **History is not rewritten** (main is protected, no force push): commits and PR texts merged before this keep their trailers.
+- The self-review before each PR is called "automated review" in PR texts.
