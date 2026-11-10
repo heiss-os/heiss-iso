@@ -2,7 +2,7 @@
 # Built from the repository HEAD by scripts/heiss-packages-build.sh (it creates heiss-src.tar.gz).
 pkgname=heiss-core
 pkgver=0.1.0
-pkgrel=3
+pkgrel=4
 pkgdesc='Heiss OS profile engine: manifests, resolver, hardware detection and the heiss command'
 arch=('any')
 url='https://github.com/heiss-os/heiss-iso'
