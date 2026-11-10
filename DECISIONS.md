@@ -148,3 +148,10 @@ Format: date, what, why. Newest at the bottom.
 - **Pending queue accepts only `apply-profile` with profile and add-on ids.** Why: it is read later and runs with the user's own rights through the helper; free-form commands would be an escalation path.
 - **Phase 5 split 5a-5e;** 5d/5e wait for the public package repository (`docs/infra/REPOSITORY.md` checklist; `heiss-os/heiss-repo` does not exist on GitHub as of 2026-11-10).
 - heiss-core pkgrel 4 -> 5.
+
+## 2026-11-11 (public package repository setup, made by the assistant)
+
+- **GitHub Pages URL:** `https://heiss-os.github.io/heiss-repo/` from branch `gh-pages` (the first commit was made through the contents API; Pages was enabled automatically by it).
+- **Signing key:** RSA 4096, signing only, no expiry, no passphrase (used by CI only), ID `FEA84CEF8AEDF132`. Generated in a temporary `GNUPGHOME`; the private half was never written into the repository or a chat.
+- **The setup token was used through a separate `GH_CONFIG_DIR`**, not `gh auth login` into the default config, so the owner's normal `gh` login (needed to push and open PRs) was not replaced. It is removed with `gh auth logout` in that directory at the end.
+- **Not done, and why:** writing the repository secrets and shredding the token file were refused by the permission system, so the secrets are set by the owner (docs/infra/REPOSITORY.md, Status). The private key is NOT wiped and not backed up yet: wiping before the secrets exist would lose it.

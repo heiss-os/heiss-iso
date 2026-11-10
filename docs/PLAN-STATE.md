@@ -95,3 +95,7 @@ PR "feat/heiss-check": `heiss check [--report FILE]` (`core/heiss_core/check.py`
 ## Round 15, Phase 5, step 5a (2026-11-10)
 
 PR "feat/welcome-core": `core/heiss_core/wizard.py`, `core/tests/test_wizard.py`, `docs/WELCOME.md` (the Phase 5 plan and split). Blocked for 5d/5e: the public package repository does not exist (owner checklist in `docs/infra/REPOSITORY.md`). Next without it: 5b (QML front end) after the owner reports 5a merged.
+
+## Round 16, part 2 (2026-11-11): partly done
+
+PR "chore/package-repo-setup": Pages and `gh-pages` done, key generated, public key and fingerprint in `docs/infra/`. Waiting for the owner: set the two secrets and `REPO_PUSH_TOKEN`, delete the token copy, then the key backup and wipe. Phase 5d/5e still waits for the CI publishing job (not started).
