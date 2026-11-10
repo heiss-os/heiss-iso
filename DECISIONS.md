@@ -168,3 +168,8 @@ Format: date, what, why. Newest at the bottom.
 - Plain QtQuick.Controls with hard-coded Heiss palette values instead of Kirigami for now: fewer dependencies for the first-run window; revisit when the Control Center (Phase 6) shares components. The palette duplicates the tokens; a generated QML palette is a follow-up.
 - No Apply button until the package repository exists (5e); "save answers, apply later" queues an `apply-profile` item instead.
 - The inline error colour `#E06C64` in `Main.qml` is the `negative` token of Heiss Dark, used in both themes for now (not checked for contrast on Light); a generated QML palette will replace it.
+
+## 2026-11-11 (Welcome hardware and privacy screens, step 5c)
+
+- Hardware toggles and privacy items are shown honestly as saved-only / "coming soon" rather than wired to partial behaviour; the apply path for hardware proposals comes with 5e through the resolver and helper.
+- Detection reuses `heiss_core.hardware` unchanged (no new detection code, no new packages, no network).

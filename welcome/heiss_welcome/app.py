@@ -2,19 +2,26 @@
 import os
 import sys
 
+from heiss_core import hardware as hw
 from heiss_core import manifest as mf
 from heiss_core import wizard as wz
 
 from .viewmodel import ViewModel
 
 PROFILES = os.environ.get("HEISS_PROFILES", "/usr/share/heiss/profiles")
+HARDWARE = os.environ.get("HEISS_HARDWARE", "/usr/share/heiss/hardware")
 
 
-def build(config_dir, profiles_dir=PROFILES):
+def live_detector(hardware_dir=HARDWARE):
+    """Read-only detection of this machine (lspci, /sys, systemd-detect-virt) against the hardware profiles."""
+    return lambda: hw.detect(hw.collect_live(), hw.load_profiles(hardware_dir))
+
+
+def build(config_dir, profiles_dir=PROFILES, detector=None):
     manifests = mf.load_dir(profiles_dir)
     store = wz.Store(config_dir)
     wiz = store.load(manifests) or wz.Wizard(manifests)
-    return ViewModel(wiz, manifests, store, wz.PendingQueue(store.p("pending.json"))), store
+    return ViewModel(wiz, manifests, store, wz.PendingQueue(store.p("pending.json")), detector), store
 
 
 def main(argv=None):
@@ -41,6 +48,9 @@ def main(argv=None):
         @Slot(str)
         def toggleAddon(self, addon_id): self._set(self.vm.toggle_addon(addon_id))
 
+        @Slot(str)
+        def toggleHardware(self, proposal_id): self._set(self.vm.toggle_hardware(proposal_id))
+
         @Slot()
         def next(self): self._set(self.vm.next())
 
@@ -59,7 +69,7 @@ def main(argv=None):
     argv = sys.argv if argv is None else argv
     config = os.environ.get("HEISS_CONFIG_DIR") or os.path.join(
         os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config"), "heiss")
-    vm, store = build(config)
+    vm, store = build(config, detector=live_detector())
     if store.is_done() and "--force" not in argv:
         return 0
     app = QGuiApplication(argv)

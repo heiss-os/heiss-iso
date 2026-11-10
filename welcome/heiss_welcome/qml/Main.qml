@@ -48,6 +48,18 @@ ApplicationWindow {
                Layout.fillWidth: true; Accessible.role: Accessible.Heading }
         Text { text: s.whatLabel + ": " + s.what; color: pal.dim; font.pixelSize: 16; wrapMode: Text.WordWrap
                Layout.fillWidth: true }
+        Repeater {
+            model: s.facts
+            delegate: RowLayout {
+                required property var modelData
+                Layout.fillWidth: true
+                spacing: 12
+                Text { text: parent.modelData.text; color: pal.text; font.pixelSize: 16; wrapMode: Text.WordWrap
+                       Layout.fillWidth: true }
+                Text { visible: parent.modelData.badge !== ""; text: parent.modelData.badge; color: pal.accent
+                       font.pixelSize: 14; font.bold: true }
+            }
+        }
         Repeater { model: s.lines; Text { text: modelData; color: pal.text; font.pixelSize: 18 } }
 
         ScrollView {
@@ -75,8 +87,11 @@ ApplicationWindow {
                                 Accessible.name: modelData.label + (modelData.hint ? ". " + modelData.hint : "")
                                 Accessible.checkable: true
                                 Accessible.checked: modelData.selected
-                                onClicked: q.modelData.kind === "multi" ? wizard.toggleAddon(modelData.value)
-                                                                        : wizard.choose(modelData.path, modelData.value)
+                                onClicked: {
+                                    if (q.modelData.kind !== "multi") wizard.choose(modelData.path, modelData.value)
+                                    else if (modelData.path === "hardware") wizard.toggleHardware(modelData.value)
+                                    else wizard.toggleAddon(modelData.value)
+                                }
                                 contentItem: ColumnLayout {
                                     Text { text: (opt.modelData.selected ? "● " : "○ ") + opt.modelData.label
                                            color: pal.text; font.pixelSize: 18 }
