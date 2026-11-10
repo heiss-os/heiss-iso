@@ -58,3 +58,7 @@ PR "feat/gtk-integration-audit": `heiss-gtk-audit`, GTK doc, prerequisite tests,
 ## Phase 4, part 4 (2026-11-10)
 
 PR "feat/theme-sync-extended" (stacked on the GTK audit PR): `heiss theme sync|status`, package `heiss-theme` (Konsole and kitty themes from tokens), file-conflict CI check. Waiting for: VM run (theme switch log and screenshots). Still open in Phase 4: icon fixes, clean launcher menu, shortcuts, releng leftovers (owner decision), "open terminal here" behaviour.
+
+## Phase 4, part 7 (2026-11-10)
+
+PR "feat/clean-launcher-menu": ten hide stubs in `usr/local/share/applications`, `scripts/check-menu.py` (CI), `docs/apps/LAUNCHER.md`. Needs from the owner: a Kickoff screenshot (Dark and Light). The "file manager pins" item is treated as covered by the dock-pin checks of the icon PR; Dolphin Places defaults were NOT done (KIO has no system-wide defaults file I could verify). Still open: shortcuts, "open terminal here".
