@@ -6,8 +6,8 @@ Master plan section 7. Stack as in `docs/ARCHITECTURE.md`: PySide6 + QML (Kiriga
 
 | Step | What | Needs the public package repository? | State |
 |---|---|---|---|
-| 5a `feat/welcome-core` | GUI-free model `core/heiss_core/wizard.py`: step order, per-profile defaults, validation, Back/Next/Skip, skip-whole = Base, resume file, done marker, pending-actions queue, summary as a dry-run plan | no | this PR |
-| 5b | `heiss-welcome` PySide6/QML app drawing the model; screens 0-11, en/ru strings, keyboard control | no (UI), but offline-only without it | not started |
+| 5a `feat/welcome-core` | GUI-free model `core/heiss_core/wizard.py`: step order, per-profile defaults, validation, Back/Next/Skip, skip-whole = Base, resume file, done marker, pending-actions queue, summary as a dry-run plan | no | merged (PR 56) |
+| 5b | `heiss-welcome` PySide6/QML app drawing the model; screens 0-11, en/ru strings, keyboard control | no (UI), but offline-only without it | this PR (see below) |
 | 5c | hardware screen wired to `heiss hw detect`, privacy screen items marked implemented / "coming soon" | no | not started |
 | 5d | `heiss-welcome.desktop` autostart in the installed system only, `heiss-cleanup.sh` step, `heiss-welcome` package | autostart: no; Apply of a non-Base profile: yes | blocked on the repository |
 | 5e | applying screen through the helper, pending queue run from the Control Center (Phase 6) | yes (profiles other than the ISO's Base come from `[heiss]`) | blocked on the repository |
@@ -22,6 +22,14 @@ Master plan section 7. Stack as in `docs/ARCHITECTURE.md`: PySide6 + QML (Kiriga
 - **Pending queue** `~/.config/heiss/pending.json`: only the kind `apply-profile` with `{profile, addons}`. Items are validated when added and again when read (a hand-edited file is rejected). Offline nothing runs; a failure stops the run, keeps the item as `failed` with the message; the user retries or removes it. The queue holds no commands and no package names, so it cannot widen what the helper allows.
 - Level: Beginner and Confident confirm changes step by step; advanced sections (for example linux-hardened under privacy) show for Confident and Advanced.
 
+## Front end (5b)
+
+- `welcome/heiss_welcome/viewmodel.py`: no Qt; builds each screen as a dict (title, "what this will change", options, buttons) and runs the actions; saves resume state after each action. Tested in `welcome/tests`.
+- `strings.py`: en/ru texts (a test checks both languages have the same keys). Profile and add-on names come from the manifests.
+- `app.py`: thin PySide6 glue (one `wizard` object for QML). `qml/Main.qml`: one data-driven window, Inter font, Heiss palette, sand accent, Back/Next/Skip, Alt+Left for Back, visible focus ring, accessible names.
+- Run by hand: `PYTHONPATH=core:welcome python -m heiss_welcome --force` (needs `pyside6`; config dir override `HEISS_CONFIG_DIR`, manifests `HEISS_PROFILES`).
+- **Not in this PR, on purpose:** Apply (needs the repository, 5e), so the summary offers only "Save answers, apply later" (writes `answers.toml` and one `apply-profile` queue item). The hardware and backups screens are "coming soon" placeholders (5c). Accent, density, font size and the per-item privacy toggles have no screen yet. No autostart, no package (5d). Wizard-side live preview of the theme is not done.
+
 ## Known small gaps
 
 - Pending ids are reused after the newest item is removed (harmless: ids are only handles).
@@ -30,7 +38,7 @@ Master plan section 7. Stack as in `docs/ARCHITECTURE.md`: PySide6 + QML (Kiriga
 ## Not verified
 
 - Nothing in 5a runs on a real system; it is tested with fixtures only (`core/tests/test_wizard.py`).
-- No screen exists yet: no screenshot can be judged.
+- The QML was only linted with `qmllint` (no syntax errors; only unqualified-access warnings for the `wizard` context object). It was never run: `pyside6` is not installed on the build VM. Inter font and its fallback, whether `appearance.theme` is applied to the window (it is not), the Alt+Left shortcut, the Bridge/PySide6 behaviour, error colour contrast on Light, layout, focus order, scaling, the colour-scheme detection (`Qt.styleHints.colorScheme`) and the Russian text fit are unjudged without a screenshot from the owner.
 - Whether `pyside6` and `kirigami` fit the ISO size budget (needs a build).
 
 ## What the owner must do for 5d/5e

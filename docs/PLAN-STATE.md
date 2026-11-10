@@ -103,3 +103,7 @@ PR "chore/no-attribution": rule in CLAUDE.md and `.claude/settings.json`. Merged
 ## Round 16, part 2 (2026-11-11): partly done
 
 PR "chore/package-repo-setup": Pages and `gh-pages` done, key generated, public key and fingerprint in `docs/infra/`. Waiting for the owner: set the two secrets and `REPO_PUSH_TOKEN`, delete the token copy, then the key backup and wipe. Phase 5d/5e still waits for the CI publishing job (not started).
+
+## Round 16, Phase 5, step 5b (2026-11-11)
+
+PR "feat/welcome-ui": `welcome/` (view-model, en/ru strings, PySide6 glue, one QML window), tests in CI. Apply is not wired (5e); the summary only saves answers and queues `apply-profile`. Waiting for the owner: `sudo pacman -S pyside6`, then `PYTHONPATH=core:welcome python -m heiss_welcome --force` and screenshots (Dark, Light, ru). Next: 5c (hardware screen and privacy items), after the owner reports 5b merged.

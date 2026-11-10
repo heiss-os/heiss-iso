@@ -161,3 +161,10 @@ Format: date, what, why. Newest at the bottom.
 - **Signing key:** RSA 4096, signing only, no expiry, no passphrase (used by CI only), ID `FEA84CEF8AEDF132`. Generated in a temporary `GNUPGHOME`; the private half was never written into the repository or a chat.
 - **The setup token was used through a separate `GH_CONFIG_DIR`**, not `gh auth login` into the default config, so the owner's normal `gh` login (needed to push and open PRs) was not replaced. The setup token is still logged in there (`GH_CONFIG_DIR=/tmp/claude-1000/-home-heiss-os-heiss-iso/7623dd4a-f587-4ec1-a7d7-e7fc24df78c2/scratchpad/ghsetup` on the build VM) and the token file `~/share/heiss-token.txt` is still on disk: both are to be removed once the remaining steps are done (the owner must delete the host copy).
 - **Not done, and why:** writing the repository secrets and shredding the token file were refused by the permission system, so the secrets are set by the owner. The unwiped private key lives in the temporary `GNUPGHOME` `/tmp/gnupg-heiss.8w26Jm` on the build VM until it is set as a secret and backed up (docs/infra/REPOSITORY.md, Status). The private key is NOT wiped and not backed up yet: wiping before the secrets exist would lose it.
+
+## 2026-11-11 (Welcome front end, step 5b)
+
+- Wizard screens are drawn from a Qt-free view-model (`welcome/heiss_welcome/viewmodel.py`), so everything except the QML is unit-tested in CI without a display or PySide6. Reason: no screenshots can be taken in the build VM.
+- Plain QtQuick.Controls with hard-coded Heiss palette values instead of Kirigami for now: fewer dependencies for the first-run window; revisit when the Control Center (Phase 6) shares components. The palette duplicates the tokens; a generated QML palette is a follow-up.
+- No Apply button until the package repository exists (5e); "save answers, apply later" queues an `apply-profile` item instead.
+- The inline error colour `#E06C64` in `Main.qml` is the `negative` token of Heiss Dark, used in both themes for now (not checked for contrast on Light); a generated QML palette will replace it.
