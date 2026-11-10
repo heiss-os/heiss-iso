@@ -149,6 +149,12 @@ Format: date, what, why. Newest at the bottom.
 - **Phase 5 split 5a-5e;** 5d/5e wait for the public package repository (`docs/infra/REPOSITORY.md` checklist; `heiss-os/heiss-repo` does not exist on GitHub as of 2026-11-10).
 - heiss-core pkgrel 4 -> 5.
 
+## 2026-11-11 (no tool attribution, owner's instruction)
+
+- **No attribution to a tool or an AI in commits, PR descriptions, issues, comments or docs.** Why: explicit instruction of the project owner. Rule in CLAUDE.md; `.claude/settings.json` sets `attribution.commit = ""`, `attribution.pr = ""`, `attribution.sessionUrl = false` and the older `includeCoAuthoredBy = false` (all four keys exist in the installed Claude Code 2.1.316; the old one is marked deprecated there).
+- **History is not rewritten** (main is protected, no force push): commits and PR texts merged before this keep their trailers.
+- The self-review before each PR is called "automated review" in PR texts.
+
 ## 2026-11-11 (public package repository setup, made by the assistant)
 
 - **GitHub Pages URL:** `https://heiss-os.github.io/heiss-repo/` from branch `gh-pages` (the first commit was made through the contents API; Pages was enabled automatically by it).

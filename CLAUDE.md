@@ -69,10 +69,11 @@ sudo mkarchiso -v -w ~/archiso-work -o out profile
 - Секреты и закрытый ключ подписи никогда не попадают в репозиторий и в сессии ассистента.
 - Вопросы владельцу: нумерованным списком с вариантами и рекомендованным ответом, коротко. Команды давать файлом или готовыми строками.
 - После каждой фазы обновлять `docs/PLAN-STATE.md` и `DECISIONS.md`.
+- Commit messages, PR descriptions, issue and comment texts must not contain any attribution to a tool or an AI: no `Co-Authored-By` trailer for an assistant, no `Generated with ...` line, no session or tool links, no 'Claude' or 'AI' signature. Write them as the project owner's own work. Already merged commits keep what they have (no history rewrite). `.claude/settings.json` switches the tool's own attribution off.
 
 ## Агент-ревьюер
 
-Перед каждым PR запускай субагента `reviewer` (`.claude/agents/reviewer.md`): передай ему diff ветки (`git diff origin/main...HEAD`) и черновик текста PR. Он только читает и проверяет diff по этому файлу, `DECISIONS.md`, `docs/PLAN-STATE.md` и защищённым путям Tier A: затронутые защищённые файлы без одобрения, нет записей в DECISIONS/PLAN-STATE, нет тестов для новой логики, утверждения «проверено» в тексте PR без реального запуска, пакеты вне репозиториев (`pacman -Si`), строки интерфейса с Arch или следами телеметрии. Результат (список находок с важностью) вставляй в текст PR; находки HIGH исправляй до открытия PR.
+Перед каждым PR запускай субагента `reviewer` (`.claude/agents/reviewer.md`): передай ему diff ветки (`git diff origin/main...HEAD`) и черновик текста PR. Он только читает и проверяет diff по этому файлу, `DECISIONS.md`, `docs/PLAN-STATE.md` и защищённым путям Tier A: затронутые защищённые файлы без одобрения, нет записей в DECISIONS/PLAN-STATE, нет тестов для новой логики, утверждения «проверено» в тексте PR без реального запуска, пакеты вне репозиториев (`pacman -Si`), строки интерфейса с Arch или следами телеметрии. Результат (список находок с важностью) вставляй в текст PR под названием «automated review» (без упоминания ассистента); находки HIGH исправляй до открытия PR.
 
 ## Осторожно с командами
 
