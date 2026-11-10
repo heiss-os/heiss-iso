@@ -74,3 +74,12 @@ PR "feat/clean-launcher-menu": ten hide stubs in `usr/local/share/applications`,
 ## Phase 4, part 8 (2026-11-10)
 
 PR "docs/keyboard-shortcuts": `docs/design/SHORTCUTS.md` (verified table from desktop files), `scripts/check-shortcuts.py` + CI step; no config shipped. Needs from the owner: the Plasma shortcut list from the VM (System Settings, Shortcuts, or `~/.config/kglobalshortcutsrc`). Still open: "open terminal here".
+
+## Phase 4, part 9 (2026-11-10) and checkpoint
+
+PR "docs/open-terminal-here": `docs/apps/TERMINAL-HERE.md`, test `core/tests/test_terminal.py`; no config shipped.
+
+**Phase 4 checkpoint (all items of the owner's list have a PR):** releng leftovers (#49), icon guard and audit (#50), clean launcher menu (#51), keyboard shortcuts (#52), open terminal here (this PR). PRs 47 and 48 (GTK audit, theme sync) merged earlier.
+Waiting for the owner: merge the PRs; rebuild the ISO (`scripts/heiss-packages-build.sh`, then `heiss-build.sh`); VM run of `docs/ISO-E2E-TEST.md`; screenshots (Dark and Light): dock, running installer in the dock, Kickoff menu; output of `heiss-gtk-audit` and `heiss theme sync`; Plasma shortcut list; "open terminal here" results (steps in `docs/apps/TERMINAL-HERE.md`).
+Not done and why: Dolphin Places defaults (no verifiable system-wide mechanism in KIO), kitty/Thunar terminal configuration (needs the VM), GTK theming files (decided by the audit output).
+Next: Phase 5 (Welcome wizard) after the owner's reply.

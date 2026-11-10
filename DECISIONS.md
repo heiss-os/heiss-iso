@@ -120,3 +120,9 @@ Format: date, what, why. Newest at the bottom.
 - **No custom shortcuts added.** The packages already declare `Meta+E` (Dolphin), `Ctrl+Alt+T` (Konsole), `Meta+I` (System Settings), `Meta+Esc` (System Monitor), `Meta+.` (emoji), `Calculator` (KCalc); these are read from the desktop files, not remembered. A `kglobalshortcutsrc` of our own would override Plasma defaults I cannot list on the build VM (KWin and KRunner register theirs in code) and is Tier B territory.
 - **Guard instead:** `scripts/check-shortcuts.py` finds key collisions between desktop files and keeps `docs/design/SHORTCUTS.md` true (CI downloads the Base apps and compares).
 - **Open:** the real list of Plasma/KWin shortcuts needs the VM (`docs/design/SHORTCUTS.md`, section "NOT verified").
+
+## 2026-11-10 (open terminal here, made by the assistant)
+
+- **Nothing is configured; behaviour documented and guarded.** Dolphin 26.08.3 has "Open Terminal Here", "Open Terminal" and a terminal panel (strings in the binary); the panel needs `konsolepart.so` from `konsole`; KIO falls back to `konsole` when `TerminalService`/`TerminalApplication` is unset. So Base works with no file, and kitty installed next to it does not take over. Pinning the key would mean editing `/etc/xdg/kdeglobals` (Tier B).
+- **Thunar add-on is the open question:** its action follows the Xfce preferred-terminal mechanism, which I could not verify. Recorded in `docs/apps/TERMINAL-HERE.md` with VM test steps.
+- **Test `core/tests/test_terminal.py`:** Base has Konsole and Dolphin and no second terminal or file manager; add-ons are outside every profile closure; `inode/directory` stays Dolphin.
