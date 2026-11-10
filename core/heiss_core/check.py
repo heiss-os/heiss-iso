@@ -1,7 +1,7 @@
 """`heiss check`: read-only health check of an INSTALLED Heiss system.
 
 One line per item: OK, FAIL, or WARN where the situation cannot be judged (not a desktop
-session, no root for /etc/shadow, tool missing). Nothing is changed. Only fixed argument
+session, no root for /etc/shadow, tool missing). Nothing is changed on the system (the theme item takes the same short-lived lock file in the runtime directory as `heiss theme status`). Only fixed argument
 lists are run, never a shell, and every command is recorded so `--report` can print it.
 The environment is injected (CheckEnv) so tests run on fixtures without root.
 """
@@ -68,6 +68,9 @@ class CheckEnv:
     def exists(self, path):
         return os.path.exists(path)
 
+    def euid(self):
+        return os.geteuid()
+
     def listdir(self, path):
         try:
             return sorted(os.listdir(path))
@@ -110,6 +113,9 @@ def check_units(env):
     bad, notes = [], []
     for scope, argv in (("system", ["systemctl", "--failed", "--no-legend", "--plain", "--no-pager"]),
                         ("user", ["systemctl", "--user", "--failed", "--no-legend", "--plain", "--no-pager"])):
+        if scope == "user" and env.euid() == 0:
+            notes.append("user units not checked as root (run without sudo)")
+            continue
         rc, out = env.run(argv)
         if rc != 0:
             notes.append("%s manager unreachable" % scope)
@@ -160,7 +166,10 @@ def check_profile(env, manifests):
 
 def check_theme(theme_env):
     results, _ = themesync.sync(theme_env, wait=False, dry_run=True)
+    # theme-sync runs its own read-only commands (kreadconfig6, gsettings, busctl --user); they are not captured here
     cmds = [["heiss", "theme", "status"]]
+    if len(results) == 1 and results[0].target == "all" and results[0].status == "skipped":
+        return Item("theme-sync", WARN, "cannot judge: " + results[0].detail, cmds)
     if len(results) == 1 and results[0].target == "all" and results[0].status == "failed":
         return Item("theme-sync", WARN, "cannot judge: " + results[0].detail, cmds)
     bad = [r for r in results if r.status == "failed"]
@@ -300,7 +309,10 @@ def run_checks(env, theme_env, profiles_dir=PROFILES_DIR):
         prof_item = Item(prof_item.name, FAIL,
                          "no manifests in %s (heiss-core installed?); " % profiles_dir + prof_item.detail, prof_item.commands)
     items.append(prof_item)
-    items.append(check_theme(theme_env))
+    if env.euid() == 0:
+        items.append(Item("theme-sync", WARN, "not checked as root: it would read root's settings, run without sudo"))
+    else:
+        items.append(check_theme(theme_env))
     items.append(check_launcher(env))
     items.append(check_removed(env, state, (state.get("applied") or {}).get("profile") if state else None))
     items.append(check_shortcuts(env))
@@ -318,7 +330,8 @@ def render_report(items, env, header=""):
     for i in items:
         out.append("[%s] %s" % (i.status, i.name))
         out += ["  $ " + " ".join(c) for c in i.commands] or ["  (reads files only)"]
-    out += ["", "Raw output of every command:"]
+    out += ["", "Not captured below: the read-only commands run by the theme item (kreadconfig6, gsettings, busctl --user); see `heiss theme status`.",
+            "", "Raw output of every command:"]
     for argv, rc, text in env.commands:
         out += ["$ " + " ".join(argv) + "    (exit %d)" % rc, text.rstrip("\n") or "(no output)", ""]
     return "\n".join(out) + "\n"

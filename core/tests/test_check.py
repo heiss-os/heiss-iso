@@ -30,6 +30,7 @@ class FakeCheckEnv:
         self.scripted = commands or {}
         self.denied = set(denied)
         self.commands = []
+        self.uid = 1000
 
     def run(self, argv):
         key = " ".join(argv)
@@ -44,6 +45,9 @@ class FakeCheckEnv:
         if path in self.denied:
             raise PermissionError(path)
         return self.files.get(path)
+
+    def euid(self):
+        return self.uid
 
     def exists(self, path):
         return path in self.files or any(f.startswith(path.rstrip("/") + "/") for f in self.files)
@@ -120,6 +124,28 @@ class Checks(unittest.TestCase):
         self.assertEqual(self.items(env, FakeTheme(scheme=None))["theme-sync"].status, ck.WARN)   # no session: cannot judge
         t = FakeTheme(scheme="HeissDark", gsettings="prefer-light")
         self.assertIn(self.items(env, t)["theme-sync"].status, (ck.WARN, ck.FAIL))
+
+    def test_theme_lock_held_is_warn_not_a_color_scheme_message(self):
+        r = self.items(healthy(), FakeTheme(scheme="HeissDark", locked=True))["theme-sync"]
+        self.assertEqual(r.status, ck.WARN)
+        self.assertIn("another theme sync", r.detail)
+        self.assertNotIn("color scheme", r.detail)
+
+    def test_as_root_user_scope_and_theme_are_not_judged(self):
+        env = healthy()
+        env.uid = 0
+        items = self.items(env)
+        self.assertEqual(items["theme-sync"].status, ck.WARN)
+        self.assertEqual(items["failed-units"].status, ck.WARN)
+        self.assertNotIn(["systemctl", "--user", "--failed", "--no-legend", "--plain", "--no-pager"], [c[0] for c in env.commands])
+
+    def test_constants_match_the_repo(self):
+        stubs = set(os.listdir(os.path.join(REPO, "profile/airootfs/usr/local/share/applications"))) - {"calamares.desktop"}
+        self.assertEqual(stubs, set(ck.HIDE_STUBS))
+        with open(os.path.join(REPO, "docs/design/SHORTCUTS.md"), encoding="utf-8") as f:
+            doc = f.read()
+        for fname, key in ck.SHORTCUT_FILES.items():
+            self.assertRegex(doc, r"`%s`[^\n]*`%s`" % (key.replace("+", r"\+"), fname.replace(".", r"\.")))
 
     def test_launcher_missing_and_malformed_stub(self):
         env = healthy()

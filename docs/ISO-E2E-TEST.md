@@ -61,20 +61,20 @@ pkaction --action-id org.heiss.packages.install                                 
 
 ## One command that checks the installed system
 
-`heiss check` (part of `heiss-core`, already in the ISO and in Base; no extra package) prints one line per item, `OK`, `FAIL` or `WARN` (WARN = cannot be judged here, for example no desktop session or not running as root). Exit code 0 means no FAIL. Run it as the normal user first, then once with `sudo` (only the root-lock item needs it: `sudo heiss check` does not use the network):
+`heiss check` (part of `heiss-core`, already in the ISO and in Base; no extra package) prints one line per item, `OK`, `FAIL` or `WARN` (WARN = cannot be judged here, for example no desktop session or not running as root). Exit code 0 means no FAIL. Run it as the normal user first (this covers user units and the theme), then once with `sudo` (only the root-lock item needs it; as root the user-unit and theme items are reported as WARN "not checked as root"; the check makes no network calls). Under `sudo`, `~` is root's home, so give a path that the user can read:
 
 ```bash
 heiss check --report ~/heiss-check.txt
-sudo heiss check --report ~/heiss-check-root.txt
+sudo heiss check --report /tmp/heiss-check-root.txt
 ```
 
-Items: failed units (system and user), profile and state file consistency, theme sync (`heiss theme status`), launcher menu (hide stubs and duplicate names), the 37 packages removed in PR 49 absent (a package that Heiss itself installed for Cyber is expected), keyboard shortcuts and the Konsole part behind "Open Terminal Here" (`docs/design/SHORTCUTS.md`, `docs/apps/TERMINAL-HERE.md`), helper (`org.heiss.Helper1` answers `Ping`, polkit and D-Bus files installed), no live leftovers (liveuser, archiso packages, root locked). The report holds the full output, the exact commands and their raw output.
+Items: failed units (system and user), profile and state file consistency, theme sync (`heiss theme status`), launcher menu (hide stubs and duplicate names), the 37 packages removed in PR 49 absent (a package that Heiss itself installed for Cyber is expected), keyboard shortcuts and the Konsole part behind "Open Terminal Here" (`docs/design/SHORTCUTS.md`, `docs/apps/TERMINAL-HERE.md`), helper (`org.heiss.Helper1` answers `Ping`, polkit and D-Bus files installed), no live leftovers (liveuser, archiso packages, root locked). The report holds the full output, the exact commands and their raw output (except the read-only commands of the theme item, which are listed by `heiss theme status`).
 
 Run it after step 3 and after step 4 above. A fresh install before any `heiss profile apply` is expected to give `WARN profile-state` (no state file yet).
 
 ## Please send back
 
-`~/heiss-check.txt` and `~/heiss-check-root.txt`, the terminal output of steps 1-7, `systemctl --failed`, `journalctl -u heiss-helper --no-pager`, and the audit log. Mark anything that looked odd, especially: the dialog text, how long each step took, and any step that stalled.
+`~/heiss-check.txt` and `/tmp/heiss-check-root.txt`, the terminal output of steps 1-7, `systemctl --failed`, `journalctl -u heiss-helper --no-pager`, and the audit log. Mark anything that looked odd, especially: the dialog text, how long each step took, and any step that stalled.
 
 ## Known risks to look at first
 
