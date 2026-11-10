@@ -102,6 +102,25 @@ Format: date, what, why. Newest at the bottom.
 - **Consequence:** Calamares no longer offers JFS, NILFS2 and bcachefs for new partitions (their tools are gone). nmap and tcpdump return with the Cyber profile.
 - **Not verified:** ISO build, boot, installation. Needs a rebuild and the VM check from `docs/ISO-E2E-TEST.md`.
 
+## 2026-11-10 (icon fixes, made by the assistant)
+
+- **No icon was changed or added.** Reading the packages showed no defect: every pinned desktop id exists in its package and every `Icon=` resolves in `hicolor`, `breeze` or `breeze-dark`. The only icon we ship for the installer lives under `hicolor/` (Tier A), so adding an SVG needs an approved item. I did not guess a fix without a screenshot.
+- **Added a guard instead:** `scripts/check-launchers.py` (pins identical in Dark and Light, no comma-joined or duplicated pins, pins shipped by a Base package, installer desktop files carry `StartupWMClass=calamares` and a shipped icon, the `/usr/local` override stays hidden). CI runs it with the file database.
+- **Open for the owner:** after the next ISO build, a screenshot of the dock (Dark and Light) and of the running installer decides whether there is a real problem left.
+
+## 2026-11-10 (launcher menu, made by the assistant)
+
+- **Hide with `Hidden=true` stubs in `/usr/local/share/applications`, no `Exec`.** Why: the files belong to packages (cannot be edited in `airootfs`, pacstrap conflict), a stub cannot drift, and the same mechanism already hides the Calamares entry. Alternative rejected: removing packages (they are dependencies of Plasma, ffmpeg, sane).
+- **Ten entries hidden:** KWrite, Vim, mpv (second editor/player), four Qt developer tools, two V4L2 tools, lstopo. List and reasons: `docs/apps/LAUNCHER.md`.
+- **Guard `scripts/check-menu.py`:** stubs must be well formed, must not hide a dock pin or a default application, and (CI, file database) must still match a shipped entry.
+- **Not read:** desktop files of firefox, spectacle, print-manager (package name with epoch / size); recorded in the doc as not verified.
+
+## 2026-11-10 (keyboard shortcuts, made by the assistant)
+
+- **No custom shortcuts added.** The packages already declare `Meta+E` (Dolphin), `Ctrl+Alt+T` (Konsole), `Meta+I` (System Settings), `Meta+Esc` (System Monitor), `Meta+.` (emoji), `Calculator` (KCalc); these are read from the desktop files, not remembered. A `kglobalshortcutsrc` of our own would override Plasma defaults I cannot list on the build VM (KWin and KRunner register theirs in code) and is Tier B territory.
+- **Guard instead:** `scripts/check-shortcuts.py` finds key collisions between desktop files and keeps `docs/design/SHORTCUTS.md` true (CI downloads the Base apps and compares).
+- **Open:** the real list of Plasma/KWin shortcuts needs the VM (`docs/design/SHORTCUTS.md`, section "NOT verified").
+
 ## 2026-11-10 (open terminal here, made by the assistant)
 
 - **Nothing is configured; behaviour documented and guarded.** Dolphin 26.08.3 has "Open Terminal Here", "Open Terminal" and a terminal panel (strings in the binary); the panel needs `konsolepart.so` from `konsole`; KIO falls back to `konsole` when `TerminalService`/`TerminalApplication` is unset. So Base works with no file, and kitty installed next to it does not take over. Pinning the key would mean editing `/etc/xdg/kdeglobals` (Tier B).
