@@ -107,3 +107,10 @@ Format: date, what, why. Newest at the bottom.
 - **No icon was changed or added.** Reading the packages showed no defect: every pinned desktop id exists in its package and every `Icon=` resolves in `hicolor`, `breeze` or `breeze-dark`. The only icon we ship for the installer lives under `hicolor/` (Tier A), so adding an SVG needs an approved item. I did not guess a fix without a screenshot.
 - **Added a guard instead:** `scripts/check-launchers.py` (pins identical in Dark and Light, no comma-joined or duplicated pins, pins shipped by a Base package, installer desktop files carry `StartupWMClass=calamares` and a shipped icon, the `/usr/local` override stays hidden). CI runs it with the file database.
 - **Open for the owner:** after the next ISO build, a screenshot of the dock (Dark and Light) and of the running installer decides whether there is a real problem left.
+
+## 2026-11-10 (launcher menu, made by the assistant)
+
+- **Hide with `Hidden=true` stubs in `/usr/local/share/applications`, no `Exec`.** Why: the files belong to packages (cannot be edited in `airootfs`, pacstrap conflict), a stub cannot drift, and the same mechanism already hides the Calamares entry. Alternative rejected: removing packages (they are dependencies of Plasma, ffmpeg, sane).
+- **Ten entries hidden:** KWrite, Vim, mpv (second editor/player), four Qt developer tools, two V4L2 tools, lstopo. List and reasons: `docs/apps/LAUNCHER.md`.
+- **Guard `scripts/check-menu.py`:** stubs must be well formed, must not hide a dock pin or a default application, and (CI, file database) must still match a shipped entry.
+- **Not read:** desktop files of firefox, spectacle, print-manager (package name with epoch / size); recorded in the doc as not verified.
