@@ -69,6 +69,7 @@ sudo mkarchiso -v -w ~/archiso-work -o out profile
 - Секреты и закрытый ключ подписи никогда не попадают в репозиторий и в сессии ассистента.
 - Вопросы владельцу: нумерованным списком с вариантами и рекомендованным ответом, коротко. Команды давать файлом или готовыми строками.
 - После каждой фазы обновлять `docs/PLAN-STATE.md` и `DECISIONS.md`.
+- Commit messages, PR descriptions, issue and comment texts must not contain any attribution to a tool or an AI: no `Co-Authored-By` trailer for an assistant, no `Generated with ...` line, no session or tool links, no 'Claude' or 'AI' signature. Write them as the project owner's own work. Already merged commits keep what they have (no history rewrite). `.claude/settings.json` switches the tool's own attribution off.
 
 ## Агент-ревьюер
 
