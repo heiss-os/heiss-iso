@@ -154,3 +154,10 @@ Format: date, what, why. Newest at the bottom.
 - **No attribution to a tool or an AI in commits, PR descriptions, issues, comments or docs.** Why: explicit instruction of the project owner. Rule in CLAUDE.md; `.claude/settings.json` sets `attribution.commit = ""`, `attribution.pr = ""`, `attribution.sessionUrl = false` and the older `includeCoAuthoredBy = false` (all four keys exist in the installed Claude Code 2.1.316; the old one is marked deprecated there).
 - **History is not rewritten** (main is protected, no force push): commits and PR texts merged before this keep their trailers.
 - The self-review before each PR is called "automated review" in PR texts.
+
+## 2026-11-11 (public package repository setup, made by the assistant)
+
+- **GitHub Pages URL:** `https://heiss-os.github.io/heiss-repo/` from branch `gh-pages` (the first commit was made through the contents API; Pages was enabled automatically by it).
+- **Signing key:** RSA 4096, signing only, no expiry, no passphrase (used by CI only), ID `FEA84CEF8AEDF132`. Generated in a temporary `GNUPGHOME`; the private half was never written into the repository or a chat.
+- **The setup token was used through a separate `GH_CONFIG_DIR`**, not `gh auth login` into the default config, so the owner's normal `gh` login (needed to push and open PRs) was not replaced. The setup token is still logged in there (`GH_CONFIG_DIR=/tmp/claude-1000/-home-heiss-os-heiss-iso/7623dd4a-f587-4ec1-a7d7-e7fc24df78c2/scratchpad/ghsetup` on the build VM) and the token file `~/share/heiss-token.txt` is still on disk: both are to be removed once the remaining steps are done (the owner must delete the host copy).
+- **Not done, and why:** writing the repository secrets and shredding the token file were refused by the permission system, so the secrets are set by the owner. The unwiped private key lives in the temporary `GNUPGHOME` `/tmp/gnupg-heiss.8w26Jm` on the build VM until it is set as a secret and backed up (docs/infra/REPOSITORY.md, Status). The private key is NOT wiped and not backed up yet: wiping before the secrets exist would lose it.

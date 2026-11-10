@@ -39,3 +39,22 @@ Profiles are metapackages. `[heiss-local]` is a `file://` directory on the build
 10. Напишите мне «готово» и пришлите номер ключа, адрес Pages и файл `heiss-public.asc`.
 
 Не присылайте мне закрытый ключ и токены.
+
+## Status (2026-11-11)
+
+| Step | State |
+|---|---|
+| Repository `heiss-os/heiss-repo`, public | done (by the owner) |
+| Branch `gh-pages` with a minimal `index.html` and `.nojekyll`, GitHub Pages from `gh-pages`, folder `/` | done; URL `https://heiss-os.github.io/heiss-repo/` (the pacman server line will be `https://heiss-os.github.io/heiss-repo/$arch`; not yet tested with pacman, no packages published) |
+| Signing key (RSA 4096, no expiry, no passphrase, CI only) | generated; public key in `docs/infra/heiss-public.asc` |
+| Secrets `REPO_GPG_PRIVATE_KEY`, `REPO_GPG_KEY_ID` on `heiss-os/heiss-iso` | **NOT set**: the assistant's attempt to write secrets was blocked by the permission system. Owner does it by hand (below) |
+| Secret `REPO_PUSH_TOKEN` | manual, owner (separate token, `heiss-repo` only) |
+| Encrypted backup of the private key | not done yet (must come after the secrets are set) |
+| `heiss-keyring` package, CI publishing job, `pacman.conf` entry in `heiss-cleanup.sh` | not started |
+
+### Signing key (public data)
+
+- Key ID: `FEA84CEF8AEDF132`
+- Fingerprint: `DDD2 92CC C861 3FD3 324D  3833 FEA8 4CEF 8AED F132`
+- User ID: `Heiss OS Repo <repo@heiss-os.invalid>`
+- Public key: `docs/infra/heiss-public.asc`. Compare the fingerprint above with `gpg --show-keys --with-fingerprint docs/infra/heiss-public.asc`.

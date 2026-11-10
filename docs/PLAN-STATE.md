@@ -99,3 +99,7 @@ PR "feat/welcome-core": `core/heiss_core/wizard.py`, `core/tests/test_wizard.py`
 ## Round 16, part 1 (2026-11-11)
 
 PR "chore/no-attribution": rule in CLAUDE.md and `.claude/settings.json`. Merged earlier commits keep their trailers. Next: part 2 (public package repository setup).
+
+## Round 16, part 2 (2026-11-11): partly done
+
+PR "chore/package-repo-setup": Pages and `gh-pages` done, key generated, public key and fingerprint in `docs/infra/`. Waiting for the owner: set the two secrets and `REPO_PUSH_TOKEN`, delete the token copy, then the key backup and wipe. Phase 5d/5e still waits for the CI publishing job (not started).
