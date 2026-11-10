@@ -94,3 +94,21 @@ jobs:
         run: |
           dbus-uuidgen --ensure
           python3 -m unittest discover -s helper/tests -v
+
+  shortcuts:
+    name: keyboard shortcuts have no collisions and the documented table matches the packages
+    runs-on: ubuntu-latest
+    container: archlinux:latest
+    steps:
+      - name: Install tools
+        run: pacman -Syu --noconfirm python git zstd tar
+      - uses: actions/checkout@v4
+      - name: Download the Base apps and check their desktop files
+        run: |
+          mkdir -p /tmp/pk /tmp/sc
+          pacman -Sdd -w --noconfirm --cachedir /tmp/pk dolphin konsole kcalc plasma-systemmonitor systemsettings plasma-desktop kate ark gwenview okular spectacle haruna keepassxc filelight partitionmanager
+          for f in /tmp/pk/*.pkg.tar.zst; do
+            d=/tmp/sc/$(basename "$f" .pkg.tar.zst); mkdir -p "$d"
+            tar --zstd -xf "$f" -C "$d" --wildcards 'usr/share/applications/*.desktop'
+          done
+          python3 scripts/check-shortcuts.py /tmp/sc/*
