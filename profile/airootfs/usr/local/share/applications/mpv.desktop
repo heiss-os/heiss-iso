@@ -1,0 +1,8 @@
+[Desktop Entry]
+# Hides the stock entry from the menu (same desktop file id in /usr/local/share/applications
+# wins over /usr/share/applications). Hidden=true: treated as not installed, as the
+# desktop entry specification defines it. See docs/apps/LAUNCHER.md.
+Type=Application
+Name=mpv Media Player
+NoDisplay=true
+Hidden=true

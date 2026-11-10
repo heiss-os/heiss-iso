@@ -39,6 +39,10 @@ jobs:
           pacman -S --noconfirm shared-mime-info
           pacman -Fy
           python3 scripts/check-mimeapps.py --require-file-db
+      - name: Dock pins exist in Base packages; installer desktop files are consistent
+        run: python3 scripts/check-launchers.py --require-file-db
+      - name: Menu hide stubs are well formed and still match a shipped entry
+        run: python3 scripts/check-menu.py --require-file-db
       - name: GTK integration facts from the package database (informational)
         run: |
           for p in kde-gtk-config breeze-gtk xdg-desktop-portal xdg-desktop-portal-kde xdg-desktop-portal-gtk; do
