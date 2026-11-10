@@ -16,6 +16,9 @@ jobs:
       - uses: actions/checkout@v4
       - run: python3 -m unittest discover -s core/tests -v
       - run: python3 -m unittest discover -s helper/tests -v
+      - run: python3 -m unittest discover -s welcome/tests -v
+      - name: Qt glue at least compiles (PySide6 is not installed in CI)
+        run: python3 -m py_compile welcome/heiss_welcome/app.py welcome/heiss_welcome/__main__.py
       - name: Generated metapackage files are up to date
         run: python3 scripts/gen-profile-packages.py --check
       - name: Manifests load and validate
