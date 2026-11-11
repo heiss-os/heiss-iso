@@ -41,7 +41,7 @@ class Agents(unittest.TestCase):
             self.assertGreater(len(meta["description"]), 40, p)
             self.assertTrue(body.strip(), p)
 
-    def test_agents_are_read_only_by_tools(self):
+    def test_agents_have_no_file_editing_tools(self):   # writes through Bash are limited by instruction only
         for p in self.files():
             tools = {t.strip() for t in parse(p)[0]["tools"].split(",")}
             self.assertEqual(tools, READ_ONLY_TOOLS, p)      # no Edit, Write, NotebookEdit
@@ -51,7 +51,8 @@ class Agents(unittest.TestCase):
             _, body, text = parse(p)
             self.assertNotIn("\t", text, p)
             self.assertIn("read-only", body, p)
-            self.assertIn("never edit", body.lower(), p)
+            for phrase in ("never edit", "never commit", "never push", "never use sudo"):
+                self.assertIn(phrase, body.lower(), "%s: %s" % (p, phrase))
             self.assertIn("Verdict:", body, p)
             for sev in ("HIGH", "MEDIUM", "LOW"):
                 self.assertIn(sev, body, p)
