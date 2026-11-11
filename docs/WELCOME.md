@@ -62,6 +62,6 @@ The hosted repository does not exist (checked on GitHub: organisation `heiss-os`
 ## Package and autostart (5d)
 
 - Package `heiss-welcome` (`packages/heiss-welcome`): the `heiss_welcome` Python package with its QML, `/usr/bin/heiss-welcome`, and `/etc/xdg/autostart/heiss-welcome.desktop`. Depends on `python`, `pyside6` (extra: 52 MiB installed, 9.2 MiB download, plus `shiboken6` 0.7 MiB; `qt6-declarative` comes with Plasma), `heiss-core`; `heiss-helper` is optional (needed for Apply, already in the ISO).
-- **Installed system only, without touching Tier A:** the autostart entry runs `sh -c 'test -e /run/archiso || exec heiss-welcome'`, and `/run/archiso` exists only on the live image. The wizard exits at once when the user's `~/.config/heiss/welcome-done` exists, so it starts once per user.
+- **Installed system only, without touching Tier A:** the autostart entry runs `sh -c "test -e /run/archiso || exec heiss-welcome"`, and `/run/archiso` exists only on the live image. The wizard exits at once when the user's `~/.config/heiss/welcome-done` exists, so it starts once per user.
 - The package is in `profile/packages.x86_64`, so the ISO build needs it in `~/localrepo` first (`scripts/heiss-packages-build.sh`).
 - Not verified: that `/run/archiso` is really absent on an installed system and present in the live session (reasoned from archiso, not seen); the autostart on a real login; the ISO size change (no build); that `pyside6` 6.12 runs the QML.
