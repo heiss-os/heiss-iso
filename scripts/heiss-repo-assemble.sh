@@ -52,5 +52,27 @@ else
     done
 fi
 
+# 4. plain index pages (GitHub Pages has no directory listing). Deterministic content, so an
+#    unchanged repository stays unchanged; a changed page alone also counts as a change.
+write_page() {  # write_page FILE  (content on stdin)
+    local tmp; tmp="$(mktemp)"; cat > "$tmp"
+    if [[ -f "$1" ]] && cmp -s "$tmp" "$1"; then rm -f "$tmp"; else mv "$tmp" "$1"; chmod 644 "$1"; changed=true; fi
+}
+write_page "$DEST/index.html" < <(
+    echo '<!doctype html><meta charset="utf-8"><title>Heiss OS package repository: x86_64</title>'
+    echo '<h1>Heiss OS package repository: x86_64</h1>'
+    echo '<p>Pacman server line: <code>Server = https://heiss-os.github.io/heiss-repo/$arch</code>. Not an official Arch Linux repository.</p><ul>'
+    (cd "$DEST" && LC_ALL=C ls -1 | grep -v '^index\.html$') | while read -r f; do
+        # "./" keeps a name with ':' (epoch) from being read as a URL scheme
+        href="$(printf '%s' "$f" | sed 's/%/%25/g; s/ /%20/g; s/"/%22/g; s/</%3C/g; s/>/%3E/g; s/#/%23/g; s/?/%3F/g; s/&/\&amp;/g')"
+        text="$(printf '%s' "$f" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')"
+        echo "<li><a href=\"./$href\">$text</a></li>"
+    done
+    echo '</ul>'
+)
+write_page "$SITE_DIR/index.html" <<'HTML'
+<!doctype html><meta charset="utf-8"><title>Heiss OS package repository</title><h1>Heiss OS package repository</h1><p>Pacman repository for Heiss OS: <code>$arch/heiss.db</code>. Not an official Arch Linux repository.</p><p><a href="x86_64/">x86_64 files</a></p>
+HTML
+
 echo "changed=$changed"
 [[ -z "${GITHUB_OUTPUT:-}" ]] || echo "changed=$changed" >> "$GITHUB_OUTPUT"
