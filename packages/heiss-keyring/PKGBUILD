@@ -8,6 +8,7 @@ arch=('any')
 url='https://github.com/heiss-os/heiss-iso'
 license=('GPL-3.0-or-later')
 depends=('pacman')
+makedepends=('gnupg')
 install=heiss-keyring.install
 source=('heiss-src.tar.gz')
 sha256sums=('SKIP')   # archive made locally from git HEAD; not a downloaded file

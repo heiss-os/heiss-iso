@@ -1,5 +1,6 @@
 post_install() {
-  if usr/bin/pacman-key --list-keys >/dev/null 2>&1; then
+  # pacman-key --init writes gpg.conf; `pacman-key --list-keys` alone would also succeed on an empty keyring
+  if [ -f etc/pacman.d/gnupg/gpg.conf ]; then
     usr/bin/pacman-key --populate heiss
   else
     echo "heiss-keyring: run 'pacman-key --init' and then 'pacman-key --populate heiss'"

@@ -166,3 +166,15 @@ class KeyringPackage(unittest.TestCase):
     def test_build_script_ships_the_key_file_to_the_package(self):
         with open(os.path.join(REPO, "scripts", "heiss-packages-build.sh"), encoding="utf-8") as f:
             self.assertIn("docs/infra/heiss-public.asc", f.read())
+
+    def test_keyring_file_formats(self):
+        pk = pkgbuild("heiss-keyring")
+        self.assertIn("usr/share/pacman/keyrings", pk)
+        self.assertIn('"$_fpr:4:"', pk)
+        self.assertIn("heiss-trusted", pk)
+        self.assertIn("heiss-revoked", pk)
+        self.assertIn("makedepends=('gnupg')", pk)
+        with open(os.path.join(REPO, "packages", "heiss-keyring", "heiss-keyring.install"), encoding="utf-8") as f:
+            inst = f.read()
+        self.assertIn("pacman-key --populate heiss", inst)
+        self.assertNotIn(" /usr/", inst)   # install scripts run inside the root: no leading slash
