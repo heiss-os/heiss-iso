@@ -35,7 +35,7 @@ if [[ $changed == false ]]; then
 else
     # 2. drop stale files, add new ones (existing ones stay untouched)
     for old in "$DEST"/*.pkg.tar.zst; do
-        [[ -n "${want[$(basename "$old")]:-}" ]] || rm -v -- "$old" "$old.sig"
+        [[ -n "${want[$(basename "$old")]:-}" ]] || rm -vf -- "$old" "$old.sig"
     done
     for p in "${built[@]}"; do
         f="$DEST/$(basename "$p")"

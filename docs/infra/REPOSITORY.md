@@ -62,7 +62,8 @@ Profiles are metapackages. `[heiss-local]` is a `file://` directory on the build
 
 ### Publishing job (`.github/workflows/publish-repo.yml`)
 
+- Secrets are used only on `refs/heads/main`; a manual run from another branch fails. In pull requests the job assembles into an empty tree and runs `scripts/test-repo-assemble.sh` (new, unchanged, stale cases) and the pacman check every time.
 - Triggers: push to `main` touching packages or their sources, manual run (`workflow_dispatch`), and pull requests as a dry run (throwaway key, no secrets, no push).
 - Steps: build all `packages/*` as an unprivileged user with `scripts/heiss-packages-build.sh`; import the key and refuse to continue unless its fingerprint equals the pinned one above; `scripts/heiss-repo-assemble.sh` copies new packages into `x86_64/` of `gh-pages`, signs them and rebuilds `heiss.db`/`heiss.files` with `repo-add --sign`; `scripts/heiss-repo-verify.sh` lets real pacman sync and download from that tree with `SigLevel = Required DatabaseRequired`; only then it pushes to `heiss-repo` with `REPO_PUSH_TOKEN`.
-- Already published package files are never replaced (makepkg output is not reproducible); a bump of `pkgrel` in `packages/pkgrel.json` is what publishes a new version. Files of versions that are no longer built are removed. If nothing is new, nothing is pushed.
+- Already published package files are never replaced (makepkg output is not reproducible: timestamps and build info differ; assumed, not measured); a bump of `pkgrel` in `packages/pkgrel.json` is what publishes a new version. Files of versions that are no longer built are removed. If nothing is new, nothing is pushed, so changed content without a `pkgrel` bump is never republished.
 - NOT VERIFIED: a run against the real `heiss-repo` and GitHub Pages serving `heiss.db` over HTTPS to a real pacman (the dry run only reads `file://`).

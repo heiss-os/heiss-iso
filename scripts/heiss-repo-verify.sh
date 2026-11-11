@@ -10,10 +10,10 @@ REPO="$(cd "${1:?REPO_DIR}" && pwd)"; PUB="$(cd "$(dirname "${2:?PUBLIC_KEY_FILE
 T="$(mktemp -d)"; trap 'rm -rf "$T"' EXIT
 mkdir -p "$T/db" "$T/cache"
 
-pacman-key --gpgdir "$T/gpg" --init >/dev/null 2>&1
-pacman-key --gpgdir "$T/gpg" --add "$PUB" >/dev/null 2>&1
+pacman-key --gpgdir "$T/gpg" --init  >/dev/null
+pacman-key --gpgdir "$T/gpg" --add "$PUB"  >/dev/null
 fpr="$(gpg --batch --show-keys --with-colons "$PUB" | awk -F: '/^fpr:/ {print $10; exit}')"
-pacman-key --gpgdir "$T/gpg" --lsign-key "$fpr" >/dev/null 2>&1
+pacman-key --gpgdir "$T/gpg" --lsign-key "$fpr"  >/dev/null
 
 cat > "$T/pacman.conf" <<CONF
 [options]
