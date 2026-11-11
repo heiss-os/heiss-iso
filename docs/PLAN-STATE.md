@@ -201,3 +201,7 @@ PR "feat/apply-hardware-choices": `--hardware` on `heiss profile apply|diff`, re
 ## Round 20, item 3b (2026-11-11): theme choice applied
 
 PR "feat/apply-theme-choice": `welcome/heiss_welcome/theme.py`, view-model hook, note on the appearance screen, CI check that plasma-workspace ships `plasma-apply-lookandfeel`, tests. Not verified: see the new Phase 5 line. Next: 3c privacy level (MAC randomization, screen lock).
+
+## Round 20, subagents (2026-11-11)
+
+PR "chore/more-agents": `.claude/agents/security-reviewer.md`, `qa-verifier.md`, `docs-keeper.md`, rules in `CLAUDE.md`, `core/tests/test_agents.py` (front matter, unique names, read-only tools, no tabs). Not verified: the definitions have not been run by Claude Code as registered subagents yet (they are only picked up in a new session); this PR used them as written instructions. Next: step 3c, privacy level.
