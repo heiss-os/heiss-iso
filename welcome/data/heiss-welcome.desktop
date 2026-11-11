@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Heiss Welcome
+Comment=First-run setup of Heiss OS
+# Not in the live session (the installer is there): /run/archiso exists only on the live image.
+# The wizard itself exits at once when this user has finished it (~/.config/heiss/welcome-done).
+Exec=sh -c "test -e /run/archiso || exec heiss-welcome"
+OnlyShowIn=KDE;
+NoDisplay=true
+X-KDE-autostart-phase=2

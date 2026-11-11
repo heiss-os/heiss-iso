@@ -9,7 +9,7 @@ Master plan section 7. Stack as in `docs/ARCHITECTURE.md`: PySide6 + QML (Kiriga
 | 5a `feat/welcome-core` | GUI-free model `core/heiss_core/wizard.py`: step order, per-profile defaults, validation, Back/Next/Skip, skip-whole = Base, resume file, done marker, pending-actions queue, summary as a dry-run plan | no | merged (PR 56) |
 | 5b | `heiss-welcome` PySide6/QML app drawing the model; screens 0-11, en/ru strings, keyboard control | no (UI), but offline-only without it | this PR (see below) |
 | 5c | hardware screen wired to `heiss hw detect`, privacy screen items marked implemented / "coming soon" | no | this PR |
-| 5d | `heiss-welcome.desktop` autostart in the installed system only, `heiss-cleanup.sh` step, `heiss-welcome` package | autostart: no; Apply of a non-Base profile: yes | blocked on the repository |
+| 5d | `heiss-welcome` package with an autostart entry for the installed system only (this PR); no `heiss-cleanup.sh` step needed | autostart: no; Apply of a non-Base profile: yes | package built locally, never run |
 | 5e | applying screen through the helper (this PR); pending queue run from the Control Center stays Phase 6 | yes (profiles other than the ISO's Base come from `[heiss]`) | repository exists; applying written, never run |
 
 ## Model (5a)
@@ -58,3 +58,10 @@ The hosted repository does not exist (checked on GitHub: organisation `heiss-os`
 - Success: step `done`, answers saved to `answers.toml`, done marker written. Failure (including no network, found by the command's own preflight): the applying screen stays with the error, **Try again** re-runs the command, **Save answers, apply later** queues an `apply-profile` item and finishes. The window refuses to close while applying (`onClosing`), because the command keeps changing the system; there is no Cancel yet. If the app still dies, the saved state resumes at the summary and the plan is recomputed. The worker thread only updates the job record; the wizard and the store are touched on the GUI thread (`refresh()`), and the done step is set only after the answers were saved.
 - Only `profile` and `addons` are applied; the other answers (theme, privacy level, ...) are still saved only, as in 5a-5c. Beginner/Confident per-step confirmation is not implemented: the summary is the single confirmation.
 - Not verified: everything on a real system. The QML was only linted (no syntax errors); `pyside6` is not installed here, so the thread-to-GUI signal (`jobUpdated`), the layout and the polkit prompt flow are untested; the real `heiss profile apply` was never run from the wizard. Tests use a fake applier and a fake command (`welcome/tests/test_apply.py`).
+
+## Package and autostart (5d)
+
+- Package `heiss-welcome` (`packages/heiss-welcome`): the `heiss_welcome` Python package with its QML, `/usr/bin/heiss-welcome`, and `/etc/xdg/autostart/heiss-welcome.desktop`. Depends on `python`, `pyside6` (extra: 52 MiB installed, 9.2 MiB download, plus `shiboken6` 0.7 MiB; `qt6-declarative` comes with Plasma), `heiss-core`; `heiss-helper` is optional (needed for Apply, already in the ISO).
+- **Installed system only, without touching Tier A:** the autostart entry runs `sh -c "test -e /run/archiso || exec heiss-welcome"`, and `/run/archiso` exists only on the live image. The wizard exits at once when the user's `~/.config/heiss/welcome-done` exists, so it starts once per user.
+- The package is in `profile/packages.x86_64`, so the ISO build needs it in `~/localrepo` first (`scripts/heiss-packages-build.sh`).
+- Not verified: that `/run/archiso` is really absent on an installed system and present in the live session (reasoned from archiso, not seen); the autostart on a real login; the ISO size change (no build); that `pyside6` 6.12 runs the QML.

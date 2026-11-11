@@ -13,15 +13,15 @@ LOCALREPO="${LOCALREPO:-$HOME/localrepo}"
 echo "==> Checking generated package files are up to date"
 python3 "$REPO_DIR/scripts/gen-profile-packages.py" --check
 
-if ! git -C "$REPO_DIR" diff --quiet HEAD -- core helper profiles hardware packages branding/tokens; then
-    echo "WARNING: uncommitted changes in core/ helper/ profiles/ hardware/ packages/ branding/tokens/ are NOT part of the build (git HEAD is used)" >&2
+if ! git -C "$REPO_DIR" diff --quiet HEAD -- core helper welcome profiles hardware packages branding/tokens; then
+    echo "WARNING: uncommitted changes in core/ helper/ welcome/ profiles/ hardware/ packages/ branding/tokens/ are NOT part of the build (git HEAD is used)" >&2
 fi
 echo "==> Building from commit $(git -C "$REPO_DIR" rev-parse --short HEAD)"
 
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 mkdir -p "$LOCALREPO" "$WORK/out"
-git -C "$REPO_DIR" archive --format=tar.gz --prefix=heiss-src/ -o "$WORK/heiss-src.tar.gz" HEAD core helper profiles hardware branding/tokens docs/infra/heiss-public.asc
+git -C "$REPO_DIR" archive --format=tar.gz --prefix=heiss-src/ -o "$WORK/heiss-src.tar.gz" HEAD core helper profiles hardware branding/tokens welcome docs/infra/heiss-public.asc
 
 for dir in "$REPO_DIR"/packages/heiss-*/; do
     name="$(basename "$dir")"
