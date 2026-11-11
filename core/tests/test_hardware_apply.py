@@ -33,10 +33,10 @@ class HardwareInPlan(unittest.TestCase):
         self.m = mf.load_dir(PROFILES)
         self.cat = hw.load_profiles(HARDWARE)
 
-    def plan(self, ids=(), state=None, system=None, catalog=None):
+    def plan(self, ids=(), state=None, system=None, catalog=None, matching=None):
         a = ans.validate({"profile": "base"})
         return resolver.resolve(a, self.m, state or dict(EMPTY), system or FakeSystem(), False,
-                                hardware=[self.cat[i] for i in ids], catalog=catalog)
+                                hardware=[self.cat[i] for i in ids], catalog=catalog, matching=matching)
 
     def test_chosen_profile_adds_packages_services_and_is_listed(self):
         p = self.plan(["vm-virtualbox"])
@@ -77,9 +77,48 @@ class HardwareInPlan(unittest.TestCase):
         later = self.plan([], state=dict(EMPTY, packages=first.next_state["packages"]), catalog=self.cat)
         self.assertEqual(later.hardware, [])
 
-    def test_sticky_needs_every_package_owned(self):
+    def test_shared_dependency_that_is_not_owned_does_not_hide_an_applied_profile(self):
+        # mesa was installed as a dependency of Plasma: never installed or adopted by Heiss, so never owned.
+        # gpu-intel was applied: its own package intel-media-driver is owned and must keep it wanted.
+        first = self.plan(["gpu-intel"], system=FakeSystem(installed={"mesa"}))
+        self.assertNotIn("mesa", first.next_state["packages"])
+        self.assertIn("intel-media-driver", first.next_state["packages"])
+        system = FakeSystem(installed=set(first.next_state["packages"]) | {"mesa"})
+        later = self.plan([], state=first.next_state, system=system, catalog=self.cat)
+        self.assertIn("gpu-intel", later.hardware)
+        self.assertNotIn("intel-media-driver", later.remove_packages)
+
+    def test_a_profile_that_only_shares_a_package_is_not_pulled_in(self):
+        # gpu-nvidia-legacy lists only mesa, which the profile covers: never sticky, however mesa is owned
+        owned = dict(EMPTY, packages=["mesa", "intel-media-driver"])
+        later = self.plan([], state=owned, catalog=self.cat)
+        self.assertNotIn("gpu-nvidia-legacy", later.hardware)
+
+    def test_sibling_profiles_sharing_a_package_are_told_apart_by_the_machine(self):
+        owned = dict(EMPTY, packages=["nvidia-prime"])
+        both = self.plan([], state=owned, catalog=self.cat)
+        self.assertEqual(sorted(h for h in both.hardware if h.startswith("hybrid")), ["hybrid-nvidia-amd", "hybrid-nvidia-intel"])
+        one = self.plan([], state=owned, catalog=self.cat, matching={"hybrid-nvidia-intel"})
+        self.assertEqual([h for h in one.hardware if h.startswith("hybrid")], ["hybrid-nvidia-intel"])
+
+    def test_post_actions_of_a_profile_run_only_when_something_changes(self):
+        base = self.plan([])
+        system = FakeSystem(installed=base.next_state["packages"], services=base.next_state["services"],
+                            files={d["path"]: d["content"] for d in base.dropins})
+        done = self.plan(["gpu-nvidia-open"], system=system)          # the base install is complete, the driver is new
+        self.assertIn("nvidia-open", done.install_packages)
+        self.assertIn("mkinitcpio", done.post_actions)
+        system.installed.update(done.next_state["packages"])
+        system.files.update({d["path"]: d["content"] for d in done.dropins})
+        again = self.plan(["gpu-nvidia-open"], state=done.next_state, system=system)
+        self.assertEqual(again.install_packages, [])
+        self.assertEqual(again.dropins, [])
+        self.assertNotIn("mkinitcpio", again.post_actions)            # nothing changed: no initramfs rebuild
+
+    def test_sticky_needs_every_own_package_owned(self):
         self.assertEqual(resolver.sticky_hardware(self.cat, dict(EMPTY)), [])
         self.assertEqual(resolver.sticky_hardware(self.cat, dict(EMPTY, packages=["nvidia-open"])), [])
+        self.assertEqual(resolver.sticky_hardware(self.cat, dict(EMPTY, packages=["nvidia-open", "nvidia-utils"])), ["gpu-nvidia-open"])
 
 
 class Cli(unittest.TestCase):

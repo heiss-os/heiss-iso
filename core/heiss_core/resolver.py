@@ -69,17 +69,26 @@ def _union(manifests, order, attr):
     return out
 
 
-def sticky_hardware(catalog, state, covered=()):
-    """Hardware profiles applied earlier: all their packages are Heiss-owned and at least one is not already
-    wanted by the profile itself (`covered`). They stay wanted, so a later profile change does not propose
-    removing a graphics driver or guest tools the user chose."""
+def sticky_hardware(catalog, state, covered=(), matching=None):
+    """Hardware profiles applied earlier. They stay wanted, so a later profile change does not propose removing
+    a graphics driver or guest tools the user chose.
+
+    A profile counts as applied when it has packages of its own (not already wanted by the profile: `covered`),
+    all of them Heiss-owned. Packages that were merely present as dependencies are never owned, so only the
+    profile's own packages are compared. `matching`: ids of the profiles that fit THIS machine (siblings that
+    share a package, like the two hybrid-graphics profiles, are told apart by it); None means no filter."""
     owned, covered = set(state["packages"]), set(covered)
-    return sorted(i for i, p in catalog.items() if p.packages and set(p.packages) <= owned and not set(p.packages) <= covered)
+    out = []
+    for i, p in sorted(catalog.items()):
+        own = set(p.packages) - covered
+        if own and own <= owned and (matching is None or i in matching):
+            out.append(i)
+    return out
 
 
-def resolve(answers, manifests, state, system, adopt=False, hardware=(), catalog=None):
+def resolve(answers, manifests, state, system, adopt=False, hardware=(), catalog=None, matching=None):
     """hardware: HwProfile objects to include besides the profile and add-ons (their packages, services,
-    drop-ins and post-actions). catalog: all hardware profiles; those applied earlier stay wanted (sticky_hardware).
+    drop-ins and post-actions). catalog: all hardware profiles; those applied earlier stay wanted (sticky_hardware, filtered by `matching`).
     Their kernel parameters are never applied; the plan says so in `notes`."""
     prof = manifests.get(answers["profile"])
     if prof is None or prof.kind != "profile":
@@ -93,7 +102,7 @@ def resolve(answers, manifests, state, system, adopt=False, hardware=(), catalog
     want_svc = _union(manifests, order, "services")
     want_fp = _union(manifests, order, "flatpaks")
     chosen = {h.id: h for h in hardware}
-    for i in sticky_hardware(catalog or {}, state, want_pkgs):
+    for i in sticky_hardware(catalog or {}, state, want_pkgs, matching):
         chosen.setdefault(i, catalog[i])
     hw = [chosen[i] for i in sorted(chosen)]
     for attr, want in (("packages", want_pkgs), ("services", want_svc)):

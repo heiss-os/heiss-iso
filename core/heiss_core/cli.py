@@ -45,6 +45,16 @@ def _hardware_catalog():
         return {}
 
 
+def _matching_hardware(catalog):
+    """Ids of the hardware profiles that fit this machine; None when detection is impossible (no filter then)."""
+    if not catalog:
+        return None
+    try:
+        return {p.id for p in hw.detect(hw.collect_live(), catalog).proposals}
+    except Exception:   # advisory only: never block an apply
+        return None
+
+
 def _chosen_hardware(args, catalog):
     ids = list(getattr(args, "hardware", None) or [])
     unknown = [i for i in ids if i not in catalog]
@@ -64,7 +74,8 @@ def _build(args, system=None):
                        known_addons=_kinds(manifests, "addon"))
     state, catalog = st.load(state_path), _hardware_catalog()
     return resolver.resolve(doc, manifests, state, system or PacmanSystem(), adopt=getattr(args, "adopt", False),
-                            hardware=_chosen_hardware(args, catalog), catalog=catalog)
+                            hardware=_chosen_hardware(args, catalog), catalog=catalog,
+                            matching=_matching_hardware(catalog))
 
 
 def _ask(prompt):
