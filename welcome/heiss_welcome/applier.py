@@ -22,16 +22,15 @@ class CliApplier:
 
     @staticmethod
     def _selection(answers):
-        args = ["--adopt", "--profile", answers["profile"]]
-        for a in answers["addons"]:
-            args += ["--addon", a]
+        args = ["--adopt", "--profile=%s" % answers["profile"]]   # "=" form: an id can never be read as an option
+        args += ["--addon=%s" % a for a in answers["addons"]]
         return args
 
     def plan(self, answers):
         """Read-only: the resolver plan as a dict (`profile apply --dry-run`). Raises HeissError."""
         argv = self.argv + ["--json", "profile", "apply", "--dry-run"] + self._selection(answers)
         try:
-            r = subprocess.run(argv, capture_output=True, text=True, timeout=PLAN_TIMEOUT_S)
+            r = subprocess.run(argv, capture_output=True, text=True, errors="replace", timeout=PLAN_TIMEOUT_S)
         except (OSError, subprocess.TimeoutExpired) as e:
             raise HeissError("cannot compute the plan: %s" % e)
         if r.returncode != 0:
@@ -45,7 +44,8 @@ class CliApplier:
         """Apply. on_line(text) for helper output, on_step(n, total, description) for each helper call."""
         argv = self.argv + ["profile", "apply", "--yes"] + self._selection(answers)
         try:
-            p = subprocess.Popen(argv, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
+            p = subprocess.Popen(argv, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, errors="replace",
+                                 bufsize=1)
         except OSError as e:
             raise HeissError("cannot start the apply command: %s" % e)
         tail = []
@@ -53,10 +53,13 @@ class CliApplier:
             for raw in p.stdout:
                 line = raw.rstrip("\n")
                 m = STEP_RE.match(line)
-                if m:
-                    on_step(int(m.group(1)), int(m.group(2)), m.group(3))
-                else:
-                    on_line(line)
+                try:                      # a broken callback must not abandon the pipe and the running command
+                    if m:
+                        on_step(int(m.group(1)), int(m.group(2)), m.group(3))
+                    else:
+                        on_line(line)
+                except Exception:
+                    pass
                 tail.append(line)
                 del tail[:-20]
         if p.returncode != 0:

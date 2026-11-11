@@ -41,7 +41,7 @@ def main(argv=None):
             self.jobUpdated.connect(self._refresh)
 
         @Slot()
-        def _refresh(self): self._set(self.vm.screen())
+        def _refresh(self): self._set(self.vm.refresh())
 
         def _set(self, screen):
             self._screen = screen

@@ -23,6 +23,8 @@ ApplicationWindow {
         readonly property color onAccent: win.dark ? "#26282B" : "#F5F3EF"
     }
     font.family: "Inter"
+    // closing mid-apply would orphan the command that is changing the system
+    onClosing: function(close) { close.accepted = !s.isRunning }
 
     Shortcut { sequence: "Alt+Left"; enabled: s.canBack; onActivated: wizard.back() }
 

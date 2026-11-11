@@ -164,15 +164,84 @@ FAKE_CLI = r'''
 import json, sys
 a = sys.argv[1:]
 if "--dry-run" in a:
-    if "--fail-plan" in a: sys.stderr.write("heiss: no such profile\n"); sys.exit(1)
+    if "--addon=--fail-plan" in a: sys.stderr.write("heiss: no such profile\n"); sys.exit(1)
     print(json.dumps({"install_packages": ["p"], "args": a}))
 else:
     print("[1/2] install 1 package(s)")
     print("  :: downloading")
     print("[2/2] enable 1 service(s)")
-    if "fail" in a: sys.stderr.write("heiss: step 2 of 2 failed (enable): denied. Steps before it were applied.\n"); sys.exit(1)
+    if "--addon=fail" in a: sys.stderr.write("heiss: step 2 of 2 failed (enable): denied. Steps before it were applied.\n"); sys.exit(1)
     print("done")
 '''
+
+
+class Threads(unittest.TestCase):
+    def test_real_thread_gated_job_finishes_on_the_gui_thread(self):
+        import threading
+        gate, started = threading.Event(), threading.Event()
+
+        class Gated(FakeApplier):
+            def run(self, answers, on_line, on_step):
+                started.set()
+                gate.wait(5)
+                super().run(answers, on_line, on_step)
+        with tempfile.TemporaryDirectory() as d:
+            vm, store = build(d, PROFILES, applier=Gated())
+            while vm.w.step_id != wz.SUMMARY:
+                vm.next() if not vm.w.can_skip() else vm.skip()
+            ready = threading.Event()
+            vm.on_update = ready.set
+            for _ in range(50):                      # the plan is computed on a worker thread
+                if vm.screen()["canApply"]:
+                    break
+                ready.wait(0.1)
+            self.assertTrue(vm.screen()["canApply"])
+            s = vm.start_apply()
+            self.assertTrue(started.wait(5))
+            self.assertTrue(s["isRunning"])
+            self.assertFalse(vm.screen()["canSaveLater"])
+            vm.save_later()
+            self.assertNotEqual(vm.error, "")          # not while running
+            self.assertEqual(vm.w.step_id, wz.APPLYING)
+            ready.clear()
+            gate.set()
+            self.assertTrue(ready.wait(5))
+            for _ in range(50):
+                if vm._status() == "applied" or vm._status() == "ok":
+                    break
+                ready.wait(0.1)
+            s = vm.refresh()                           # what the GUI thread does on the update signal
+            self.assertEqual(s["id"], wz.DONE)
+            self.assertTrue(store.is_done())
+
+    def test_resume_after_a_close_mid_apply_returns_to_the_summary(self):
+        with tempfile.TemporaryDirectory() as d:
+            vm, _ = build(d, PROFILES, applier=FakeApplier())
+            vm._spawn = lambda fn: None             # the job never finishes: the window was closed
+            while vm.w.step_id != wz.SUMMARY:
+                vm.next() if not vm.w.can_skip() else vm.skip()
+            self.assertTrue(vm.start_apply()["isRunning"])
+            vm2, _ = build(d, PROFILES, applier=FakeApplier())
+            self.assertEqual(vm2.w.step_id, wz.SUMMARY)
+
+    def test_failed_save_keeps_the_error_visible(self):
+        with tempfile.TemporaryDirectory() as d:
+            vm, store = at_summary(d, FakeApplier())
+            store.save_answers = lambda w: (_ for _ in ()).throw(OSError("disk full"))
+            s = vm.start_apply()
+            self.assertEqual(s["id"], wz.APPLYING)
+            self.assertIn("disk full", s["error"])
+            self.assertTrue(s["canRetry"])
+
+    def test_plan_failure_is_tried_again_after_leaving_the_summary(self):
+        with tempfile.TemporaryDirectory() as d:
+            ap = FakeApplier(plan_error="flaky")
+            vm, _ = at_summary(d, ap)
+            self.assertFalse(vm.screen()["canApply"])
+            vm.back()
+            ap.plan_error = None
+            vm.next()
+            self.assertTrue(vm.screen()["canApply"])
 
 
 class Cli(unittest.TestCase):
@@ -189,8 +258,8 @@ class Cli(unittest.TestCase):
     def test_plan_uses_dry_run_with_adopt_profile_and_addons(self):
         plan = self.ap.plan({"profile": "cyber", "addons": ["a1", "a2"]})
         self.assertEqual(plan["install_packages"], ["p"])
-        self.assertEqual(plan["args"], ["--json", "profile", "apply", "--dry-run", "--adopt", "--profile", "cyber",
-                                        "--addon", "a1", "--addon", "a2"])
+        self.assertEqual(plan["args"], ["--json", "profile", "apply", "--dry-run", "--adopt", "--profile=cyber",
+                                        "--addon=a1", "--addon=a2"])
 
     def test_run_streams_steps_and_lines(self):
         steps, lines = [], []
