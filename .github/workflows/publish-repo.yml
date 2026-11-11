@@ -96,7 +96,7 @@ jobs:
           [ "$pub" = "$EXPECTED_FPR" ] || { echo "::error::docs/infra/heiss-public.asc is not the pinned key"; exit 1; }
           { echo "GNUPGHOME=$GNUPGHOME"; echo "KEY=$fpr"; echo "PUBLIC_KEY=$PWD/docs/infra/heiss-public.asc"; } >> "$GITHUB_ENV"
 
-      - name: Start from the current gh-pages tree (pull request dry run: an empty tree)
+      - name: Start from the current gh-pages tree (an empty tree in the pull request dry run)
         run: |
           if [ "$GITHUB_EVENT_NAME" = pull_request ]; then mkdir /tmp/site
           else git clone --depth 1 --branch gh-pages "$REPO_URL" /tmp/site; fi
