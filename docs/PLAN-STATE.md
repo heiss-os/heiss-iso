@@ -126,3 +126,7 @@ Checked against `https://heiss-os.github.io/heiss-repo/x86_64/` (nothing install
 ## Round 18, part 2, step 5d-1 (2026-11-11): heiss-keyring
 
 PR "feat/heiss-keyring": package `heiss-keyring` (key file, `heiss-trusted`, `.install` running `pacman-key --populate heiss`), `docs/infra/heiss-public.asc` added to the build archive, tests for the pinned fingerprint, CI step that installs it and checks pacman-key trust. Built locally (contents and fingerprint inspected); the populate/trust step has only run in CI, not here (needs root). NOT done, needs the owner's decision (Tier A): the `[heiss]` section in the installed system's `pacman.conf` goes into `heiss-cleanup.sh` (protected, label `design-approved`), and `heiss-keyring` must be added to `profile/packages.x86_64`. See the questions in the reply of this round. Wiring Apply in the wizard (5e) depends on both.
+
+## Round 18, part 2, step 5d-2 (2026-11-11): repository in the installed system
+
+PR "feat/heiss-repo-in-installed-system" (stacked on the keyring PR 64; owner approved both Tier A items): `heiss-cleanup.sh` imports the Heiss key and appends `[heiss]` (`SigLevel = Required DatabaseRequired`) only if the import worked, skippable with `HEISS_NO_REPO=1`; `heiss-keyring` in `profile/packages.x86_64`; `protected.sha256` updated. Needs the label `design-approved`. Not verified: a real installation (the ISO was not built); `pacman -Sy` on an installed system against the real repository. Next: 5e (Apply in the wizard through the helper), which then can be tested in the VM.

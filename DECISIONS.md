@@ -189,3 +189,8 @@ Format: date, what, why. Newest at the bottom.
 
 - **The keyring package is built from `docs/infra/heiss-public.asc`** (added to the build archive) and refuses to build if that file is not the pinned key `DDD292CCC8613FD3324D3833FEA84CEF8AEDF132`. Why: one source of truth for the public key, no second copy to drift.
 - **Trust level 4 (full) in `heiss-trusted`, same format as `archlinux-trusted`; no revoked keys.** The `.install` populates only when the pacman keyring is already initialised, otherwise it prints the two commands (the installed system initialises it in `heiss-cleanup.sh`).
+
+## 2026-11-11 (repository in the installed system, owner-approved Tier A change)
+
+- **Owner approved both items on 2026-11-11 ("yes, both items"): a `[heiss]` section via `heiss-cleanup.sh` and `heiss-keyring` in the ISO package list.**
+- **The section is added only after `pacman-key --populate heiss` succeeded.** Why: with `SigLevel = Required` and an untrusted key every `pacman -Sy` on the installed system would fail. It is appended last, so official repositories keep priority. `HEISS_NO_REPO=1` skips it.
