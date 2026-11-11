@@ -194,3 +194,8 @@ Format: date, what, why. Newest at the bottom.
 
 - **Owner approved both items on 2026-11-11 ("yes, both items"): a `[heiss]` section via `heiss-cleanup.sh` and `heiss-keyring` in the ISO package list.**
 - **The section is added only after `pacman-key --populate heiss` succeeded.** Why: with `SigLevel = Required` and an untrusted key every `pacman -Sy` on the installed system would fail. It is appended last, so official repositories keep priority. `HEISS_NO_REPO=1` skips it.
+
+## 2026-11-11 (merge self-check rule, owner's instruction)
+
+- **Before asking the owner to merge, the assistant verifies base, freshness, conflicts, CI, labels, PR text, notes and a clean pushed tree, and reports in a fixed format.** Why: PR 65 was based on a feature branch and its changes never reached `main`. Rule in CLAUDE.md. PRs are never stacked: always branch from fresh `main`.
+- PR 65's content is re-applied on `main` by cherry-picking its squash commit (`987675a`), no conflicts.

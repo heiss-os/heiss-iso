@@ -130,3 +130,7 @@ PR "feat/heiss-keyring": package `heiss-keyring` (key file, `heiss-trusted`, `.i
 ## Round 18, part 2, step 5d-2 (2026-11-11): repository in the installed system
 
 PR "feat/heiss-repo-in-installed-system" (stacked on the keyring PR 64; owner approved both Tier A items): `heiss-cleanup.sh` imports the Heiss key and appends `[heiss]` (`SigLevel = Required DatabaseRequired`) only if the import worked, skippable with `HEISS_NO_REPO=1`; `heiss-keyring` in `profile/packages.x86_64`; `protected.sha256` updated. Needs the label `design-approved`. Not verified: a real installation (the ISO was not built); `pacman -Sy` on an installed system against the real repository. Next: 5e (Apply in the wizard through the helper), which then can be tested in the VM.
+
+## Round 19 (2026-11-11): PR 65 re-applied on main
+
+PR 65 went into `feat/heiss-keyring` instead of `main`; PR "fix/repo-in-installed-system" cherry-picks its squash commit onto `main` (no conflicts) and adds the "Before asking the owner to merge" rule to CLAUDE.md. Same content and same not-verified list as step 5d-2 above (no real installation, ISO not built). Next: 5e after this PR is merged.
