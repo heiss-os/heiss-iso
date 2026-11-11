@@ -189,3 +189,13 @@ Format: date, what, why. Newest at the bottom.
 
 - **The keyring package is built from `docs/infra/heiss-public.asc`** (added to the build archive) and refuses to build if that file is not the pinned key `DDD292CCC8613FD3324D3833FEA84CEF8AEDF132`. Why: one source of truth for the public key, no second copy to drift.
 - **Trust level 4 (full) in `heiss-trusted`, same format as `archlinux-trusted`; no revoked keys.** The `.install` populates only when the pacman keyring is already initialised, otherwise it prints the two commands (the installed system initialises it in `heiss-cleanup.sh`).
+
+## 2026-11-11 (repository in the installed system, owner-approved Tier A change)
+
+- **Owner approved both items on 2026-11-11 ("yes, both items"): a `[heiss]` section via `heiss-cleanup.sh` and `heiss-keyring` in the ISO package list.**
+- **The section is added only after `pacman-key --populate heiss` succeeded.** Why: with `SigLevel = Required` and an untrusted key every `pacman -Sy` on the installed system would fail. It is appended last, so official repositories keep priority. `HEISS_NO_REPO=1` skips it.
+
+## 2026-11-11 (merge self-check rule, owner's instruction)
+
+- **Before asking the owner to merge, the PR author verifies base, freshness, conflicts, CI, labels, PR text, notes and a clean pushed tree, and reports in a fixed format.** Why: PR 65 was based on a feature branch and its changes never reached `main`. Rule in CLAUDE.md. PRs are never stacked: always branch from fresh `main`.
+- PR 65's content is re-applied on `main` by cherry-picking its squash commit (`987675a`), no conflicts.

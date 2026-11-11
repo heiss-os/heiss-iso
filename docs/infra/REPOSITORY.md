@@ -51,7 +51,8 @@ Profiles are metapackages. `[heiss-local]` is a `file://` directory on the build
 | Secrets `REPO_GPG_PRIVATE_KEY`, `REPO_GPG_KEY_ID`, `REPO_PUSH_TOKEN` | set by the owner (listed by `gh secret list`, 2026-11-10 and 2026-11-11; values never seen) |
 | Encrypted backup of the private key | not done yet (must come after the secrets are set) |
 | CI publishing job `.github/workflows/publish-repo.yml` | written (this PR); not yet run against the real repository, runs after merge to `main` |
-| `heiss-keyring` package, `pacman.conf` entry in `heiss-cleanup.sh` | not started |
+| `heiss-keyring` package | PR 64; in the ISO package list (PR 65, re-applied as "fix/repo-in-installed-system") |
+| `[heiss]` entry in `heiss-cleanup.sh` | owner approved 2026-11-11 ("yes, both items"); added in that PR, label `design-approved` needed; not tested on a real installation |
 
 ### Signing key (public data)
 
@@ -67,3 +68,5 @@ Profiles are metapackages. `[heiss-local]` is a `file://` directory on the build
 - Steps: build all `packages/*` as an unprivileged user with `scripts/heiss-packages-build.sh`; import the key and refuse to continue unless its fingerprint equals the pinned one above; `scripts/heiss-repo-assemble.sh` copies new packages into `x86_64/` of `gh-pages`, signs them and rebuilds `heiss.db`/`heiss.files` with `repo-add --sign`; `scripts/heiss-repo-verify.sh` lets real pacman sync and download from that tree with `SigLevel = Required DatabaseRequired`; only then it pushes to `heiss-repo` with `REPO_PUSH_TOKEN`.
 - Already published package files are never replaced (makepkg output is not reproducible: timestamps and build info differ; assumed, not measured); a bump of `pkgrel` in `packages/pkgrel.json` is what publishes a new version. Files of versions that are no longer built are removed. If nothing is new, nothing is pushed, so changed content without a `pkgrel` bump is never republished.
 - NOT VERIFIED: a run against the real `heiss-repo` and GitHub Pages serving `heiss.db` over HTTPS to a real pacman (the dry run only reads `file://`).
+
+- **Build order for the next ISO:** `heiss-keyring` comes only from `[heiss-local]`: run `scripts/heiss-packages-build.sh` before `heiss-build.sh`, otherwise mkarchiso fails with "target not found".
