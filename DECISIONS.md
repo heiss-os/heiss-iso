@@ -12,7 +12,7 @@ Format: date, what, why. Newest at the bottom.
 - **Review workflow:** the owner merges PRs; there is no second approver. `main` is protected (PR required, no force push). Why: corrects the old CLAUDE.md wording.
 - **Official Arch repositories and our own repository only.** AUR / KDE Store / GitHub projects need explicit per-item approval and an entry here. AUR packages are never installed automatically.
 
-## 2026-11-09 (Phase 0, made by the assistant, pending owner confirmation)
+## 2026-11-09 (Phase 0, pending owner confirmation)
 
 - **Phase 0 is docs only** on branch `docs/phase-0-aduit` (branch name spelling is the owner's), created from fresh `main` at `e0eeb08`. Why: the plan forbids code before the owner answers the questions.
 - **Facts found that differ from the plan text** are recorded in `docs/design/AUDIT.md`, section 1 (for example: `heiss-theme-sync` only switches the launcher icon; `@LOCALREPO@` is already rendered by `scripts/heiss-build.sh`, so the "known problem" in CLAUDE.md about an absolute path is outdated).
@@ -22,33 +22,33 @@ Format: date, what, why. Newest at the bottom.
 - **Keep every existing palette value unchanged; add derived AA text tokens.** Added `accent_text`, `positive_text`, `neutral_text`, `negative_text`, `info_text` (computed, not hand-picked: the frozen color mixed toward the theme text color in 5% steps until 4.5:1 on window, view, panel and button). Light accent_text = #6D5D3F. Why: the Light accent #8C7448 and the frozen semantic colors fail AA as text; the owner wants them fixed without changing the palette. How to apply: use `*_text` for text and icons, frozen colors for fills and the KDE scheme. Remaining failures of the frozen colors used directly stay listed as known exceptions.
 - **Dark `negative_text` differs from `negative`** (#E38C84 vs #E06C64) because the frozen red does not reach 4.5:1 on the button color. Derived value only, scheme untouched.
 
-## 2026-11-10 (Phase 2, made by the assistant)
+## 2026-11-10 (Phase 2)
 
 - **Manifests are TOML, not YAML.** Why: `tomllib` is in the Python standard library, so `heiss-core` and CI need no extra dependency and use a parser without code-execution features; PyYAML (`python-yaml` 6.0.3) is not installed here and I cannot install packages without the owner's sudo password. Direction for metapackages: TOML manifest -> generated PKGBUILD (single source of truth). Reconsider YAML only if the owner insists.
 - **State and ownership:** only packages recorded in `/var/lib/heiss/state.json` can be removed; preinstalled packages become owned only through an explicit `--adopt` of explicitly installed packages named in a manifest.
 - **`heiss profile apply` without `--dry-run` refuses** until the privileged helper (Phase 3) exists.
 - **Profile contents** follow the Phase 0 recommendations the owner accepted (haruna, keepassxc, no mail and office in Base, `code` not shipped, kitty/Thunar/LTS kernel/office/mail as add-ons).
 
-## 2026-11-10 (hardware detection, made by the assistant)
+## 2026-11-10 (hardware detection)
 
 - **Hardware profiles are declarative TOML** in `hardware/` with conjunctive match rules, evaluated by a pure function, so fixtures can assert the result. Why: plan section 11.2; also lets us add hardware without code changes.
 - **NVIDIA generation rule = PCI device ID >= 0x1e00** (Turing and newer) for open modules; older cards stay on nouveau with a message, never AUR. Heuristic, not verified against the package; revisit when `supported-gpus.json` can be read.
 - **Guest tools only for the detected hypervisor**; microcode and GPU drivers never proposed in a VM.
 - **USB detection deferred** (`lsusb` missing on the build VM; no rule needs it yet).
 
-## 2026-11-10 (metapackages, made by the assistant)
+## 2026-11-10 (metapackages)
 
 - **TOML manifest -> generated PKGBUILD** (the direction left open in Phase 0). One source of truth; CI fails if committed package files differ from regeneration.
 - **Metapackages ship only the manifest and enable nothing.** Services and configuration stay in the engine so that every change is planned, audited and reversible through the state file.
 - **pkgrel is manual** (`packages/pkgrel.json`), because pacman needs a version change to see an update. Risk: forgetting to bump. Mitigation idea for later: CI comparing the dependency list with the previous release.
 - **`profile/packages.x86_64` is not changed** in this PR: putting the metapackages into the ISO changes the image and needs a rebuild and VM test (Phase 10).
 
-## 2026-11-10 (docs rename, made by the assistant)
+## 2026-11-10 (docs rename)
 
 - **README and CLAUDE.md use Base, Cyber, Developer, Custom**, with a one-line mapping from the old names. The wallpaper packages keep the internal name `Heiss-Everyday` (protected, not renamed).
 - **CLAUDE.md now carries the working rules from the master plan** (section 0 asked to copy them in Phase 0, which I had missed): owner merges PRs (the old "second approver" wording is removed), Tier A protection, no unverified claims, official repositories only. Also fixed the outdated note about an absolute path in `pacman.conf`.
 
-## 2026-11-10 (Phase 3, made by the assistant)
+## 2026-11-10 (Phase 3)
 
 - **Helper transport: GDBus through python-gobject (`gi`/Gio), not `python-dbus`.** Why: official package, current API, no extra bindings. Cost: it could not be run on the build VM, so the glue is tested only in CI on a private bus. Correction of my own earlier mistake: `import gi` on this VM only found an empty namespace directory, python-gobject is NOT installed here.
 - **Helper maintains the ownership state itself** (after successful steps) and offers `AdoptPackages` for the ISO content. Why: otherwise removal through the helper could never work and a client could claim packages.
@@ -57,7 +57,7 @@ Format: date, what, why. Newest at the bottom.
 - **Package-name regex tightened** in the manifest validator (no leading `-` or `.`), which also protects `heiss-core`.
 - **`SECURITY.md` points to GitHub private vulnerability reporting**; I did not invent a contact address. The owner must enable that feature.
 
-## 2026-11-10 (apply wiring, made by the assistant)
+## 2026-11-10 (apply wiring)
 
 - **`heiss profile apply` runs through the helper** with confirmation (`--yes` to skip; refuses without a terminal). Order: adopt, install, enable, drop-ins, disable, remove, post actions; KDE settings last as the user. Why: removals last so a failure never strips the system; KDE settings only after the privileged part succeeded.
 - **Pre-flight refusals before any change:** Flatpak changes (unsupported), downloads while NetworkManager says offline (`nmcli`, no probing of the network by us; unknown counts as online and pacman reports the real failure).
@@ -72,20 +72,20 @@ Format: date, what, why. Newest at the bottom.
 - **Found by running the packaged layout:** `PacmanSystem` crashed when `flatpak` is not installed (it is not on the ISO). A missing command is now reported as "no data", with tests.
 - **Not changed in this PR:** the releng leftovers in `packages.x86_64` (clonezilla, nmap, ...), mime associations, theming: separate Phase 4 PRs.
 
-## 2026-11-10 (file associations, made by the assistant)
+## 2026-11-10 (file associations)
 
 - **Defaults live in `/etc/xdg/mimeapps.list`** (system-wide XDG file): reaches the live session, the installed system and new users, and per-user choices still win. New file, no existing config edited.
 - **One app per job, only Base apps:** Dolphin, Firefox, Kate, Gwenview, Okular, Haruna (video and audio), Ark, KeePassXC. No `mailto:` handler because Base has no mail client.
 - **Aliases listed next to canonical MIME names** where tools disagree; unknown types were dropped by checking against shared-mime-info.
 - **Guard in CI:** every desktop file must exist in a Base package (`pacman -F`), so a renamed desktop file or a package removed from Base fails the build instead of silently breaking a default.
 
-## 2026-11-10 (GTK, made by the assistant)
+## 2026-11-10 (GTK)
 
 - **No GTK configuration is shipped yet; Plasma's `kde-gtk-config` stays the single owner of GTK settings.** Why: the package database shows it already ships the kded `gtkconfig` module, a GTK3 color-reload module, Breeze window-decoration CSS and depends on `xsettingsd` and `xdg-desktop-portal-gtk`. Writing the same files from Heiss would race with it, and I cannot run GTK here to see the actual files.
 - **`heiss-gtk-audit` (read-only, in `heiss-core`) collects the facts in the VM.** The next GTK step is chosen from its output (decision table in `docs/design/GTK.md`). Generated token CSS for GTK stays staged in `branding/tokens/generated/`.
 - **GTK prerequisites are guarded by a test:** kde-gtk-config, breeze-gtk and both portal backends must stay in every profile.
 
-## 2026-11-10 (theme sync, made by the assistant)
+## 2026-11-10 (theme sync)
 
 - **`heiss theme sync` replaces the shell logic** (the entry point `heiss-theme-sync.sh`, the path unit and the autostart entry stay). Python in heiss-core so it can be unit tested against a scripted desktop; one log line per target; failures are visible; exit code 1 only on failure.
 - **Set only what nothing else sets** (launcher icon, Konsole default profile and running sessions); **check the rest** (Plasma consistency against the Look-and-Feel defaults, kde-gtk-config module, GSettings, portal) and report differences instead of writing Plasma-owned files (Tier B).
@@ -94,7 +94,7 @@ Format: date, what, why. Newest at the bottom.
 - **CI guard against file conflicts:** no file of our packages may also be shipped by an official package (`pacman -F`), because pacstrap would fail the ISO build.
 - **Stacked on PR 47** (the GTK audit) because both bump the pkgrel of heiss-core.
 
-## 2026-11-10 (releng leftovers, made by the assistant on the owner's instruction)
+## 2026-11-10 (releng leftovers, on the owner's instruction)
 
 - **37 packages removed from `profile/packages.x86_64`** (about 118 MiB installed, before squashfs compression; real ISO size NOT measured). Groups: Cyber tools (`nmap`, `tcpdump`, `ddrescue`, `testdisk`, `tpm2-tools`, `sequoia-sq`, `openpgp-card-tools`, `bind`, `ldns`, `ndisc6`), imaging and rescue (`clonezilla`, `partimage`, `partclone`, `fsarchiver`), terminal curiosities (`lynx`, `irssi`, `mc`, `lftp`), legacy dial-up and VPN clients (`pptpclient`, `wvdial`, `xl2tpd`, `vpnc`, `openconnect`, `openvpn`, `linux-atm`, `wireless_tools`), unused storage tools (`bcachefs-tools`, `jfsutils`, `nilfs-utils`, `open-iscsi`, `mmc-utils`, `sdparm`, `sg3_utils`, `lsscsi`, `b43-fwcutter`), `dnsmasq`, `usbmuxd`.
 - **Checked, not assumed:** the dependency closure of the remaining list plus the `essentials` and `base` manifests was resolved against the sync databases in an empty root; none of the removed packages is pulled in. Two candidates were kept for that reason: `ppp` and `pcsclite` are needed by other packages.
@@ -102,37 +102,37 @@ Format: date, what, why. Newest at the bottom.
 - **Consequence:** Calamares no longer offers JFS, NILFS2 and bcachefs for new partitions (their tools are gone). nmap and tcpdump return with the Cyber profile.
 - **Not verified:** ISO build, boot, installation. Needs a rebuild and the VM check from `docs/ISO-E2E-TEST.md`.
 
-## 2026-11-10 (icon fixes, made by the assistant)
+## 2026-11-10 (icon fixes)
 
 - **No icon was changed or added.** Reading the packages showed no defect: every pinned desktop id exists in its package and every `Icon=` resolves in `hicolor`, `breeze` or `breeze-dark`. The only icon we ship for the installer lives under `hicolor/` (Tier A), so adding an SVG needs an approved item. I did not guess a fix without a screenshot.
 - **Added a guard instead:** `scripts/check-launchers.py` (pins identical in Dark and Light, no comma-joined or duplicated pins, pins shipped by a Base package, installer desktop files carry `StartupWMClass=calamares` and a shipped icon, the `/usr/local` override stays hidden). CI runs it with the file database.
 - **Open for the owner:** after the next ISO build, a screenshot of the dock (Dark and Light) and of the running installer decides whether there is a real problem left.
 
-## 2026-11-10 (launcher menu, made by the assistant)
+## 2026-11-10 (launcher menu)
 
 - **Hide with `Hidden=true` stubs in `/usr/local/share/applications`, no `Exec`.** Why: the files belong to packages (cannot be edited in `airootfs`, pacstrap conflict), a stub cannot drift, and the same mechanism already hides the Calamares entry. Alternative rejected: removing packages (they are dependencies of Plasma, ffmpeg, sane).
 - **Ten entries hidden:** KWrite, Vim, mpv (second editor/player), four Qt developer tools, two V4L2 tools, lstopo. List and reasons: `docs/apps/LAUNCHER.md`.
 - **Guard `scripts/check-menu.py`:** stubs must be well formed, must not hide a dock pin or a default application, and (CI, file database) must still match a shipped entry.
 - **Not read:** desktop files of firefox, spectacle, print-manager (package name with epoch / size); recorded in the doc as not verified.
 
-## 2026-11-10 (keyboard shortcuts, made by the assistant)
+## 2026-11-10 (keyboard shortcuts)
 
 - **No custom shortcuts added.** The packages already declare `Meta+E` (Dolphin), `Ctrl+Alt+T` (Konsole), `Meta+I` (System Settings), `Meta+Esc` (System Monitor), `Meta+.` (emoji), `Calculator` (KCalc); these are read from the desktop files, not remembered. A `kglobalshortcutsrc` of our own would override Plasma defaults I cannot list on the build VM (KWin and KRunner register theirs in code) and is Tier B territory.
 - **Guard instead:** `scripts/check-shortcuts.py` finds key collisions between desktop files and keeps `docs/design/SHORTCUTS.md` true (CI downloads the Base apps and compares).
 - **Open:** the real list of Plasma/KWin shortcuts needs the VM (`docs/design/SHORTCUTS.md`, section "NOT verified").
 
-## 2026-11-10 (open terminal here, made by the assistant)
+## 2026-11-10 (open terminal here)
 
 - **Nothing is configured; behaviour documented and guarded.** Dolphin 26.08.3 has "Open Terminal Here", "Open Terminal" and a terminal panel (strings in the binary); the panel needs `konsolepart.so` from `konsole`; KIO falls back to `konsole` when `TerminalService`/`TerminalApplication` is unset. So Base works with no file, and kitty installed next to it does not take over. Pinning the key would mean editing `/etc/xdg/kdeglobals` (Tier B).
 - **Thunar add-on is the open question:** its action follows the Xfce preferred-terminal mechanism, which I could not verify. Recorded in `docs/apps/TERMINAL-HERE.md` with VM test steps.
 - **Test `core/tests/test_terminal.py`:** Base has Konsole and Dolphin and no second terminal or file manager; add-ons are outside every profile closure; `inode/directory` stays Dolphin.
 
-## 2026-11-10 (reviewer agent, made by the assistant)
+## 2026-11-10 (reviewer agent)
 
 - **Project subagent `reviewer` (`.claude/agents/reviewer.md`), read-only (Read, Grep, Glob, Bash).** Why: the owner asked for a self-check of every PR against CLAUDE.md, DECISIONS.md, PLAN-STATE and the Tier A list, including unbacked "verified" claims. Run before each PR; its findings go into the PR text. It does not replace CI guards or the owner's review.
 - **Path note:** the checksum file is `docs/design/protected.sha256` (the task text said `branding/tokens/`); the agent uses the real path.
 
-## 2026-11-10 (heiss check, made by the assistant)
+## 2026-11-10 (heiss check)
 
 - **`heiss check` lives in heiss-core, no new package.** `heiss` is already in `heiss-core` (ISO and Base); a separate `heiss-check` package would only add a dependency. `heiss-core` pkgrel 3 -> 4 so pacman sees the update.
 - **Statuses:** FAIL = a defect the owner must look at; WARN = cannot be judged here (no desktop session, not root, tool missing, live session) or a possible false positive (duplicate visible menu names, a removed package present on a non-Base profile). Exit code 1 only on FAIL.
@@ -141,7 +141,7 @@ Format: date, what, why. Newest at the bottom.
 - **Duplicated knowledge:** the removed-package list, hide-stub ids and shortcut rows are constants in `check.py` (the installed system has no repository scripts). Tests compare the removed list to the ISO package list; the stub list and shortcuts follow docs/apps/LAUNCHER.md and docs/design/SHORTCUTS.md by hand.
 - `state.parse(text)` split out of `state.load` so the check validates the state file with the same strict rules.
 
-## 2026-11-10 (Welcome wizard, step 5a, made by the assistant)
+## 2026-11-10 (Welcome wizard, step 5a)
 
 - **The wizard logic is a GUI-free module in heiss-core (`wizard.py`), the QML app only draws it.** Why: Back/Skip/resume/queue rules can be tested without a display; the VM has none.
 - **Screen options without a key in the answers schema are `extras`, not answers.** Why: adding keys changes `profile.toml` (schema_version) and must come with something that applies them; documented as "not applied yet" in `docs/WELCOME.md`.
@@ -155,7 +155,7 @@ Format: date, what, why. Newest at the bottom.
 - **History is not rewritten** (main is protected, no force push): commits and PR texts merged before this keep their trailers.
 - The self-review before each PR is called "automated review" in PR texts.
 
-## 2026-11-11 (public package repository setup, made by the assistant)
+## 2026-11-11 (public package repository setup)
 
 - **GitHub Pages URL:** `https://heiss-os.github.io/heiss-repo/` from branch `gh-pages` (the first commit was made through the contents API; Pages was enabled automatically by it).
 - **Signing key:** RSA 4096, signing only, no expiry, no passphrase (used by CI only), ID `FEA84CEF8AEDF132`. Generated in a temporary `GNUPGHOME`; the private half was never written into the repository or a chat.
@@ -173,3 +173,11 @@ Format: date, what, why. Newest at the bottom.
 
 - Hardware toggles and privacy items are shown honestly as saved-only / "coming soon" rather than wired to partial behaviour; the apply path for hardware proposals comes with 5e through the resolver and helper.
 - Detection reuses `heiss_core.hardware` unchanged (no new detection code, no new packages, no network).
+
+## 2026-11-11 (CI publishing job)
+
+- **Publish only from `main` and manual runs; pull requests do a dry run with a throwaway key.** Why: secrets must not be used by unreviewed code, yet the sign-and-verify path still gets tested on every relevant PR.
+- **Pinned fingerprint in the workflow.** The job fails if the secret key or `docs/infra/heiss-public.asc` is not `DDD292CCC8613FD3324D3833FEA84CEF8AEDF132`, so a wrong secret can never publish under another key.
+- **Published files are immutable; a new `pkgrel` publishes a new version.** Why: makepkg output differs run to run, replacing a file under the same version breaks checksums for existing users.
+- **Real files instead of symlinks for `heiss.db`/`heiss.files`.** GitHub Pages behaviour with symlinks is not verified.
+- **Push token passed as an HTTP header (masked), not in the URL.**

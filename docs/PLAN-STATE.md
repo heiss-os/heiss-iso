@@ -111,3 +111,7 @@ PR "feat/welcome-ui": `welcome/` (view-model, en/ru strings, PySide6 glue, one Q
 ## Round 16, Phase 5, step 5c (2026-11-11)
 
 PR "feat/welcome-hardware": hardware screen (live read-only detection, proposals as saved-but-not-applied toggles) and privacy screen (informational items, only the firewall marked in place). Waiting for the owner: screenshots of both screens in the VM (hardware shows VirtualBox guest-tools proposal). Next: 5d/5e stay blocked on the CI publishing job for the package repository; ask the owner whether to start that job or reorder (Phase 6 Control Center).
+
+## Round 16, CI publishing job (2026-11-11)
+
+PR "ci/publish-repo": `.github/workflows/publish-repo.yml`, `scripts/heiss-repo-assemble.sh`, `scripts/heiss-repo-verify.sh`. Secrets `REPO_GPG_PRIVATE_KEY`, `REPO_GPG_KEY_ID`, `REPO_PUSH_TOKEN` exist (checked with `gh secret list`). The assemble script was run locally with a throwaway key on a scratch clone (nothing pushed); the pacman check runs only in CI. The first real publish happens when this PR is merged to `main` (or by a manual run afterwards). Next: check the run, then `pacman -Sy` from `https://heiss-os.github.io/heiss-repo/x86_64` in the VM; then `heiss-keyring` and the `pacman.conf` entry, then 5d/5e.
