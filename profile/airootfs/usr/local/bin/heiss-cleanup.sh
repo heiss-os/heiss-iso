@@ -106,6 +106,21 @@ sed -i 's/^GRUB_DISTRIBUTOR=.*/GRUB_DISTRIBUTOR="Heiss OS"/' /etc/default/grub |
 log "ключи pacman"
 rm -rf /etc/pacman.d/gnupg
 pacman-key --init && pacman-key --populate archlinux || log "ВНИМАНИЕ: не удалось инициализировать ключи pacman"
+log "репозиторий Heiss и его ключ"
+# Appended last (official repositories keep their priority). Only added when the Heiss key was
+# really imported, otherwise `pacman -Sy` would fail on the installed system.
+# Set HEISS_NO_REPO=1 to skip. Not tested on a real installation yet.
+if [ "${HEISS_NO_REPO:-0}" = 1 ]; then
+  log "пропущено (HEISS_NO_REPO=1)"
+elif [ ! -f /usr/share/pacman/keyrings/heiss.gpg ]; then
+  log "ВНИМАНИЕ: пакет heiss-keyring не установлен, репозиторий [heiss] не добавлен"
+elif pacman-key --populate heiss; then
+  if ! grep -q '^\[heiss\]' /etc/pacman.conf; then
+    printf '\n[heiss]\nSigLevel = Required DatabaseRequired\nServer = https://heiss-os.github.io/heiss-repo/$arch\n' >> /etc/pacman.conf
+  fi
+else
+  log "ВНИМАНИЕ: не удалось импортировать ключ Heiss, репозиторий [heiss] не добавлен"
+fi
 # do not leave gpg-agent running from the chroot (it would block unmounting the target)
 gpgconf --homedir /etc/pacman.d/gnupg --kill all 2>/dev/null || true
 

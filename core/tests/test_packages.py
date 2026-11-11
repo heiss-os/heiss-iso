@@ -178,3 +178,12 @@ class KeyringPackage(unittest.TestCase):
             inst = f.read()
         self.assertIn("pacman-key --populate heiss", inst)
         self.assertNotIn(" /usr/", inst)   # install scripts run inside the root: no leading slash
+
+    def test_cleanup_adds_the_repository_only_after_the_key_is_imported(self):
+        with open(os.path.join(REPO, "profile", "airootfs", "usr", "local", "bin", "heiss-cleanup.sh"), encoding="utf-8") as f:
+            sh = f.read()
+        self.assertLess(sh.index("pacman-key --populate heiss"), sh.index("printf '\\n[heiss]"))
+        self.assertIn("SigLevel = Required DatabaseRequired", sh)
+        self.assertIn("https://heiss-os.github.io/heiss-repo/$arch", sh)
+        with open(os.path.join(REPO, "profile", "packages.x86_64"), encoding="utf-8") as f:
+            self.assertIn("heiss-keyring", f.read().split())
