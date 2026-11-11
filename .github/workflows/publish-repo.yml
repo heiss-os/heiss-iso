@@ -1,0 +1,123 @@
+name: publish-repo
+
+# Builds the Heiss packages, signs them and publishes them to heiss-os/heiss-repo (GitHub Pages).
+# - pull_request: dry run with a throwaway key, nothing is published and no secret is used.
+# - push to main / manual run: real key from secrets, publishes only when a package is new.
+
+on:
+  pull_request:
+    paths:
+      - 'packages/**'
+      - 'core/**'
+      - 'helper/**'
+      - 'profiles/**'
+      - 'hardware/**'
+      - 'branding/tokens/**'
+      - 'scripts/heiss-packages-build.sh'
+      - 'scripts/heiss-repo-*.sh'
+      - '.github/workflows/publish-repo.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'packages/**'
+      - 'core/**'
+      - 'helper/**'
+      - 'profiles/**'
+      - 'hardware/**'
+      - 'branding/tokens/**'
+      - 'scripts/heiss-packages-build.sh'
+      - 'scripts/heiss-repo-*.sh'
+      - '.github/workflows/publish-repo.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-repo
+  cancel-in-progress: false
+
+env:
+  # Pinned key (docs/infra/REPOSITORY.md). The job fails if the secret holds a different key.
+  EXPECTED_FPR: DDD292CCC8613FD3324D3833FEA84CEF8AEDF132
+  REPO_URL: https://github.com/heiss-os/heiss-repo.git
+
+jobs:
+  publish:
+    name: build, sign, verify with pacman, publish
+    runs-on: ubuntu-latest
+    container: archlinux:latest
+    steps:
+      - name: Install tools
+        run: pacman -Syu --noconfirm base-devel git python gnupg
+
+      - uses: actions/checkout@v4
+
+      - name: Build all packages as an unprivileged user
+        run: |
+          useradd -m builder
+          cp -r "$GITHUB_WORKSPACE" /home/builder/src
+          chown -R builder /home/builder/src
+          su builder -c 'cd /home/builder/src && git config --global --add safe.directory /home/builder/src && LOCALREPO=/home/builder/localrepo bash scripts/heiss-packages-build.sh'
+          mkdir -p /tmp/pkgs
+          cp /home/builder/localrepo/heiss-*.pkg.tar.zst /tmp/pkgs/
+          ls -l /tmp/pkgs
+
+      - name: Signing key (throwaway, pull request dry run)
+        if: github.event_name == 'pull_request'
+        run: |
+          export GNUPGHOME=/tmp/gnupg; mkdir -m700 "$GNUPGHOME"
+          gpg --batch --passphrase '' --quick-gen-key 'Heiss CI dry run <ci@heiss-os.invalid>' rsa2048 sign never
+          fpr=$(gpg --list-keys --with-colons | awk -F: '/^fpr:/ {print $10; exit}')
+          gpg --armor --export "$fpr" > /tmp/public.asc
+          { echo "GNUPGHOME=$GNUPGHOME"; echo "KEY=$fpr"; echo "PUBLIC_KEY=/tmp/public.asc"; } >> "$GITHUB_ENV"
+
+      - name: Signing key (real, from secrets)
+        if: github.event_name != 'pull_request'
+        env:
+          REPO_GPG_PRIVATE_KEY: ${{ secrets.REPO_GPG_PRIVATE_KEY }}
+          REPO_GPG_KEY_ID: ${{ secrets.REPO_GPG_KEY_ID }}
+        run: |
+          [ -n "$REPO_GPG_PRIVATE_KEY" ] && [ -n "$REPO_GPG_KEY_ID" ] || { echo "::error::signing secrets are missing"; exit 1; }
+          export GNUPGHOME=/tmp/gnupg; mkdir -m700 "$GNUPGHOME"
+          printf '%s\n' "$REPO_GPG_PRIVATE_KEY" | gpg --batch --import
+          fpr=$(gpg --list-secret-keys --with-colons "$REPO_GPG_KEY_ID" | awk -F: '/^fpr:/ {print $10; exit}')
+          if [ "$fpr" != "$EXPECTED_FPR" ]; then
+            echo "::error::the secret key is not the pinned Heiss repository key"; exit 1
+          fi
+          # the public key from the repository must be the same key
+          pub=$(gpg --batch --show-keys --with-colons docs/infra/heiss-public.asc | awk -F: '/^fpr:/ {print $10; exit}')
+          [ "$pub" = "$EXPECTED_FPR" ] || { echo "::error::docs/infra/heiss-public.asc is not the pinned key"; exit 1; }
+          { echo "GNUPGHOME=$GNUPGHOME"; echo "KEY=$fpr"; echo "PUBLIC_KEY=$PWD/docs/infra/heiss-public.asc"; } >> "$GITHUB_ENV"
+
+      - name: Fetch the current gh-pages tree of heiss-repo
+        run: git clone --depth 1 --branch gh-pages "$REPO_URL" /tmp/site
+
+      - name: Assemble and sign
+        id: assemble
+        run: bash scripts/heiss-repo-assemble.sh /tmp/pkgs /tmp/site "$KEY"
+
+      - name: pacman accepts the signed repository (SigLevel Required DatabaseRequired)
+        if: steps.assemble.outputs.changed == 'true'
+        run: bash scripts/heiss-repo-verify.sh /tmp/site/x86_64 "$PUBLIC_KEY"
+
+      - name: Publish to heiss-repo
+        if: github.event_name != 'pull_request' && steps.assemble.outputs.changed == 'true'
+        env:
+          REPO_PUSH_TOKEN: ${{ secrets.REPO_PUSH_TOKEN }}
+        run: |
+          [ -n "$REPO_PUSH_TOKEN" ] || { echo "::error::REPO_PUSH_TOKEN is missing"; exit 1; }
+          hdr=$(printf 'x-access-token:%s' "$REPO_PUSH_TOKEN" | base64 -w0)
+          echo "::add-mask::$hdr"
+          cd /tmp/site
+          git config --global --add safe.directory /tmp/site
+          git config user.name "Heiss OS CI"
+          git config user.email "repo@heiss-os.invalid"
+          git add -A x86_64
+          git commit -m "publish: packages from ${GITHUB_SHA::7}"
+          git -c "http.extraheader=Authorization: Basic $hdr" push origin HEAD:gh-pages
+
+      - name: Summary
+        run: |
+          echo "changed=${{ steps.assemble.outputs.changed }}, event=${{ github.event_name }}"
+          ls -l /tmp/site/x86_64 | grep -v '\.sig$' || true

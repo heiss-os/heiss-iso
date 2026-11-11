@@ -173,3 +173,11 @@ Format: date, what, why. Newest at the bottom.
 
 - Hardware toggles and privacy items are shown honestly as saved-only / "coming soon" rather than wired to partial behaviour; the apply path for hardware proposals comes with 5e through the resolver and helper.
 - Detection reuses `heiss_core.hardware` unchanged (no new detection code, no new packages, no network).
+
+## 2026-11-11 (CI publishing job, made by the assistant)
+
+- **Publish only from `main` and manual runs; pull requests do a dry run with a throwaway key.** Why: secrets must not be used by unreviewed code, yet the sign-and-verify path still gets tested on every relevant PR.
+- **Pinned fingerprint in the workflow.** The job fails if the secret key or `docs/infra/heiss-public.asc` is not `DDD292CCC8613FD3324D3833FEA84CEF8AEDF132`, so a wrong secret can never publish under another key.
+- **Published files are immutable; a new `pkgrel` publishes a new version.** Why: makepkg output differs run to run, replacing a file under the same version breaks checksums for existing users.
+- **Real files instead of symlinks for `heiss.db`/`heiss.files`.** GitHub Pages behaviour with symlinks is not verified.
+- **Push token passed as an HTTP header (masked), not in the URL.**

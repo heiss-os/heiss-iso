@@ -48,9 +48,10 @@ Profiles are metapackages. `[heiss-local]` is a `file://` directory on the build
 | Branch `gh-pages` with a minimal `index.html` and `.nojekyll`, GitHub Pages from `gh-pages`, folder `/` | done; URL `https://heiss-os.github.io/heiss-repo/` (the pacman server line will be `https://heiss-os.github.io/heiss-repo/$arch`; not yet tested with pacman, no packages published) |
 | Signing key (RSA 4096, no expiry, no passphrase, CI only) | generated; public key in `docs/infra/heiss-public.asc` |
 | Secrets `REPO_GPG_PRIVATE_KEY`, `REPO_GPG_KEY_ID` on `heiss-os/heiss-iso` | **NOT set**: the assistant's attempt to write secrets was blocked by the permission system. Owner does it by hand (below) |
-| Secret `REPO_PUSH_TOKEN` | manual, owner (separate token, `heiss-repo` only) |
+| Secrets `REPO_GPG_PRIVATE_KEY`, `REPO_GPG_KEY_ID`, `REPO_PUSH_TOKEN` | set by the owner (listed by `gh secret list`, 2026-11-10 and 2026-11-11; values never seen) |
 | Encrypted backup of the private key | not done yet (must come after the secrets are set) |
-| `heiss-keyring` package, CI publishing job, `pacman.conf` entry in `heiss-cleanup.sh` | not started |
+| CI publishing job `.github/workflows/publish-repo.yml` | written (this PR); not yet run against the real repository, runs after merge to `main` |
+| `heiss-keyring` package, `pacman.conf` entry in `heiss-cleanup.sh` | not started |
 
 ### Signing key (public data)
 
@@ -58,3 +59,10 @@ Profiles are metapackages. `[heiss-local]` is a `file://` directory on the build
 - Fingerprint: `DDD2 92CC C861 3FD3 324D  3833 FEA8 4CEF 8AED F132`
 - User ID: `Heiss OS Repo <repo@heiss-os.invalid>`
 - Public key: `docs/infra/heiss-public.asc`. Compare the fingerprint above with `gpg --show-keys --with-fingerprint docs/infra/heiss-public.asc`.
+
+### Publishing job (`.github/workflows/publish-repo.yml`)
+
+- Triggers: push to `main` touching packages or their sources, manual run (`workflow_dispatch`), and pull requests as a dry run (throwaway key, no secrets, no push).
+- Steps: build all `packages/*` as an unprivileged user with `scripts/heiss-packages-build.sh`; import the key and refuse to continue unless its fingerprint equals the pinned one above; `scripts/heiss-repo-assemble.sh` copies new packages into `x86_64/` of `gh-pages`, signs them and rebuilds `heiss.db`/`heiss.files` with `repo-add --sign`; `scripts/heiss-repo-verify.sh` lets real pacman sync and download from that tree with `SigLevel = Required DatabaseRequired`; only then it pushes to `heiss-repo` with `REPO_PUSH_TOKEN`.
+- Already published package files are never replaced (makepkg output is not reproducible); a bump of `pkgrel` in `packages/pkgrel.json` is what publishes a new version. Files of versions that are no longer built are removed. If nothing is new, nothing is pushed.
+- NOT VERIFIED: a run against the real `heiss-repo` and GitHub Pages serving `heiss.db` over HTTPS to a real pacman (the dry run only reads `file://`).
