@@ -206,3 +206,9 @@ Format: date, what, why. Newest at the bottom.
 - **`--adopt` is used for the plan and the apply,** as the summary plan in `wizard.summary_plan` already did: a first-run wizard on an ISO-installed Base should claim the already-installed profile packages.
 - **No "back to summary" after a failure;** only Try again and Save for later. A resumed interrupted apply already returns to the summary. Adding it needs a core change and a pkgrel bump, left for later.
 - **No Cancel:** the helper has none yet (Phase 3 follow-up), so the UI does not pretend to stop the job.
+
+## 2026-11-11 (Welcome package and autostart, step 5d, owner chose the defaults)
+
+- **The autostart entry excludes the live session itself (`test -e /run/archiso ||`) instead of `heiss-cleanup.sh` placing it.** Why: no Tier A change, and the package works wherever it is installed. The owner confirmed this default on 2026-11-11.
+- **`heiss-welcome` and its dependency `pyside6` go into the ISO package list.** Why: without them the installed system has no wizard. Cost per `pacman -Si`: pyside6 52 MiB installed, 9.2 MiB download, shiboken6 0.7 MiB; the real ISO size change is unmeasured (no build).
+- `inter-font` is an optional dependency only: not added to the ISO by this change.

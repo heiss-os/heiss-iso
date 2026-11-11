@@ -140,3 +140,7 @@ PR 65 went into `feat/heiss-keyring` instead of `main`; PR "fix/repo-in-installe
 ## Round 19, Phase 5, step 5e (2026-11-11)
 
 PR "feat/welcome-apply": Apply in the wizard (`welcome/heiss_welcome/applier.py`, view-model job state, strings en/ru, QML buttons and log, `welcome/tests/test_apply.py`, `docs/WELCOME.md`). Not verified: any run on a real system or in the VM (no `pyside6` here, ISO not built); the QML only linted. Needs from the owner in the VM: `sudo pacman -S pyside6 python-gobject`, then `PYTHONPATH=core:welcome:helper python -m heiss_welcome --force` on a machine with `heiss-helper` installed and `[heiss]` configured; screenshots of summary, applying, failure and done (Dark, Light, ru); and whether the polkit prompt appears. Not done: Welcome package, autostart and the `heiss-cleanup.sh` step (5d proper), pending-queue runner (Phase 6), Cancel, back-to-summary.
+
+## Round 19, Phase 5, step 5d (2026-11-11)
+
+PR "feat/welcome-package": package `heiss-welcome`, autostart for the installed system only (live excluded by `/run/archiso`), `heiss-welcome` in `profile/packages.x86_64`, tests. Built locally and the package contents inspected; nothing run. Next ISO build: `scripts/heiss-packages-build.sh` first (pyside6 comes from `extra`). Needs from the owner after a rebuild: in the live session the wizard must NOT start; after installing and logging in it must start once (screenshots, Dark/Light/ru). Phase 5 is then complete apart from the not-applied extras; next candidate is Phase 6 (Control Center) after the owner's reply.
