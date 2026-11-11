@@ -21,7 +21,7 @@ echo "==> Building from commit $(git -C "$REPO_DIR" rev-parse --short HEAD)"
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 mkdir -p "$LOCALREPO" "$WORK/out"
-git -C "$REPO_DIR" archive --format=tar.gz --prefix=heiss-src/ -o "$WORK/heiss-src.tar.gz" HEAD core helper profiles hardware branding/tokens
+git -C "$REPO_DIR" archive --format=tar.gz --prefix=heiss-src/ -o "$WORK/heiss-src.tar.gz" HEAD core helper profiles hardware branding/tokens docs/infra/heiss-public.asc
 
 for dir in "$REPO_DIR"/packages/heiss-*/; do
     name="$(basename "$dir")"

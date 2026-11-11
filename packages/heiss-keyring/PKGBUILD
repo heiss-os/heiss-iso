@@ -1,0 +1,29 @@
+# Maintainer: Heiss OS <https://github.com/heiss-os>
+# Built from the repository HEAD by scripts/heiss-packages-build.sh (it creates heiss-src.tar.gz).
+pkgname=heiss-keyring
+pkgver=0.1.0
+pkgrel=1
+pkgdesc='Heiss OS package repository signing key (for pacman-key --populate heiss)'
+arch=('any')
+url='https://github.com/heiss-os/heiss-iso'
+license=('GPL-3.0-or-later')
+depends=('pacman')
+install=heiss-keyring.install
+source=('heiss-src.tar.gz')
+sha256sums=('SKIP')   # archive made locally from git HEAD; not a downloaded file
+
+# The pinned signing key (docs/infra/REPOSITORY.md). The build fails if the key file differs.
+_fpr=DDD292CCC8613FD3324D3833FEA84CEF8AEDF132
+
+package() {
+  cd "$srcdir/heiss-src/docs/infra"
+  local got
+  got="$(gpg --batch --show-keys --with-colons heiss-public.asc | awk -F: '/^fpr:/ {print $10}')"
+  [[ "$got" == "$_fpr" ]] || { echo "heiss-public.asc holds '$got', not the pinned key $_fpr" >&2; return 1; }
+  install -d "$pkgdir/usr/share/pacman/keyrings"
+  gpg --batch --dearmor < heiss-public.asc > "$pkgdir/usr/share/pacman/keyrings/heiss.gpg"
+  chmod 644 "$pkgdir/usr/share/pacman/keyrings/heiss.gpg"
+  # <fingerprint>:4: = fully trusted, same format as archlinux-trusted
+  echo "$_fpr:4:" | install -Dm644 /dev/stdin "$pkgdir/usr/share/pacman/keyrings/heiss-trusted"
+  : | install -Dm644 /dev/stdin "$pkgdir/usr/share/pacman/keyrings/heiss-revoked"
+}
