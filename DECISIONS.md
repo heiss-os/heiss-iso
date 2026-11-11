@@ -212,3 +212,7 @@ Format: date, what, why. Newest at the bottom.
 - **The autostart entry excludes the live session itself (`test -e /run/archiso ||`) instead of `heiss-cleanup.sh` placing it.** Why: no Tier A change, and the package works wherever it is installed. The owner confirmed this default on 2026-11-11.
 - **`heiss-welcome` and its dependency `pyside6` go into the ISO package list.** Why: without them the installed system has no wizard. Cost per `pacman -Si`: pyside6 52 MiB installed, 9.2 MiB download, shiboken6 0.7 MiB; the real ISO size change is unmeasured (no build).
 - `inter-font` is an optional dependency only: not added to the ISO by this change.
+
+## 2026-11-11 (final VM test list, owner's instruction)
+
+- **No ISO build and no VM check until the whole master plan is done.** Owner's rule. Every PR that adds an unverified claim also adds a line to "FINAL VM TEST LIST" in `docs/PLAN-STATE.md`, grouped by phase; that list is the script for the one final check.

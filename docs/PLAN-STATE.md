@@ -144,3 +144,43 @@ PR "feat/welcome-apply": Apply in the wizard (`welcome/heiss_welcome/applier.py`
 ## Round 19, Phase 5, step 5d (2026-11-11)
 
 PR "feat/welcome-package": package `heiss-welcome`, autostart for the installed system only (live excluded by `/run/archiso`), `heiss-welcome` in `profile/packages.x86_64`, tests. Built locally and the package contents inspected; nothing run. Next ISO build: `scripts/heiss-packages-build.sh` first (pyside6 comes from `extra`). Needs from the owner after a rebuild: in the live session the wizard must NOT start; after installing and logging in it must start once (screenshots, Dark/Light/ru). Phase 5 is then complete apart from the not-applied extras; next candidate is Phase 6 (Control Center) after the owner's reply.
+
+## FINAL VM TEST LIST: everything marked "Not verified", by phase (running checklist)
+
+Owner's rule (2026-11-11): no ISO build and no VM check until the whole master plan is done. This list is the test script for that final check. Every PR that adds an unverified claim adds a line here under its phase (tick `[x]` only after a real run, a screenshot or a measurement). Format: `[ ] what to do / what to see`.
+
+### Phase 1: repository, signing, guards
+- [ ] A real `pacman -Sy` on the installed system against `https://heiss-os.github.io/heiss-repo/$arch` works with `SigLevel = Required DatabaseRequired` (the files and signature were checked by hand with curl and gpg, never by pacman over HTTPS).
+- [ ] `pacman -S heiss-profile-cyber` (or another profile) from `[heiss]` installs.
+- [ ] Encrypted backup of the signing key made by the owner and the temporary key directory wiped (owner action, `docs/infra/REPOSITORY.md`).
+- [ ] UEFI and Secure Boot boot of the ISO (never tested).
+
+### Phase 2: engine and hardware detection
+- [ ] `heiss hw detect` on VirtualBox shows the VirtualBox guest-tools proposal; on real hardware the GPU, laptop and hybrid-graphics detection is correct (only fixtures were tested).
+- [ ] `heiss profile apply --dry-run` plans match the real installed package set (adopt, kept and removed packages).
+
+### Phase 3: helper and polkit
+- [ ] `heiss-helper` starts on the system bus and the polkit prompt appears and works for install, services, drop-ins and removal (D-Bus glue was tested only on a private bus with fakes; `python-gobject` tests are skipped without the package).
+- [ ] Failed install, locked pacman database, low disk space and network loss are reported properly and leave a resumable state.
+- [ ] Not built: Cancel of a running helper job, Flatpak support in the helper, saving answers by the helper.
+
+### Phase 4: default apps and theming
+- [ ] `docs/ISO-E2E-TEST.md` run in full; `heiss check` run on an installed VM (never run on a real installed system).
+- [ ] File associations (`docs/apps/ASSOCIATIONS.md`) open the intended default apps.
+- [ ] `heiss-gtk-audit` output and screenshots of GTK apps in Dark and Light; portal color-scheme follows the theme.
+- [ ] `heiss theme sync` log and screenshots (Konsole, kitty, launcher icon) on theme switch, Dark and Light.
+- [ ] Dock screenshot, running installer in the dock, Kickoff menu (clean launcher) in Dark and Light; icons.
+- [ ] Plasma shortcut list from the VM compared with `docs/design/SHORTCUTS.md`.
+- [ ] "Open terminal here" behaviour per `docs/apps/TERMINAL-HERE.md`.
+- [ ] After the 37 removed packages (PR 49): ISO boots, installs, `systemctl --failed` is empty.
+- [ ] Not done: Dolphin Places defaults, kitty and Thunar terminal configuration.
+
+### Phase 5: Welcome wizard, repository in the installed system
+- [ ] Wizard screens (welcome, profile, level, add-ons, hardware, appearance, privacy, software, backups, summary, applying, done) in Dark, Light and Russian: screenshots; layout, focus ring, Alt+Left, Inter font, error colour contrast on Light.
+- [ ] Hardware screen in VirtualBox shows the guest-tools proposal; the privacy screen shows only the firewall as "In place".
+- [ ] Apply: plan preview, polkit prompt, progress, success, failure with Try again, Save for later; the signal from the worker thread to the GUI works; the window refuses to close while applying.
+- [ ] `pyside6` 6.12 runs the QML; ISO size change after adding `pyside6` (52 MiB installed per `pacman -Si`).
+- [ ] Autostart: the wizard does NOT start in the live session (`/run/archiso` present) and starts once after the first login on the installed system.
+- [ ] `heiss-cleanup.sh` imports the Heiss key and appends `[heiss]` on a real installation; `pacman -Sy` then works; Calamares' unpackfs copies `/usr/share/pacman/keyrings/heiss.gpg` into the target.
+- [ ] ISO build order: `scripts/heiss-packages-build.sh` before `heiss-build.sh` (the keyring and welcome packages come only from `~/localrepo`).
+- [ ] Existing installer items still unchecked: slideshow animation, glow via QtQuick.Effects, the users page logo animation, mouse selection on the desktop under VirtualBox.
