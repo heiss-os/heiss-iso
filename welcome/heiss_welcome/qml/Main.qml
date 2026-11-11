@@ -116,6 +116,7 @@ ApplicationWindow {
         Text { visible: s.isApplying; text: s.job.log.join("\n"); color: pal.dim; font.family: "JetBrains Mono"
                font.pixelSize: 12; wrapMode: Text.WrapAnywhere; Layout.fillWidth: true; elide: Text.ElideNone }
 
+        Text { visible: s.note !== ""; text: s.note; color: pal.dim; wrapMode: Text.WordWrap; Layout.fillWidth: true }
         Text { visible: s.error !== ""; text: s.error; color: "#E06C64"; wrapMode: Text.WordWrap; Layout.fillWidth: true }
 
         RowLayout {
