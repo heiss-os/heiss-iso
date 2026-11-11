@@ -12,6 +12,7 @@ from . import answers as ans
 from . import check as checkmod
 from . import apply as applymod
 from . import hardware as hw
+from . import privacy as pv
 from . import manifest as mf
 from . import resolver, state as st
 from . import themesync
@@ -75,7 +76,7 @@ def _build(args, system=None):
     state, catalog = st.load(state_path), _hardware_catalog()
     return resolver.resolve(doc, manifests, state, system or PacmanSystem(), adopt=getattr(args, "adopt", False),
                             hardware=_chosen_hardware(args, catalog), catalog=catalog,
-                            matching=_matching_hardware(catalog))
+                            matching=_matching_hardware(catalog), privacy=getattr(args, "privacy", None))
 
 
 def _ask(prompt):
@@ -107,6 +108,7 @@ def main(argv=None, system=None, out=sys.stdout, helper=None, confirm=None, them
         sp.add_argument("--addon", action="append")
         sp.add_argument("--adopt", action="store_true", help="claim already installed profile packages")
         sp.add_argument("--hardware", action="append", metavar="ID", help="also apply this hardware profile (see 'hw detect')")
+        sp.add_argument("--privacy", choices=pv.LEVELS, help="also apply this privacy level (network MAC, screen lock)")
         if name == "apply":
             sp.add_argument("--dry-run", action="store_true")
             sp.add_argument("--yes", action="store_true", help="do not ask for confirmation")

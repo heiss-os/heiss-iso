@@ -25,6 +25,9 @@ class CliApplier:
         args = ["--adopt", "--profile=%s" % answers["profile"]]   # "=" form: an id can never be read as an option
         args += ["--addon=%s" % a for a in answers["addons"]]
         args += ["--hardware=%s" % h for h in hardware]
+        level = answers.get("privacy", {}).get("level")   # a validated answer; complete answers always have it
+        if level:
+            args.append("--privacy=%s" % level)
         return args
 
     def plan(self, answers, hardware=()):

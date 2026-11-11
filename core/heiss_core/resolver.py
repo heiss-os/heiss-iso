@@ -2,6 +2,7 @@
 from dataclasses import dataclass, field
 
 from . import manifest as mf
+from . import privacy as pv
 from .errors import ValidationError
 
 
@@ -23,13 +24,14 @@ class Plan:
     kde_settings: list = field(default_factory=list)
     post_actions: list = field(default_factory=list)
     hardware: list = field(default_factory=list)         # hardware profile ids included in this plan
+    privacy: str = ""                                    # privacy level whose root drop-in must be written ("" = none)
     notes: list = field(default_factory=list)            # things a chosen profile asks for that are NOT applied
     next_state: dict = field(default_factory=dict)
 
     def is_empty(self):
         return not any([self.install_packages, self.adopt_packages, self.remove_packages,
                         self.enable_services, self.disable_services, self.install_flatpaks,
-                        self.remove_flatpaks, self.dropins, self.kde_settings, self.post_actions])
+                        self.remove_flatpaks, self.dropins, self.kde_settings, self.post_actions, self.privacy])
 
     def to_dict(self):
         return {k: v for k, v in self.__dict__.items()}
@@ -48,6 +50,8 @@ class Plan:
             lines.append("write drop-ins: %s" % " ".join(d["path"] for d in self.dropins))
         if self.kde_settings:
             lines.append("KDE settings: %d keys" % len(self.kde_settings))
+        if self.privacy:
+            lines.append("privacy level: %s (network drop-in)" % self.privacy)
         if self.hardware:
             lines.append("hardware profiles: %s" % " ".join(self.hardware))
         for n in self.notes:
@@ -86,10 +90,11 @@ def sticky_hardware(catalog, state, covered=(), matching=None):
     return out
 
 
-def resolve(answers, manifests, state, system, adopt=False, hardware=(), catalog=None, matching=None):
+def resolve(answers, manifests, state, system, adopt=False, hardware=(), catalog=None, matching=None, privacy=None):
     """hardware: HwProfile objects to include besides the profile and add-ons (their packages, services,
     drop-ins and post-actions). catalog: all hardware profiles; those applied earlier stay wanted (sticky_hardware, filtered by `matching`).
-    Their kernel parameters are never applied; the plan says so in `notes`."""
+    Their kernel parameters are never applied; the plan says so in `notes`.
+    privacy: a level id to apply (privacy.py), or None to leave privacy alone. Only differences are planned."""
     prof = manifests.get(answers["profile"])
     if prof is None or prof.kind != "profile":
         raise ValidationError("%r is not a profile" % answers["profile"])
@@ -151,6 +156,11 @@ def resolve(answers, manifests, state, system, adopt=False, hardware=(), catalog
                   % (h.id, " ".join(h.kernel_params)) for h in hw if h.kernel_params]
     plan.kde_settings = [k for mid in order for k in manifests[mid].kde_settings
                          if system.kde_value(k["file"], k["group"], k["key"]) != k["value"]]
+    if privacy is not None:
+        if any(system.read_text(d["path"]) != d["content"] for d in pv.dropins(privacy)):
+            plan.privacy = privacy
+        plan.kde_settings += [k for k in pv.kde_settings(privacy)
+                              if system.kde_value(k["file"], k["group"], k["key"]) != k["value"]]
     plan.post_actions = _union(manifests, order, "post_actions") if (plan.install_packages or plan.remove_packages) else []
     if plan.install_packages or plan.dropins:
         for h in hw:

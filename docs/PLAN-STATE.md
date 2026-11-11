@@ -2,7 +2,7 @@
 
 Read this file at the start of every session. Source plan: `heiss-master-prompt.md` (kept outside the repo, in `~/share/`).
 
-Last updated: 2026-11-10
+Last updated: 2026-11-11
 
 ## Done
 
@@ -187,6 +187,7 @@ Owner's rule (2026-11-11): no ISO build and no VM check until the whole master p
 - [ ] Hardware screen in VirtualBox shows the guest-tools proposal; the privacy screen shows only the firewall as "In place".
 - [ ] Hardware choices (5f): ticking the VirtualBox guest tools and applying installs `virtualbox-guest-utils` and enables `vboxservice.service`; a later profile change keeps them (sticky rule); NVIDIA is never ticked by default, its plan prints the kernel-parameter note and the driver path was never run (black-screen risk); `grub-mkconfig` and `mkinitcpio` post-actions run and a failure of `grub-mkconfig` (no /boot/grub) is reported; detection on the GUI thread when the hardware screen was skipped does not freeze the window.
 - [ ] Theme (5g): choosing Dark and Light on the appearance screen switches the desktop at once with `plasma-apply-lookandfeel`, the wizard recolours, theme-sync reacts; Automatic changes nothing; a failure shows the note.
+- [ ] Privacy level (3c): applying Enhanced or Maximum writes `/etc/NetworkManager/conf.d/80-heiss-privacy.conf` (polkit prompt, `WritePrivacy`), and after `systemctl restart NetworkManager` (or reboot) the Wi-Fi MAC shown by `ip link` / `nmcli -f 802-11-wireless.cloned-mac-address connection show <name>` changes as documented (a profile with its own value keeps it; check a captive-portal network at Maximum); `~/.config/kscreenlockerrc` gets `Autolock`, `Timeout`, `LockGrace` and the screen really locks after 5, 3 or 1 minutes (re-login may be needed); lowering the level restores the Standard values; the privacy screen marks the firewall, MAC and lock as "In place" and the rest as "Coming soon" in en and ru; the D-Bus integration tests with python-gobject (skipped here).
 - [ ] Apply: plan preview, polkit prompt, progress, success, failure with Try again, Save for later; the signal from the worker thread to the GUI works; the window refuses to close while applying.
 - [ ] `pyside6` 6.12 runs the QML; ISO size change after adding `pyside6` (52 MiB installed per `pacman -Si`); whether `kirigami` fits the size budget if the Control Center uses it.
 - [ ] Autostart: the wizard does NOT start in the live session (`/run/archiso` present) and starts once after the first login on the installed system.
@@ -209,3 +210,7 @@ PR "feat/apply-theme-choice": `welcome/heiss_welcome/theme.py`, view-model hook,
 ## Round 20, subagents (2026-11-11)
 
 PR "chore/more-agents": `.claude/agents/security-reviewer.md`, `qa-verifier.md`, `docs-keeper.md`, rules in `CLAUDE.md`, `core/tests/test_agents.py` (front matter, unique names, read-only tools, no tabs). Not verified: the definitions have not been run by Claude Code as registered subagents yet (they are only picked up in a new session); this PR used them as written instructions. Next: step 3c, privacy level.
+
+## Round 20, item 3c (2026-11-11): privacy level applied
+
+PR "feat/apply-privacy-level": `core/heiss_core/privacy.py`, `--privacy` on `heiss profile apply|diff`, helper method `WritePrivacy` (documented in `docs/SECURITY-MODEL.md`), wizard passes the level, privacy screen marks Wi-Fi MAC and screen lock as in place, tests (`core/tests/test_privacy.py`, helper and welcome tests). Not verified: see the new Phase 5 line in the FINAL VM TEST LIST (nothing ran on a real system; key names were read from the man pages and the shipped kcfg). Still "Coming soon": DNS over TLS, VPN/WireGuard, Bluetooth off, linux-hardened. Next: Phase 6 (Control Center) after the owner's reply.

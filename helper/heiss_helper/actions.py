@@ -8,6 +8,7 @@ import subprocess
 from dataclasses import dataclass
 from typing import Callable, Optional
 
+from heiss_core import privacy as pv
 from heiss_core import state as st
 
 from . import policy
@@ -181,6 +182,13 @@ def build_dropin(ctx, path):
     return [_dropin_step(path, content)]
 
 
+def build_privacy(ctx, level):
+    """Write the network drop-in of a privacy level. No service is restarted: NetworkManager reads it when it
+    starts or is reloaded."""
+    level = policy.check_privacy_level(level)
+    return [_dropin_step(d["path"], d["content"]) for d in pv.dropins(level)]
+
+
 def build_post_action(ctx, action_id):
     argv = policy.check_post_action(action_id)      # validates first: only known ids reach the description
     return [Step("post action " + action_id, argv=argv)]
@@ -213,6 +221,7 @@ ACTIONS = {a.method: a for a in (
     Action("AdoptPackages", "org.heiss.packages.adopt", "as", build_adopt),
     Action("SetServices", "org.heiss.services.manage", "asas", build_services),
     Action("WriteDropin", "org.heiss.config.write", "s", build_dropin),
+    Action("WritePrivacy", "org.heiss.config.write", "s", build_privacy),
     Action("RunPostAction", "org.heiss.postaction.run", "s", build_post_action),
     Action("UpdateSystem", "org.heiss.system.update", "", build_update),
     Action("CreateSnapshot", "org.heiss.snapshot.create", "s", build_snapshot),

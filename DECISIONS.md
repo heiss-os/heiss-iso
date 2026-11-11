@@ -234,3 +234,10 @@ Format: date, what, why. Newest at the bottom.
 
 - **`security-reviewer`, `qa-verifier` and `docs-keeper` join `reviewer` in `.claude/agents/`.** Why: the reviewer reads one diff for everything; privilege code, running things in a clean checkout and keeping the notes consistent each need a narrower, stricter pass. All four have no Edit, Write or NotebookEdit tools (a test enforces that); writes through Bash (edit, commit, push) are prevented only by their instructions, not technically. `qa-verifier` also runs code under test without tokens and never from the owner's tree.
 - **When each one is required** is written in `CLAUDE.md` ("Субагенты"); HIGH and MEDIUM findings of the security reviewer block opening the PR; the verdicts go into the report block as `агенты: ...`.
+
+## 2026-11-11 (privacy level applied, step 3c)
+
+- **Privacy levels are code constants in `heiss_core/privacy.py`, written through a new helper method `WritePrivacy(level)`**, not manifest drop-ins. Why: the helper takes drop-in content from installed manifests by path alone, and one path cannot hold three contents; a level name is the only thing a client can send, so the client still never supplies a path or content. Reuses polkit action `org.heiss.config.write` (no policy change).
+- **Scope: Wi-Fi/Ethernet MAC address default and screen lock only.** Standard keeps NetworkManager's defaults explicitly (preserve) and KDE's 5-minute lock; Enhanced: stable per-network MAC, 3 minutes; Maximum: random Wi-Fi MAC, stable Ethernet MAC, 1 minute, no grace. DNS over TLS (needs systemd-resolved wiring), Bluetooth off (conflicts with Essentials), VPN and linux-hardened stay "Coming soon".
+- **Opt-in in the engine:** privacy is planned only with `--privacy`, so existing `heiss profile apply` runs are unchanged. No NetworkManager restart: it could drop the user's connection mid-apply. heiss-core pkgrel 6 -> 7, heiss-helper 1 -> 2, heiss-welcome 3 -> 4.
+
