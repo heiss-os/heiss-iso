@@ -21,14 +21,15 @@ class CliApplier:
         self.argv = list(argv or [sys.executable, "-m", "heiss_core"])
 
     @staticmethod
-    def _selection(answers):
+    def _selection(answers, hardware=()):
         args = ["--adopt", "--profile=%s" % answers["profile"]]   # "=" form: an id can never be read as an option
         args += ["--addon=%s" % a for a in answers["addons"]]
+        args += ["--hardware=%s" % h for h in hardware]
         return args
 
-    def plan(self, answers):
+    def plan(self, answers, hardware=()):
         """Read-only: the resolver plan as a dict (`profile apply --dry-run`). Raises HeissError."""
-        argv = self.argv + ["--json", "profile", "apply", "--dry-run"] + self._selection(answers)
+        argv = self.argv + ["--json", "profile", "apply", "--dry-run"] + self._selection(answers, hardware)
         try:
             r = subprocess.run(argv, capture_output=True, text=True, errors="replace", timeout=PLAN_TIMEOUT_S)
         except (OSError, subprocess.TimeoutExpired) as e:
@@ -40,9 +41,9 @@ class CliApplier:
         except ValueError:
             raise HeissError("the plan is not readable")
 
-    def run(self, answers, on_line, on_step):
+    def run(self, answers, on_line, on_step, hardware=()):
         """Apply. on_line(text) for helper output, on_step(n, total, description) for each helper call."""
-        argv = self.argv + ["profile", "apply", "--yes"] + self._selection(answers)
+        argv = self.argv + ["profile", "apply", "--yes"] + self._selection(answers, hardware)
         try:
             p = subprocess.Popen(argv, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, errors="replace",
                                  bufsize=1)

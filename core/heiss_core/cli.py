@@ -34,6 +34,35 @@ def _kinds(manifests, kind):
     return {i for i, m in manifests.items() if m.kind == kind}
 
 
+def _hardware_dir():
+    return os.environ.get("HEISS_HARDWARE", DEFAULT_HARDWARE)
+
+
+def _hardware_catalog():
+    try:
+        return hw.load_profiles(_hardware_dir())
+    except FileNotFoundError:
+        return {}
+
+
+def _matching_hardware(catalog):
+    """Ids of the hardware profiles that fit this machine; None when detection is impossible (no filter then)."""
+    if not catalog:
+        return None
+    try:
+        return {p.id for p in hw.detect(hw.collect_live(), catalog).proposals}
+    except Exception:   # advisory only: never block an apply
+        return None
+
+
+def _chosen_hardware(args, catalog):
+    ids = list(getattr(args, "hardware", None) or [])
+    unknown = [i for i in ids if i not in catalog]
+    if unknown:
+        raise HeissError("unknown hardware profile(s): %s" % ", ".join(unknown))
+    return [catalog[i] for i in sorted(set(ids))]
+
+
 def _build(args, system=None):
     prof_dir, answers_path, state_path = _paths(args)
     manifests = mf.load_dir(prof_dir)
@@ -43,9 +72,10 @@ def _build(args, system=None):
     else:
         doc = ans.load(answers_path, known_profiles=_kinds(manifests, "profile"),
                        known_addons=_kinds(manifests, "addon"))
-    plan = resolver.resolve(doc, manifests, st.load(state_path), system or PacmanSystem(),
-                            adopt=getattr(args, "adopt", False))
-    return plan
+    state, catalog = st.load(state_path), _hardware_catalog()
+    return resolver.resolve(doc, manifests, state, system or PacmanSystem(), adopt=getattr(args, "adopt", False),
+                            hardware=_chosen_hardware(args, catalog), catalog=catalog,
+                            matching=_matching_hardware(catalog))
 
 
 def _ask(prompt):
@@ -76,6 +106,7 @@ def main(argv=None, system=None, out=sys.stdout, helper=None, confirm=None, them
         sp.add_argument("--profile")
         sp.add_argument("--addon", action="append")
         sp.add_argument("--adopt", action="store_true", help="claim already installed profile packages")
+        sp.add_argument("--hardware", action="append", metavar="ID", help="also apply this hardware profile (see 'hw detect')")
         if name == "apply":
             sp.add_argument("--dry-run", action="store_true")
             sp.add_argument("--yes", action="store_true", help="do not ask for confirmation")
