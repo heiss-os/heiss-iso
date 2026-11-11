@@ -63,7 +63,10 @@ write_page "$DEST/index.html" < <(
     echo '<h1>Heiss OS package repository: x86_64</h1>'
     echo '<p>Pacman server line: <code>Server = https://heiss-os.github.io/heiss-repo/$arch</code>. Not an official Arch Linux repository.</p><ul>'
     (cd "$DEST" && LC_ALL=C ls -1 | grep -v '^index\.html$') | while read -r f; do
-        echo "<li><a href=\"$f\">$f</a></li>"
+        # "./" keeps a name with ':' (epoch) from being read as a URL scheme
+        href="$(printf '%s' "$f" | sed 's/%/%25/g; s/ /%20/g; s/"/%22/g; s/</%3C/g; s/>/%3E/g; s/#/%23/g; s/?/%3F/g; s/&/\&amp;/g')"
+        text="$(printf '%s' "$f" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')"
+        echo "<li><a href=\"./$href\">$text</a></li>"
     done
     echo '</ul>'
 )

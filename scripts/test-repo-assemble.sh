@@ -16,11 +16,20 @@ sum="$(sha256sum "$T"/s/x86_64/*.pkg.tar.zst | sort)"
 [[ "$(sha256sum "$T"/s/x86_64/*.pkg.tar.zst | sort)" == "$sum" ]] || fail "published files changed"
 
 # index pages exist and list the files; a repository without them gets them without a rebuild
-grep -q 'href="heiss.db"' "$T/s/x86_64/index.html" || fail "x86_64/index.html does not list heiss.db"
+grep -q 'href="./heiss.db"' "$T/s/x86_64/index.html" || fail "x86_64/index.html does not list heiss.db"
 grep -q 'x86_64/' "$T/s/index.html" || fail "root index.html does not link to x86_64/"
 dbsum="$(sha256sum "$T/s/x86_64/heiss.db")"; rm "$T/s/x86_64/index.html"
 [[ "$(run "$PK" "$T/s" "$KEY")" == changed=true ]] || fail "missing index must count as a change"
 [[ "$(sha256sum "$T/s/x86_64/heiss.db")" == "$dbsum" ]] || fail "index-only change rebuilt the database"
+rm "$T/s/index.html"
+[[ "$(run "$PK" "$T/s" "$KEY")" == changed=true ]] || fail "missing root index must count as a change"
+[[ "$(sha256sum "$T/s/x86_64/heiss.db")" == "$dbsum" ]] || fail "root index change rebuilt the database"
+# odd file names are escaped in the page (a file that is not a package is only listed)
+touch "$T/s/x86_64/a&b <c>:1.txt"
+run "$PK" "$T/s" "$KEY" >/dev/null
+grep -qF 'href="./a&b' "$T/s/x86_64/index.html" && fail "unescaped name in href"
+grep -qF 'a&amp;b &lt;c&gt;:1.txt</a>' "$T/s/x86_64/index.html" || fail "name not HTML-escaped"
+rm "$T/s/x86_64/a&b <c>:1.txt"; run "$PK" "$T/s" "$KEY" >/dev/null
 
 # stale: one package no longer built -> its files go away, the rest stays byte for byte
 mkdir "$T/pk2"; cp "$PK"/heiss-*.pkg.tar.zst "$T/pk2/"
