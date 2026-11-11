@@ -194,6 +194,9 @@ Owner's rule (2026-11-11): no ISO build and no VM check until the whole master p
 - [ ] ISO build order: `scripts/heiss-packages-build.sh` before `heiss-build.sh` (the keyring and welcome packages come only from `~/localrepo`).
 - [ ] Existing installer items still unchecked: slideshow animation, glow via QtQuick.Effects, the users page logo animation, mouse selection on the desktop under VirtualBox.
 
+### Tooling (not a product phase)
+- [ ] In a new Claude Code session run `/agents`: `reviewer`, `security-reviewer`, `qa-verifier` and `docs-keeper` are listed; invoke each on a small diff and expect a findings list and a `Verdict:` line, and `git status` stays clean afterwards (they must not change files).
+
 ## Round 20, item 3a (2026-11-11): hardware choices applied
 
 PR "feat/apply-hardware-choices": `--hardware` on `heiss profile apply|diff`, resolver support with the sticky rule, wizard passes the ticked proposals, strings updated, tests (`core/tests/test_hardware_apply.py`, `welcome/tests/test_apply.py`). Not verified: see the new Phase 5 line in the FINAL VM TEST LIST. Next: 3b theme, 3c privacy level (MAC randomization, screen lock), then Phase 6.
@@ -201,9 +204,6 @@ PR "feat/apply-hardware-choices": `--hardware` on `heiss profile apply|diff`, re
 ## Round 20, item 3b (2026-11-11): theme choice applied
 
 PR "feat/apply-theme-choice": `welcome/heiss_welcome/theme.py`, view-model hook, note on the appearance screen, CI check that plasma-workspace ships `plasma-apply-lookandfeel`, tests. Not verified: see the new Phase 5 line. Next: 3c privacy level (MAC randomization, screen lock).
-
-### Tooling (not a product phase)
-- [ ] In a new Claude Code session run `/agents`: `reviewer`, `security-reviewer`, `qa-verifier` and `docs-keeper` are listed; invoke each on a small diff and expect a findings list and a `Verdict:` line, and `git status` stays clean afterwards (they must not change files).
 
 ## Round 20, subagents (2026-11-11)
 
