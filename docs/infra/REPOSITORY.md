@@ -51,7 +51,8 @@ Profiles are metapackages. `[heiss-local]` is a `file://` directory on the build
 | Secrets `REPO_GPG_PRIVATE_KEY`, `REPO_GPG_KEY_ID`, `REPO_PUSH_TOKEN` | set by the owner (listed by `gh secret list`, 2026-11-10 and 2026-11-11; values never seen) |
 | Encrypted backup of the private key | not done yet (must come after the secrets are set) |
 | CI publishing job `.github/workflows/publish-repo.yml` | written (this PR); not yet run against the real repository, runs after merge to `main` |
-| `heiss-keyring` package, `pacman.conf` entry in `heiss-cleanup.sh` | not started |
+| `heiss-keyring` package | PR 64; in the ISO package list (PR "feat/heiss-repo-in-installed-system") |
+| `[heiss]` entry in `heiss-cleanup.sh` | owner approved 2026-11-11 ("yes, both items"); added in that PR, label `design-approved` needed; not tested on a real installation |
 
 ### Signing key (public data)
 
