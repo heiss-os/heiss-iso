@@ -187,3 +187,36 @@ class KeyringPackage(unittest.TestCase):
         self.assertIn("https://heiss-os.github.io/heiss-repo/$arch", sh)
         with open(os.path.join(REPO, "profile", "packages.x86_64"), encoding="utf-8") as f:
             self.assertIn("heiss-keyring", f.read().split())
+
+
+class WelcomePackage(unittest.TestCase):
+    def test_package_ships_the_app_launcher_and_autostart(self):
+        pk = pkgbuild("heiss-welcome")
+        self.assertIn("welcome/heiss_welcome", pk)
+        self.assertIn("welcome/data/heiss-welcome ", pk)
+        self.assertIn("/etc/xdg/autostart/heiss-welcome.desktop", pk)
+        for dep in ("'python'", "'pyside6'", "'heiss-core'"):
+            self.assertIn(dep, pk)
+        with open(os.path.join(REPO, "packages", "pkgrel.json")) as f:
+            rel = json.load(f)
+        self.assertEqual(int(re.search(r"^pkgrel=(\d+)", pk, re.M).group(1)), rel["heiss-welcome"])
+        self.assertEqual(re.search(r"^pkgver=(\S+)", pk, re.M).group(1), rel["pkgver"])
+
+    def test_every_data_file_is_installed(self):
+        pk = pkgbuild("heiss-welcome")
+        for f in os.listdir(os.path.join(REPO, "welcome", "data")):
+            self.assertIn("welcome/data/" + f, pk, f)
+
+    def test_autostart_is_never_active_in_the_live_session(self):
+        with open(os.path.join(REPO, "welcome", "data", "heiss-welcome.desktop"), encoding="utf-8") as f:
+            d = f.read()
+        exec_line = [l for l in d.splitlines() if l.startswith("Exec=")][0]
+        self.assertIn("test -e /run/archiso ||", exec_line)
+        self.assertIn("OnlyShowIn=KDE;", d)
+        self.assertIn("NoDisplay=true", d)
+
+    def test_build_script_archives_the_sources_and_the_iso_list_has_the_package(self):
+        with open(os.path.join(REPO, "scripts", "heiss-packages-build.sh"), encoding="utf-8") as f:
+            self.assertRegex(f.read(), r"archive .* welcome ")
+        with open(os.path.join(REPO, "profile", "packages.x86_64"), encoding="utf-8") as f:
+            self.assertIn("heiss-welcome", f.read().split())
