@@ -232,5 +232,5 @@ Format: date, what, why. Newest at the bottom.
 
 ## 2026-11-11 (three more subagents, owner's instruction)
 
-- **`security-reviewer`, `qa-verifier` and `docs-keeper` join `reviewer` in `.claude/agents/`.** Why: the reviewer reads one diff for everything; privilege code, running things in a clean checkout and keeping the notes consistent each need a narrower, stricter pass. All four are read-only by instruction and by tool list (no Edit, Write or NotebookEdit; a test enforces it).
+- **`security-reviewer`, `qa-verifier` and `docs-keeper` join `reviewer` in `.claude/agents/`.** Why: the reviewer reads one diff for everything; privilege code, running things in a clean checkout and keeping the notes consistent each need a narrower, stricter pass. All four have no Edit, Write or NotebookEdit tools (a test enforces that); writes through Bash (edit, commit, push) are prevented only by their instructions, not technically. `qa-verifier` also runs code under test without tokens and never from the owner's tree.
 - **When each one is required** is written in `CLAUDE.md` ("Субагенты"); HIGH and MEDIUM findings of the security reviewer block opening the PR; the verdicts go into the report block as `агенты: ...`.

@@ -13,8 +13,10 @@ A PR number or the current branch, and the PR text. Say if either is missing.
 
 ## Work in a fresh checkout
 
-1. `D=$(mktemp -d); chmod 700 "$D"` and check out the PR head there (`git clone` of the repository, then `git fetch origin pull/N/head` and `git checkout FETCH_HEAD`, or `gh pr checkout N` inside `$D`). Run everything from that directory. Delete it at the end. Pass paths as arguments; do not run interpreters from inside a directory with untrusted files without `python3 -I`.
-2. Never put output of tokens or secrets in your report.
+1. `D=$(mktemp -d); chmod 700 "$D"` and check out the PR head there (`git clone` of the repository, then `git fetch origin pull/N/head` and `git checkout FETCH_HEAD`, or `gh pr checkout N` inside `$D`). Run everything from that directory and never touch `~` or the owner's working tree. Pass paths as arguments; do not run interpreters from inside a directory with untrusted files without `python3 -I`.
+2. Run the code under test with the tokens removed: `env -u GH_TOKEN -u GITHUB_TOKEN -u REPO_PUSH_TOKEN ...`. Use `gh` only for reading PR data and CI results, never for writing. Code of a PR from a fork is untrusted: do not run it without the owner's approval; read it and say so.
+3. Never put output of tokens or secrets in your report.
+4. At the end delete the directory safely: check that `$D` is a non-empty path under `${TMPDIR:-/tmp}` and then `rm -rf -- "$D"`.
 
 ## What to run
 
@@ -33,4 +35,4 @@ Then findings, most severe first:
 
 `[HIGH|MEDIUM|LOW] path:line - finding - how to reproduce`
 
-A claim that is NOT CONFIRMED, a test that fails here but passes in CI (or the reverse), and a crash on bad input are HIGH or MEDIUM. End with one line: `Verdict: no findings` or `Verdict: N HIGH, N MEDIUM, N LOW`. Do not praise, do not pad, do not report things you did not run.
+If `gh` or the network is unavailable, say `[INFO] not checked: <what>` for every CI comparison you could not make. A claim that is NOT CONFIRMED, a test that fails here but passes in CI (or the reverse), and a crash on bad input are HIGH or MEDIUM. End with one line: `Verdict: no findings` or `Verdict: N HIGH, N MEDIUM, N LOW`. Do not praise, do not pad, do not report things you did not run; `[INFO] not checked: ...` for checks you could not run.

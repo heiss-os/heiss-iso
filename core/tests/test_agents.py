@@ -56,6 +56,16 @@ class Agents(unittest.TestCase):
             for sev in ("HIGH", "MEDIUM", "LOW"):
                 self.assertIn(sev, body, p)
 
+    def test_security_paths_of_the_agent_are_listed_in_claude_md(self):
+        _, body, _ = parse(os.path.join(DIR, "security-reviewer.md"))
+        section = body.split("## When you are required")[1].split("##")[0]
+        paths = re.findall(r"`([^`]+)`", section)
+        self.assertGreaterEqual(len(paths), 5)
+        with open(os.path.join(REPO, "CLAUDE.md"), encoding="utf-8") as f:
+            claude = f.read()
+        for path in paths:
+            self.assertIn(path, claude, path)
+
     def test_claude_md_lists_every_agent_and_the_rules(self):
         with open(os.path.join(REPO, "CLAUDE.md"), encoding="utf-8") as f:
             text = f.read()
