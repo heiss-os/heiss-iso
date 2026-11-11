@@ -73,6 +73,16 @@ jobs:
         run: |
           pacman -Fy
           python3 scripts/check-file-conflicts.py /home/builder/localrepo/heiss-*.pkg.tar.zst
+      - name: heiss-keyring installs and pacman-key trusts the pinned key
+        run: |
+          pacman-key --init
+          pacman -U --noconfirm /home/builder/localrepo/heiss-keyring-*.pkg.tar.zst
+          pacman-key --populate heiss
+          pacman-key --finger FEA84CEF8AEDF132
+          # field 2 of the pub line is the validity: f (full) or u (ultimate), not q/-/e
+          v=$(gpg --homedir /etc/pacman.d/gnupg --list-keys --with-colons DDD292CCC8613FD3324D3833FEA84CEF8AEDF132 | awk -F: '/^pub:/ {print $2; exit}')
+          echo "validity=$v"
+          case "$v" in f|u) ;; *) echo "::error::the Heiss key is not trusted by pacman-key"; exit 1;; esac
       - name: Inspect packages and run the engine from the extracted packages
         run: |
           cd /home/builder/localrepo
