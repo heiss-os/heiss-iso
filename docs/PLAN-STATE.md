@@ -196,6 +196,7 @@ Owner's rule (2026-11-11): no ISO build and no VM check until the whole master p
 
 ### Tooling (not a product phase)
 - [ ] In a new Claude Code session run `/agents`: `reviewer`, `security-reviewer`, `qa-verifier` and `docs-keeper` are listed; invoke each on a small diff and expect a findings list and a `Verdict:` line, and `git status` stays clean afterwards (they must not change files).
+- [ ] After the first merged PR that follows the new rules: the final report carries the line `агенты: reviewer ok, security ok, qa ok, docs ok` (`n/a` for an agent that PR did not need) and the PR text has an "automated review" block that lists each agent's result and which findings were fixed.
 
 ## Round 20, item 3a (2026-11-11): hardware choices applied
 
