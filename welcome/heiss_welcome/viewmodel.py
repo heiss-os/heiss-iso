@@ -3,6 +3,8 @@
 Every action returns the new screen dict, and saves the resume state after a step change. The wizard
 rules (validation, order, skip, defaults) stay in heiss_core.wizard.
 """
+import threading
+
 from heiss_core import wizard as wz
 from heiss_core.errors import HeissError
 
@@ -36,11 +38,61 @@ def _get(answers, path):
 
 
 class ViewModel:
-    def __init__(self, wizard, manifests, store=None, queue=None, detector=None):
-        """detector: callable returning a heiss_core.hardware.Report (may raise); None means no detection."""
+    def __init__(self, wizard, manifests, store=None, queue=None, detector=None, applier=None, spawn=None):
+        """detector: callable returning a heiss_core.hardware.Report (may raise); None means no detection.
+        applier: object with plan(answers) -> dict and run(answers, on_line, on_step); None means Apply is not
+        offered. spawn(fn) runs fn on a worker thread (tests pass a synchronous one); on_update() is called from
+        that thread whenever the job changes (the Qt glue refreshes the screen from it)."""
         self.w, self.manifests, self.store, self.queue = wizard, manifests, store, queue
         self.detector, self._report, self._detected = detector, None, False
+        self.applier, self.on_update = applier, None
+        self._spawn = spawn or (lambda fn: threading.Thread(target=fn, daemon=True).start())
+        self._lock = threading.Lock()
+        self._job = {"status": "idle", "step": "", "log": [], "error": ""}   # idle | running | failed | ok
+        self._plan = None
         self.error = ""
+
+    def _status(self):
+        with self._lock:
+            return self._job["status"]
+
+    def _plan_facts(self, lang):
+        """(lines, ok): what Apply would change. Computed on a worker thread, once per selection; a failure is
+        shown but not kept when the user leaves the summary, so it is tried again on return."""
+        a = self.w.final_answers()
+        key = (a["profile"], tuple(a["addons"]))
+        with self._lock:
+            cur = self._plan
+            start = cur is None or cur["key"] != key
+            if start:
+                self._plan = cur = {"key": key, "state": "computing", "plan": None, "err": ""}
+        if start:
+            self._spawn(lambda: self._plan_job(key, a))
+            with self._lock:
+                cur = self._plan
+        if cur["state"] == "computing":
+            return [t(lang, "plan.computing")], False
+        if cur["state"] == "failed":
+            return ["%s %s" % (t(lang, "plan.failed"), cur["err"])], False
+        plan = cur["plan"]
+        rows = [("plan.install", "install_packages"), ("plan.remove", "remove_packages"),
+                ("plan.enable", "enable_services"), ("plan.disable", "disable_services")]
+        lines = ["%s: %d" % (t(lang, k), len(plan.get(f) or [])) for k, f in rows if plan.get(f)]
+        return lines or [t(lang, "plan.nothing")], True
+
+    def _plan_job(self, key, answers):
+        """Worker thread body (never raises)."""
+        try:
+            res = {"state": "ok", "plan": self.applier.plan(answers), "err": ""}
+        except HeissError as e:
+            res = {"state": "failed", "plan": None, "err": str(e)}
+        except Exception as e:
+            res = {"state": "failed", "plan": None, "err": "unexpected error: %s" % e}
+        with self._lock:
+            if self._plan and self._plan["key"] == key:
+                self._plan.update(res)
+        if self.on_update:
+            self.on_update()
 
     def report(self):
         """Detection runs once, when the hardware screen is first shown. A failure means no proposals."""
@@ -129,20 +181,33 @@ class ViewModel:
             facts = self._privacy_facts(lang)
         if sid == "backups":
             facts = [{"text": t(lang, "hardware.soon"), "badge": ""}]
-        lines = []
+        lines, plan_ok = [], False
         if sid == wz.SUMMARY:
             a = w.final_answers()
             lines = ["%s: %s" % (t(lang, "summary.profile"), self._name(a["profile"])),
                      "%s: %s" % (t(lang, "summary.addons"),
                                  ", ".join(self._name(i) for i in a["addons"]) or t(lang, "summary.none"))]
-        what = t(lang, sid + ".what") if sid != "done" else t(lang, "done.skipped" if w.skipped else "done.what")
-        return {"id": sid, "title": t(lang, sid + ".title") if sid != "done" else t(lang, "done.title"),
+            if self.applier:
+                more, plan_ok = self._plan_facts(lang)
+                lines += more
+        with self._lock:
+            job = dict(self._job, log=self._job["log"][-12:])
+        applying = sid == wz.APPLYING
+        what_key = {"summary": "summary.what_apply" if self.applier else "summary.what"}.get(sid, sid + ".what")
+        if sid == "done":
+            what_key = "done.skipped" if w.skipped else ("done.applied" if job["status"] == "ok" else "done.what")
+        what = t(lang, what_key)
+        return {"id": sid, "title": t(lang, sid + ".title") if sid != "done" else t(lang, "done.title_applied" if job["status"] == "ok" else "done.title"),
                 "facts": facts, "what": what, "whatLabel": t(lang, "what"), "lines": lines, "questions": questions,
                 "progressText": t(lang, "step_of") % (pos, total), "progress": pos / total,
                 "canBack": w.step > 0 and sid not in (wz.APPLYING, wz.DONE),
                 "canSkip": w.can_skip(), "isFirst": sid == "welcome", "isSummary": sid == wz.SUMMARY,
-                "isDone": sid == wz.DONE, "error": self.error,
-                "labels": {k: t(lang, k) for k in ("back", "next", "skip", "start", "skip_all", "save_later", "close")}}
+                "isDone": sid == wz.DONE, "error": self.error or (job["error"] if applying else ""),
+                "job": job, "isApplying": applying, "isRunning": applying and job["status"] == "running",
+                "canApply": sid == wz.SUMMARY and plan_ok, "canRetry": applying and job["status"] == "failed",
+                "canSaveLater": (sid == wz.SUMMARY) or (applying and job["status"] == "failed"),
+                "labels": {k: t(lang, k) for k in ("back", "next", "skip", "start", "skip_all", "save_later", "close",
+                                                    "apply", "retry")}}
 
     # ----- actions -----
 
@@ -152,6 +217,15 @@ class ViewModel:
             fn()
         except HeissError as e:
             self.error = "%s %s" % (t(self.lang, "err"), e)
+        return self.refresh()
+
+    def refresh(self):
+        """GUI thread only: pick up a finished job, drop a stale failed plan, save the resume state, redraw."""
+        self._finalize()
+        if self.w.step_id != wz.SUMMARY:
+            with self._lock:
+                if self._plan and self._plan["state"] == "failed":
+                    self._plan = None
         self._save()
         return self.screen()
 
@@ -195,7 +269,77 @@ class ViewModel:
     def save_later(self):
         return self._run(self._finish_saved)
 
+    # ----- apply (5e) -----
+
+    def start_apply(self):
+        return self._run(self._begin_apply)
+
+    def _begin_apply(self):
+        if self.applier is None:
+            raise HeissError("applying is not available in this build")
+        self.w.start_apply()
+        self._launch()
+
+    def retry_apply(self):
+        def go():
+            if self.w.step_id != wz.APPLYING or self._status() != "failed":
+                raise HeissError("nothing to retry")
+            self._launch()
+        return self._run(go)
+
+    def _launch(self):
+        answers = self.w.final_answers()      # read on the GUI thread; the worker never touches the wizard
+        with self._lock:
+            if self._job["status"] == "running":
+                return
+            self._job = {"status": "running", "step": "", "log": [], "error": ""}
+        self._spawn(lambda: self.run_job(answers))
+
+    def _update(self, **kw):
+        with self._lock:
+            self._job.update(kw)
+        if self.on_update:
+            self.on_update()
+
+    def run_job(self, answers):
+        """Worker thread body. Never raises, and touches only the job record (under the lock): the wizard and
+        the store belong to the GUI thread, which finishes the job in _finalize()."""
+        def on_line(text):
+            with self._lock:
+                self._job["log"] = (self._job["log"] + [text])[-200:]
+            if self.on_update:
+                self.on_update()
+
+        def on_step(n, total, desc):
+            self._update(step="[%d/%d] %s" % (n, total, desc))
+        try:
+            self.applier.run(answers, on_line, on_step)
+        except HeissError as e:
+            return self._update(status="failed", error=str(e))
+        except Exception as e:   # the thread must not die silently
+            return self._update(status="failed", error="unexpected error: %s" % e)
+        self._update(status="applied")
+
+    def _finalize(self):
+        """GUI thread: a job that applied successfully becomes 'done'. The answers are saved first and the step
+        moves last, so a failed save leaves the applying screen with the error visible (Try again is offered)."""
+        if self._status() != "applied":
+            return
+        try:
+            if self.store:
+                self.store.save_answers(self.w)
+                self.store.mark_done()
+            self.w.finish()
+        except Exception as e:
+            with self._lock:
+                self._job.update(status="failed", error="applied, but saving the result failed: %s" % e)
+            return
+        with self._lock:
+            self._job["status"] = "ok"
+
     def _finish_saved(self):
+        if self._status() in ("running", "applied"):
+            raise HeissError("wait until applying has finished")
         self.w.finish()
         if self.store:
             self.store.save_answers(self.w)

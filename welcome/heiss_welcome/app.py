@@ -6,6 +6,7 @@ from heiss_core import hardware as hw
 from heiss_core import manifest as mf
 from heiss_core import wizard as wz
 
+from .applier import CliApplier
 from .viewmodel import ViewModel
 
 PROFILES = os.environ.get("HEISS_PROFILES", "/usr/share/heiss/profiles")
@@ -17,11 +18,11 @@ def live_detector(hardware_dir=HARDWARE):
     return lambda: hw.detect(hw.collect_live(), hw.load_profiles(hardware_dir))
 
 
-def build(config_dir, profiles_dir=PROFILES, detector=None):
+def build(config_dir, profiles_dir=PROFILES, detector=None, applier=None):
     manifests = mf.load_dir(profiles_dir)
     store = wz.Store(config_dir)
     wiz = store.load(manifests) or wz.Wizard(manifests)
-    return ViewModel(wiz, manifests, store, wz.PendingQueue(store.p("pending.json")), detector), store
+    return ViewModel(wiz, manifests, store, wz.PendingQueue(store.p("pending.json")), detector, applier), store
 
 
 def main(argv=None):
@@ -31,10 +32,16 @@ def main(argv=None):
 
     class Bridge(QObject):
         changed = Signal()
+        jobUpdated = Signal()   # emitted from the apply worker thread; delivered on the GUI thread
 
         def __init__(self, vm):
             super().__init__()
             self.vm, self._screen = vm, vm.screen()
+            vm.on_update = self.jobUpdated.emit
+            self.jobUpdated.connect(self._refresh)
+
+        @Slot()
+        def _refresh(self): self._set(self.vm.refresh())
 
         def _set(self, screen):
             self._screen = screen
@@ -66,10 +73,16 @@ def main(argv=None):
         @Slot()
         def saveLater(self): self._set(self.vm.save_later())
 
+        @Slot()
+        def apply(self): self._set(self.vm.start_apply())
+
+        @Slot()
+        def retry(self): self._set(self.vm.retry_apply())
+
     argv = sys.argv if argv is None else argv
     config = os.environ.get("HEISS_CONFIG_DIR") or os.path.join(
         os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config"), "heiss")
-    vm, store = build(config, detector=live_detector())
+    vm, store = build(config, detector=live_detector(), applier=CliApplier())
     if store.is_done() and "--force" not in argv:
         return 0
     app = QGuiApplication(argv)

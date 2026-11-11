@@ -199,3 +199,10 @@ Format: date, what, why. Newest at the bottom.
 
 - **Before asking the owner to merge, the PR author verifies base, freshness, conflicts, CI, labels, PR text, notes and a clean pushed tree, and reports in a fixed format.** Why: PR 65 was based on a feature branch and its changes never reached `main`. Rule in CLAUDE.md. PRs are never stacked: always branch from fresh `main`.
 - PR 65's content is re-applied on `main` by cherry-picking its squash commit (`987675a`), no conflicts.
+
+## 2026-11-11 (Welcome applying, step 5e)
+
+- **Apply runs `heiss profile apply` as a child process, not the helper client in-process.** Why: the Qt process on Linux iterates the default GLib context; the helper client runs its own GLib main loop and would fight it. A child process also keeps the window responsive and reuses the one tested apply path (preflight, ordering, error messages).
+- **`--adopt` is used for the plan and the apply,** as the summary plan in `wizard.summary_plan` already did: a first-run wizard on an ISO-installed Base should claim the already-installed profile packages.
+- **No "back to summary" after a failure;** only Try again and Save for later. A resumed interrupted apply already returns to the summary. Adding it needs a core change and a pkgrel bump, left for later.
+- **No Cancel:** the helper has none yet (Phase 3 follow-up), so the UI does not pretend to stop the job.

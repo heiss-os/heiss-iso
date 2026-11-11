@@ -23,6 +23,8 @@ ApplicationWindow {
         readonly property color onAccent: win.dark ? "#26282B" : "#F5F3EF"
     }
     font.family: "Inter"
+    // closing mid-apply would orphan the command that is changing the system
+    onClosing: function(close) { close.accepted = !s.isRunning }
 
     Shortcut { sequence: "Alt+Left"; enabled: s.canBack; onActivated: wizard.back() }
 
@@ -108,6 +110,12 @@ ApplicationWindow {
             }
         }
 
+        Text { visible: s.isApplying; text: s.job.step; color: pal.accent; font.pixelSize: 16; font.bold: true
+               wrapMode: Text.WordWrap; Layout.fillWidth: true }
+        ProgressBar { visible: s.isRunning; indeterminate: true; Layout.fillWidth: true; Accessible.name: s.job.step }
+        Text { visible: s.isApplying; text: s.job.log.join("\n"); color: pal.dim; font.family: "JetBrains Mono"
+               font.pixelSize: 12; wrapMode: Text.WrapAnywhere; Layout.fillWidth: true; elide: Text.ElideNone }
+
         Text { visible: s.error !== ""; text: s.error; color: "#E06C64"; wrapMode: Text.WordWrap; Layout.fillWidth: true }
 
         RowLayout {
@@ -117,8 +125,10 @@ ApplicationWindow {
             Btn { text: s.labels.skip_all; visible: s.isFirst; onClicked: wizard.skipAll() }
             Item { Layout.fillWidth: true }
             Btn { text: s.labels.skip; visible: s.canSkip; onClicked: wizard.skip() }
-            Btn { text: s.labels.save_later; visible: s.isSummary; primary: true; onClicked: wizard.saveLater() }
-            Btn { text: s.isFirst ? s.labels.start : s.labels.next; visible: !s.isSummary && !s.isDone; primary: true
+            Btn { text: s.labels.save_later; visible: s.canSaveLater; primary: !s.canApply; onClicked: wizard.saveLater() }
+            Btn { text: s.labels.retry; visible: s.canRetry; primary: true; onClicked: wizard.retry() }
+            Btn { text: s.labels.apply; visible: s.canApply; primary: true; onClicked: wizard.apply() }
+            Btn { text: s.isFirst ? s.labels.start : s.labels.next; visible: !s.isSummary && !s.isDone && !s.isApplying; primary: true
                   onClicked: wizard.next() }
             Btn { text: s.labels.close; visible: s.isDone; primary: true; onClicked: Qt.quit() }
         }
