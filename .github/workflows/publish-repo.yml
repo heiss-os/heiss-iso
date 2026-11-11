@@ -101,7 +101,7 @@ jobs:
           if [ "$GITHUB_EVENT_NAME" = pull_request ]; then mkdir /tmp/site
           else git clone --depth 1 --branch gh-pages "$REPO_URL" /tmp/site; fi
 
-      - name: Assemble logic test (new, unchanged, stale; throwaway key)
+      - name: Assemble logic test (new, unchanged, index, stale; throwaway key)
         if: github.event_name == 'pull_request'
         run: bash scripts/test-repo-assemble.sh /tmp/pkgs
 
@@ -125,7 +125,7 @@ jobs:
           git config --global --add safe.directory /tmp/site
           git config user.name "Heiss OS CI"
           git config user.email "repo@heiss-os.invalid"
-          git add -A x86_64
+          git add -A .
           git commit -m "publish: packages from ${GITHUB_SHA::7}"
           git -c "http.extraheader=Authorization: Basic $hdr" push origin HEAD:gh-pages
 
