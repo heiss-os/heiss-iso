@@ -15,9 +15,16 @@ sum="$(sha256sum "$T"/s/x86_64/*.pkg.tar.zst | sort)"
 [[ "$(run "$PK" "$T/s" "$KEY")" == changed=false ]] || fail "second run must not change"
 [[ "$(sha256sum "$T"/s/x86_64/*.pkg.tar.zst | sort)" == "$sum" ]] || fail "published files changed"
 
+# index pages exist and list the files; a repository without them gets them without a rebuild
+grep -q 'href="heiss.db"' "$T/s/x86_64/index.html" || fail "x86_64/index.html does not list heiss.db"
+grep -q 'x86_64/' "$T/s/index.html" || fail "root index.html does not link to x86_64/"
+dbsum="$(sha256sum "$T/s/x86_64/heiss.db")"; rm "$T/s/x86_64/index.html"
+[[ "$(run "$PK" "$T/s" "$KEY")" == changed=true ]] || fail "missing index must count as a change"
+[[ "$(sha256sum "$T/s/x86_64/heiss.db")" == "$dbsum" ]] || fail "index-only change rebuilt the database"
+
 # stale: one package no longer built -> its files go away, the rest stays byte for byte
 mkdir "$T/pk2"; cp "$PK"/heiss-*.pkg.tar.zst "$T/pk2/"
 gone="$(ls "$T"/pk2/ | head -1)"; rm "$T/pk2/$gone"
 [[ "$(run "$T/pk2" "$T/s" "$KEY")" == changed=true ]] || fail "stale run must change"
 [[ ! -e $T/s/x86_64/$gone && ! -e $T/s/x86_64/$gone.sig ]] || fail "stale package kept"
-echo "OK: assemble logic (new, unchanged, stale)"
+echo "OK: assemble logic (new, unchanged, index, stale)"

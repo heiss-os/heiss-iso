@@ -119,3 +119,7 @@ PR "ci/publish-repo": `.github/workflows/publish-repo.yml`, `scripts/heiss-repo-
 ## Round 16, publish workflow fix (2026-11-11)
 
 PR "fix/publish-workflow-yaml": the first run on main (#61) failed in 0 s with "workflow file issue" and no log: a step name contained `: ` and the YAML did not parse (`mapping values are not allowed here`, line 99). The same defect meant the pull request dry run never ran either, so nothing of the job has executed yet. Fixed by rewording the step name; all three workflow files now parse with PyYAML. The first real run is the merge of this PR; still not verified: build, pacman check, publish.
+
+## Round 18, part 1 (2026-11-11): public repository verified read-only
+
+Checked against `https://heiss-os.github.io/heiss-repo/x86_64/` (nothing installed): tree on `gh-pages` complete (7 packages, each with `.sig`, `heiss.db`/`heiss.files` with `.sig`); `heiss.db` is zstd (`tar --zstd -tf`, not `-tzf`) and lists the same 7 packages; `heiss.db.sig` verifies with `docs/infra/heiss-public.asc` (key `DDD2 92CC C861 3FD3 324D 3833 FEA8 4CEF 8AED F132`); every package and `.sig` answers HTTP 200 and the `%FILENAME%` entries of the db match the files. Not tested: real pacman over HTTPS. PR "feat/repo-index-pages": generated `index.html` for `/` and `/x86_64/` (no directory listing on Pages); an index-only change is published without rebuilding the db.
