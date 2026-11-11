@@ -3,6 +3,8 @@
 Every action returns the new screen dict, and saves the resume state after a step change. The wizard
 rules (validation, order, skip, defaults) stay in heiss_core.wizard.
 """
+import threading
+
 from heiss_core import wizard as wz
 from heiss_core.errors import HeissError
 
@@ -36,11 +38,37 @@ def _get(answers, path):
 
 
 class ViewModel:
-    def __init__(self, wizard, manifests, store=None, queue=None, detector=None):
-        """detector: callable returning a heiss_core.hardware.Report (may raise); None means no detection."""
+    def __init__(self, wizard, manifests, store=None, queue=None, detector=None, applier=None, spawn=None):
+        """detector: callable returning a heiss_core.hardware.Report (may raise); None means no detection.
+        applier: object with plan(answers) -> dict and run(answers, on_line, on_step); None means Apply is not
+        offered. spawn(fn) runs fn on a worker thread (tests pass a synchronous one); on_update() is called from
+        that thread whenever the job changes (the Qt glue refreshes the screen from it)."""
         self.w, self.manifests, self.store, self.queue = wizard, manifests, store, queue
         self.detector, self._report, self._detected = detector, None, False
+        self.applier, self.on_update = applier, None
+        self._spawn = spawn or (lambda fn: threading.Thread(target=fn, daemon=True).start())
+        self._lock = threading.Lock()
+        self._job = {"status": "idle", "step": "", "log": [], "error": ""}   # idle | running | failed | ok
+        self._plan_key, self._plan = None, None
         self.error = ""
+
+    def _plan_facts(self, lang):
+        """(lines, ok): what Apply would change. Computed once per selection (a few subprocess calls)."""
+        a = self.w.final_answers()
+        key = (a["profile"], tuple(a["addons"]))
+        if self._plan_key != key:
+            try:
+                self._plan = (self.applier.plan(a), "")
+            except HeissError as e:
+                self._plan = (None, str(e))
+            self._plan_key = key
+        plan, err = self._plan
+        if plan is None:
+            return ["%s %s" % (t(lang, "plan.failed"), err)], False
+        rows = [("plan.install", "install_packages"), ("plan.remove", "remove_packages"),
+                ("plan.enable", "enable_services"), ("plan.disable", "disable_services")]
+        lines = ["%s: %d" % (t(lang, k), len(plan.get(f) or [])) for k, f in rows if plan.get(f)]
+        return lines or [t(lang, "plan.nothing")], True
 
     def report(self):
         """Detection runs once, when the hardware screen is first shown. A failure means no proposals."""
@@ -129,20 +157,33 @@ class ViewModel:
             facts = self._privacy_facts(lang)
         if sid == "backups":
             facts = [{"text": t(lang, "hardware.soon"), "badge": ""}]
-        lines = []
+        lines, plan_ok = [], False
         if sid == wz.SUMMARY:
             a = w.final_answers()
             lines = ["%s: %s" % (t(lang, "summary.profile"), self._name(a["profile"])),
                      "%s: %s" % (t(lang, "summary.addons"),
                                  ", ".join(self._name(i) for i in a["addons"]) or t(lang, "summary.none"))]
-        what = t(lang, sid + ".what") if sid != "done" else t(lang, "done.skipped" if w.skipped else "done.what")
-        return {"id": sid, "title": t(lang, sid + ".title") if sid != "done" else t(lang, "done.title"),
+            if self.applier:
+                more, plan_ok = self._plan_facts(lang)
+                lines += more
+        with self._lock:
+            job = dict(self._job, log=self._job["log"][-12:])
+        applying = sid == wz.APPLYING
+        what_key = {"summary": "summary.what_apply" if self.applier else "summary.what"}.get(sid, sid + ".what")
+        if sid == "done":
+            what_key = "done.skipped" if w.skipped else ("done.applied" if job["status"] == "ok" else "done.what")
+        what = t(lang, what_key)
+        return {"id": sid, "title": t(lang, sid + ".title") if sid != "done" else t(lang, "done.title_applied" if job["status"] == "ok" else "done.title"),
                 "facts": facts, "what": what, "whatLabel": t(lang, "what"), "lines": lines, "questions": questions,
                 "progressText": t(lang, "step_of") % (pos, total), "progress": pos / total,
                 "canBack": w.step > 0 and sid not in (wz.APPLYING, wz.DONE),
                 "canSkip": w.can_skip(), "isFirst": sid == "welcome", "isSummary": sid == wz.SUMMARY,
-                "isDone": sid == wz.DONE, "error": self.error,
-                "labels": {k: t(lang, k) for k in ("back", "next", "skip", "start", "skip_all", "save_later", "close")}}
+                "isDone": sid == wz.DONE, "error": self.error or (job["error"] if applying else ""),
+                "job": job, "isApplying": applying, "isRunning": applying and job["status"] == "running",
+                "canApply": sid == wz.SUMMARY and plan_ok, "canRetry": applying and job["status"] == "failed",
+                "canSaveLater": (sid == wz.SUMMARY) or (applying and job["status"] == "failed"),
+                "labels": {k: t(lang, k) for k in ("back", "next", "skip", "start", "skip_all", "save_later", "close",
+                                                    "apply", "retry")}}
 
     # ----- actions -----
 
@@ -195,7 +236,65 @@ class ViewModel:
     def save_later(self):
         return self._run(self._finish_saved)
 
+    # ----- apply (5e) -----
+
+    def start_apply(self):
+        return self._run(self._begin_apply)
+
+    def _begin_apply(self):
+        if self.applier is None:
+            raise HeissError("applying is not available in this build")
+        self.w.start_apply()
+        self._launch()
+
+    def retry_apply(self):
+        def go():
+            if self.w.step_id != wz.APPLYING or self._job["status"] != "failed":
+                raise HeissError("nothing to retry")
+            self._launch()
+        return self._run(go)
+
+    def _launch(self):
+        with self._lock:
+            if self._job["status"] == "running":
+                return
+            self._job = {"status": "running", "step": "", "log": [], "error": ""}
+        self._spawn(self.run_job)
+
+    def _update(self, **kw):
+        with self._lock:
+            self._job.update(kw)
+        if self.on_update:
+            self.on_update()
+
+    def run_job(self):
+        """Worker thread body. Never raises: any failure ends as status 'failed' with a message."""
+        def on_line(text):
+            with self._lock:
+                self._job["log"] = (self._job["log"] + [text])[-200:]
+            if self.on_update:
+                self.on_update()
+
+        def on_step(n, total, desc):
+            self._update(step="[%d/%d] %s" % (n, total, desc))
+        try:
+            self.applier.run(self.w.final_answers(), on_line, on_step)
+        except HeissError as e:
+            return self._update(status="failed", error=str(e))
+        except Exception as e:   # the thread must not die silently
+            return self._update(status="failed", error="unexpected error: %s" % e)
+        try:
+            self.w.finish()
+            if self.store:
+                self.store.save_answers(self.w)
+                self.store.mark_done()
+        except Exception as e:
+            return self._update(status="failed", error="applied, but saving the result failed: %s" % e)
+        self._update(status="ok")
+
     def _finish_saved(self):
+        if self._job["status"] == "running":
+            raise HeissError("wait until applying has finished")
         self.w.finish()
         if self.store:
             self.store.save_answers(self.w)

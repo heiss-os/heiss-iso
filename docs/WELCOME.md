@@ -10,7 +10,7 @@ Master plan section 7. Stack as in `docs/ARCHITECTURE.md`: PySide6 + QML (Kiriga
 | 5b | `heiss-welcome` PySide6/QML app drawing the model; screens 0-11, en/ru strings, keyboard control | no (UI), but offline-only without it | this PR (see below) |
 | 5c | hardware screen wired to `heiss hw detect`, privacy screen items marked implemented / "coming soon" | no | this PR |
 | 5d | `heiss-welcome.desktop` autostart in the installed system only, `heiss-cleanup.sh` step, `heiss-welcome` package | autostart: no; Apply of a non-Base profile: yes | blocked on the repository |
-| 5e | applying screen through the helper, pending queue run from the Control Center (Phase 6) | yes (profiles other than the ISO's Base come from `[heiss]`) | blocked on the repository |
+| 5e | applying screen through the helper (this PR); pending queue run from the Control Center stays Phase 6 | yes (profiles other than the ISO's Base come from `[heiss]`) | repository exists; applying written, never run |
 
 ## Model (5a)
 
@@ -50,3 +50,11 @@ Master plan section 7. Stack as in `docs/ARCHITECTURE.md`: PySide6 + QML (Kiriga
 ## What the owner must do for 5d/5e
 
 The hosted repository does not exist (checked on GitHub: organisation `heiss-os` has no `heiss-repo`). Steps: `docs/infra/REPOSITORY.md`, "Checklist for the owner".
+
+## Applying (5e)
+
+- The summary computes the plan (`heiss --json profile apply --dry-run --adopt --profile P --addon A...`, read-only, run once per selection on the UI thread) and shows counts: packages to install/remove, services to enable/disable, or "nothing needs to change". If the plan cannot be computed, Apply is off and only "Save answers, apply later" is offered.
+- **Apply** runs `heiss profile apply --yes --adopt ...` in a child process on a worker thread (`welcome/heiss_welcome/applier.py`). The command goes through the privileged helper (D-Bus + polkit, which asks for the password). Its `[n/total] description` lines become the step text, other lines the log (last 12 shown). The window stays responsive; there is no GLib in the Qt process.
+- Success: step `done`, answers saved to `answers.toml`, done marker written. Failure (including no network, found by the command's own preflight): the applying screen stays with the error, **Try again** re-runs the command, **Save answers, apply later** queues an `apply-profile` item and finishes. Closing the window while applying does not stop the helper job (no Cancel yet).
+- Only `profile` and `addons` are applied; the other answers (theme, privacy level, ...) are still saved only, as in 5a-5c. Beginner/Confident per-step confirmation is not implemented: the summary is the single confirmation.
+- Not verified: everything on a real system. The QML was only linted (no syntax errors); `pyside6` is not installed here, so the thread-to-GUI signal (`jobUpdated`), the layout and the polkit prompt flow are untested; the real `heiss profile apply` was never run from the wizard. Tests use a fake applier and a fake command (`welcome/tests/test_apply.py`).
