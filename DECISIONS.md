@@ -181,3 +181,8 @@ Format: date, what, why. Newest at the bottom.
 - **Published files are immutable; a new `pkgrel` publishes a new version.** Why: makepkg output differs run to run, replacing a file under the same version breaks checksums for existing users.
 - **Real files instead of symlinks for `heiss.db`/`heiss.files`.** GitHub Pages behaviour with symlinks is not verified.
 - **Push token passed as an HTTP header (masked), not in the URL.**
+
+## 2026-11-11 (heiss-keyring)
+
+- **The keyring package is built from `docs/infra/heiss-public.asc`** (added to the build archive) and refuses to build if that file is not the pinned key `DDD292CCC8613FD3324D3833FEA84CEF8AEDF132`. Why: one source of truth for the public key, no second copy to drift.
+- **Trust level 4 (full) in `heiss-trusted`, same format as `archlinux-trusted`; no revoked keys.** The `.install` populates only when the pacman keyring is already initialised, otherwise it prints the two commands (the installed system initialises it in `heiss-cleanup.sh`).
