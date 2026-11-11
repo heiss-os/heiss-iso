@@ -47,6 +47,13 @@ class Data(unittest.TestCase):
             self.assertEqual({k["key"] for k in ks}, {"Autolock", "Timeout", "LockGrace"})
             self.assertTrue(all(isinstance(k["value"], str) for k in ks))
 
+    def test_no_manifest_or_hardware_dropin_uses_the_privacy_path(self):
+        from heiss_core import hardware as hw
+        root = os.path.dirname(os.path.dirname(HERE))
+        paths = [d["path"] for m in mf.load_dir(PROFILES).values() for d in m.dropins]
+        paths += [d["path"] for p in hw.load_profiles(os.path.join(root, "hardware")).values() for d in p.dropins]
+        self.assertNotIn(pv.NM_DROPIN, paths)
+
     def test_unknown_level_is_rejected(self):
         for bad in ("", "paranoid", None, "../x"):
             with self.assertRaises(ValidationError):

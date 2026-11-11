@@ -2,7 +2,7 @@
 # Built from the repository HEAD by scripts/heiss-packages-build.sh (it creates heiss-src.tar.gz).
 pkgname=heiss-helper
 pkgver=0.1.0
-pkgrel=1
+pkgrel=2
 pkgdesc='Heiss OS privileged helper (D-Bus service with polkit)'
 arch=('any')
 url='https://github.com/heiss-os/heiss-iso'

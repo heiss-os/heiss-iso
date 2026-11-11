@@ -34,6 +34,8 @@ Files: `helper/heiss_helper/{policy,actions,dispatch,runner,audit}.py` (logic, t
 
 All polkit actions default to `allow_any=no`, `allow_inactive=no`, `allow_active=auth_admin_keep` (one authentication covers the several calls of one apply run). Texts are in English and Russian.
 
+Privacy level changes (including lowering to `standard`) are covered by `org.heiss.config.write`, the same trust level as `WriteDropin`; a test checks that no manifest drop-in shares the privacy file's path.
+
 There is no method that takes a command, a file path to read, or file content.
 
 ## 4. Controls
