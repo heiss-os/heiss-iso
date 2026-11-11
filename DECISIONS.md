@@ -197,5 +197,5 @@ Format: date, what, why. Newest at the bottom.
 
 ## 2026-11-11 (merge self-check rule, owner's instruction)
 
-- **Before asking the owner to merge, the assistant verifies base, freshness, conflicts, CI, labels, PR text, notes and a clean pushed tree, and reports in a fixed format.** Why: PR 65 was based on a feature branch and its changes never reached `main`. Rule in CLAUDE.md. PRs are never stacked: always branch from fresh `main`.
+- **Before asking the owner to merge, the PR author verifies base, freshness, conflicts, CI, labels, PR text, notes and a clean pushed tree, and reports in a fixed format.** Why: PR 65 was based on a feature branch and its changes never reached `main`. Rule in CLAUDE.md. PRs are never stacked: always branch from fresh `main`.
 - PR 65's content is re-applied on `main` by cherry-picking its squash commit (`987675a`), no conflicts.
