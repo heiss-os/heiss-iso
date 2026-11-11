@@ -215,4 +215,4 @@ Format: date, what, why. Newest at the bottom.
 
 ## 2026-11-11 (final VM test list, owner's instruction)
 
-- **No ISO build and no VM check until the whole master plan is done.** Owner's rule. Every PR that adds an unverified claim also adds a line to "FINAL VM TEST LIST" in `docs/PLAN-STATE.md`, grouped by phase; that list is the script for the one final check.
+- **No ISO build and no VM check until the whole master plan is done.** Owner's rule. Why: the final test is a single run, so unverified items must not get lost between PRs. Every PR that adds an unverified claim also adds a line to "FINAL VM TEST LIST" in `docs/PLAN-STATE.md`, grouped by phase; that list is the script for the one final check.
