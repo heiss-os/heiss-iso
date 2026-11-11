@@ -48,7 +48,8 @@ class ViewModel:
         self.w, self.manifests, self.store, self.queue = wizard, manifests, store, queue
         self.detector, self._report, self._detected = detector, None, False
         self.applier, self.on_update, self.theme_applier = applier, None, theme_applier
-        self.theme_note = ""
+        self.theme_note, self._theme_gen = "", 0
+        self._theme_lock = threading.Lock()       # one switch at a time, newest choice wins
         self._spawn = spawn or (lambda fn: threading.Thread(target=fn, daemon=True).start())
         self._lock = threading.Lock()
         self._job = {"status": "idle", "step": "", "log": [], "error": ""}   # idle | running | failed | ok
@@ -213,7 +214,8 @@ class ViewModel:
                 "progressText": t(lang, "step_of") % (pos, total), "progress": pos / total,
                 "canBack": w.step > 0 and sid not in (wz.APPLYING, wz.DONE),
                 "canSkip": w.can_skip(), "isFirst": sid == "welcome", "isSummary": sid == wz.SUMMARY,
-                "isDone": sid == wz.DONE, "error": self.error or (job["error"] if applying else ""), "note": self.theme_note if sid == "appearance" else "",
+                "isDone": sid == wz.DONE, "error": self.error or (job["error"] if applying else ""),
+                "note": self.theme_note if sid == "appearance" else "",
                 "job": job, "isApplying": applying, "isRunning": applying and job["status"] == "running",
                 "canApply": sid == wz.SUMMARY and plan_ok, "canRetry": applying and job["status"] == "failed",
                 "canSaveLater": (sid == wz.SUMMARY) or (applying and job["status"] == "failed"),
@@ -247,17 +249,23 @@ class ViewModel:
     def choose(self, path, value):
         screen = self._run(lambda: self.w.set(path, value))
         if path == "appearance.theme" and not self.error and self.theme_applier:
-            self._spawn(lambda: self._theme_job(value))
+            self._theme_gen += 1                  # GUI thread: numbers the choices in click order
+            gen = self._theme_gen
+            self._spawn(lambda: self._theme_job(value, gen))
         return screen
 
-    def _theme_job(self, theme):
-        """Worker thread: switch the live desktop theme; a failure becomes a note on the screen, not an error."""
-        try:
-            ok, msg = self.theme_applier(theme)
-        except Exception as e:
-            ok, msg = False, str(e)
-        with self._lock:
-            self.theme_note = "" if ok else msg
+    def _theme_job(self, theme, gen):
+        """Worker thread: switch the live desktop theme. Jobs may start out of order, so a job that is no longer
+        the newest choice does nothing; a failure becomes a note on the screen, not an error."""
+        with self._theme_lock:
+            if gen != self._theme_gen:
+                return
+            try:
+                ok, msg = self.theme_applier(theme)
+            except Exception as e:
+                ok, msg = False, str(e)
+            with self._lock:
+                self.theme_note = "" if ok else msg
         if self.on_update:
             self.on_update()
 

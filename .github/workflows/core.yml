@@ -44,8 +44,12 @@ jobs:
           python3 scripts/check-mimeapps.py --require-file-db
       - name: The tool the wizard uses to switch the theme is shipped by plasma-workspace
         run: |
-          pacman -Fy
-          pacman -F usr/bin/plasma-apply-lookandfeel | grep -q 'plasma-workspace' && echo "plasma-workspace ships plasma-apply-lookandfeel"
+          if ! pacman -F usr/bin/plasma-apply-lookandfeel | grep -q '/plasma-workspace '; then
+            echo "::error::usr/bin/plasma-apply-lookandfeel is not shipped by plasma-workspace"
+            pacman -F usr/bin/plasma-apply-lookandfeel || true
+            exit 1
+          fi
+          echo "plasma-workspace ships plasma-apply-lookandfeel"
       - name: Dock pins exist in Base packages; installer desktop files are consistent
         run: python3 scripts/check-launchers.py --require-file-db
       - name: Menu hide stubs are well formed and still match a shipped entry

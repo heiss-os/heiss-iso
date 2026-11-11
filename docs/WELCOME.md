@@ -76,7 +76,7 @@ The hosted repository does not exist (checked on GitHub: organisation `heiss-os`
 
 ## Theme choice is applied (5g)
 
-- Picking Dark or Light on the appearance screen switches the running desktop at once (`welcome/heiss_welcome/theme.py`: `plasma-apply-lookandfeel --apply org.heiss.dark.desktop` or `org.heiss.light.desktop`, as the user, no shell, on the worker thread). Plasma then applies colors, icons and style, and the existing theme-sync path unit does the rest. The wizard window follows the color scheme, so it changes too (a live preview).
-- **Automatic** changes nothing: Plasma's own automatic light/dark switching is not configured by Heiss. A failed switch is shown as a note under the question; it never blocks the wizard. CI checks that `plasma-workspace` ships the tool (`pacman -F`).
+- Picking Dark or Light on the appearance screen switches the running desktop at once (`welcome/heiss_welcome/theme.py`: `plasma-apply-lookandfeel --apply org.heiss.dark.desktop` or `org.heiss.light.desktop`, as the user, no shell, on the worker thread). Plasma then applies colors, icons and style, and the existing theme-sync path unit should do the rest (not verified). The wizard window follows the color scheme, so it changes too (a live preview).
+- **Automatic** changes nothing: Plasma's own automatic light/dark switching is not configured by Heiss. Quick successive clicks are numbered: only the newest choice switches the desktop. A failed switch is shown as a note under the question; it never blocks the wizard. CI checks that `plasma-workspace` ships the tool (`pacman -F`).
 - Animations stay "saved only" until the motion system (Phase 8).
 - Not verified: `plasma-apply-lookandfeel` on a live Plasma session with these LnF packages, the window recolouring, and whether the theme-sync path unit fires after it.

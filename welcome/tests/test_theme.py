@@ -92,6 +92,32 @@ class Wizard(unittest.TestCase):
             vm.choose("appearance.theme", "dark")
             self.assertEqual(vm.screen()["note"], "kaput")
 
+    def test_jobs_started_out_of_order_leave_the_newest_choice(self):
+        seen, jobs = [], []
+        with tempfile.TemporaryDirectory() as d:
+            vm, _ = build(d, PROFILES, theme_applier=lambda t: (seen.append(t), (True, ""))[1])
+            vm._spawn = jobs.append                   # the jobs wait: they will run in the wrong order
+            vm.w.step = wz.IDS.index("appearance")
+            vm.choose("appearance.theme", "dark")
+            vm.choose("appearance.theme", "light")
+            for job in reversed(jobs):                # light first, then the stale dark job
+                job()
+            self.assertEqual(seen, ["light"])
+            self.assertEqual(vm.w.answers["appearance"]["theme"], "light")
+
+    def test_a_stale_failure_does_not_overwrite_the_newest_note(self):
+        with tempfile.TemporaryDirectory() as d:
+            results = {"dark": (False, "old failure"), "light": (True, "")}
+            vm, _ = build(d, PROFILES, theme_applier=lambda t: results[t])
+            jobs = []
+            vm._spawn = jobs.append
+            vm.w.step = wz.IDS.index("appearance")
+            vm.choose("appearance.theme", "dark")
+            vm.choose("appearance.theme", "light")
+            for job in jobs:                          # dark is stale: skipped; light succeeds
+                job()
+            self.assertEqual(vm.screen()["note"], "")
+
     def test_without_a_theme_applier_choosing_still_works(self):
         with tempfile.TemporaryDirectory() as d:
             vm = self.vm(d, None)
