@@ -224,3 +224,8 @@ Format: date, what, why. Newest at the bottom.
 - **Kernel parameters are reported, never applied.** Why: editing the boot loader cannot be verified here and a wrong value leaves the machine unbootable. NVIDIA open modules stay opt-in with their warning.
 - heiss-core pkgrel 5 -> 6, heiss-welcome 1 -> 2.
 - (review fix) The sticky rule compares only a profile's OWN packages (not those the profile already wants) and uses the machine's detection to tell siblings apart. Why: state records only installed and adopted packages, so a shared dependency like `mesa` is never owned; requiring all packages would drop the rule exactly for GPU profiles, and a package shared with another profile would pull in profiles the user never chose. No state schema change.
+
+## 2026-11-11 (applying the theme choice, owner's item 3)
+
+- **The theme is applied when the user picks it (live preview), not at the end.** Why: it is a user-level desktop setting, needs no privileges, and the wizard then shows the real result; Apply (packages) stays separate. Only Dark and Light act; Automatic leaves the desktop alone, because Plasma's automatic switching is not configured and cannot be verified here.
+- **Uses `plasma-apply-lookandfeel` with the shipped LnF ids,** not direct writes to Plasma's config files (Tier B surface). heiss-welcome pkgrel 2 -> 3.

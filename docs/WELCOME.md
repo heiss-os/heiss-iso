@@ -73,3 +73,10 @@ The hosted repository does not exist (checked on GitHub: organisation `heiss-os`
 - **Kernel parameters are not applied** (changing the boot loader is a separate risk): the plan prints a `note:` for each profile that asks for them (today `gpu-nvidia-open`: `nvidia-drm.modeset=1`). NVIDIA open modules are never ticked by default (`safe_by_default` is false) and carry a warning.
 - Post-actions of a hardware profile (`mkinitcpio`, `grub-mkconfig`) run only when packages or drop-ins change; `grub-mkconfig` is a hard step and assumes GRUB (Heiss installs GRUB), a failure ends the apply as failed after the packages are installed. `hardware_ids()` runs detection on the GUI thread if the hardware screen was skipped.
 - Not verified: any real install of a hardware package (VirtualBox guest tools, microcode, GPU drivers); the NVIDIA path in particular (black-screen risk, kernel param missing); on a real machine whether the sticky rule keeps drivers after a profile change.
+
+## Theme choice is applied (5g)
+
+- Picking Dark or Light on the appearance screen switches the running desktop at once (`welcome/heiss_welcome/theme.py`: `plasma-apply-lookandfeel --apply org.heiss.dark.desktop` or `org.heiss.light.desktop`, as the user, no shell, on the worker thread). Plasma then applies colors, icons and style, and the existing theme-sync path unit should do the rest (not verified). The wizard window follows the color scheme, so it changes too (a live preview).
+- **Automatic** changes nothing: Plasma's own automatic light/dark switching is not configured by Heiss. Quick successive clicks are numbered: only the newest choice switches the desktop. A failed switch is shown as a note under the question; it never blocks the wizard. CI checks that `plasma-workspace` ships the tool (`pacman -F`).
+- Animations stay "saved only" until the motion system (Phase 8).
+- Not verified: `plasma-apply-lookandfeel` on a live Plasma session with these LnF packages, the window recolouring, and whether the theme-sync path unit fires after it.

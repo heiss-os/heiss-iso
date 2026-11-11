@@ -186,6 +186,7 @@ Owner's rule (2026-11-11): no ISO build and no VM check until the whole master p
 - [ ] Wizard screens (welcome, profile, level, add-ons, hardware, appearance, privacy, software, backups, summary, applying, done) in Dark, Light and Russian: screenshots; layout, focus ring, Alt+Left, Inter font, error colour contrast on Light.
 - [ ] Hardware screen in VirtualBox shows the guest-tools proposal; the privacy screen shows only the firewall as "In place".
 - [ ] Hardware choices (5f): ticking the VirtualBox guest tools and applying installs `virtualbox-guest-utils` and enables `vboxservice.service`; a later profile change keeps them (sticky rule); NVIDIA is never ticked by default, its plan prints the kernel-parameter note and the driver path was never run (black-screen risk); `grub-mkconfig` and `mkinitcpio` post-actions run and a failure of `grub-mkconfig` (no /boot/grub) is reported; detection on the GUI thread when the hardware screen was skipped does not freeze the window.
+- [ ] Theme (5g): choosing Dark and Light on the appearance screen switches the desktop at once with `plasma-apply-lookandfeel`, the wizard recolours, theme-sync reacts; Automatic changes nothing; a failure shows the note.
 - [ ] Apply: plan preview, polkit prompt, progress, success, failure with Try again, Save for later; the signal from the worker thread to the GUI works; the window refuses to close while applying.
 - [ ] `pyside6` 6.12 runs the QML; ISO size change after adding `pyside6` (52 MiB installed per `pacman -Si`); whether `kirigami` fits the size budget if the Control Center uses it.
 - [ ] Autostart: the wizard does NOT start in the live session (`/run/archiso` present) and starts once after the first login on the installed system.
@@ -196,3 +197,7 @@ Owner's rule (2026-11-11): no ISO build and no VM check until the whole master p
 ## Round 20, item 3a (2026-11-11): hardware choices applied
 
 PR "feat/apply-hardware-choices": `--hardware` on `heiss profile apply|diff`, resolver support with the sticky rule, wizard passes the ticked proposals, strings updated, tests (`core/tests/test_hardware_apply.py`, `welcome/tests/test_apply.py`). Not verified: see the new Phase 5 line in the FINAL VM TEST LIST. Next: 3b theme, 3c privacy level (MAC randomization, screen lock), then Phase 6.
+
+## Round 20, item 3b (2026-11-11): theme choice applied
+
+PR "feat/apply-theme-choice": `welcome/heiss_welcome/theme.py`, view-model hook, note on the appearance screen, CI check that plasma-workspace ships `plasma-apply-lookandfeel`, tests. Not verified: see the new Phase 5 line. Next: 3c privacy level (MAC randomization, screen lock).
