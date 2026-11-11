@@ -216,3 +216,10 @@ Format: date, what, why. Newest at the bottom.
 ## 2026-11-11 (final VM test list, owner's instruction)
 
 - **No ISO build and no VM check until the whole master plan is done.** Owner's rule. Why: the final test is a single run, so unverified items must not get lost between PRs. Every PR that adds an unverified claim also adds a line to "FINAL VM TEST LIST" in `docs/PLAN-STATE.md`, grouped by phase; that list is the script for the one final check.
+
+## 2026-11-11 (applying the hardware choices, owner's item 3)
+
+- **Hardware choices go through the existing path:** `--hardware ID` on `heiss profile apply|diff`, resolved by the engine, executed by the helper (hardware manifests were already trusted there). No new helper API.
+- **Applied hardware profiles are kept by a "sticky" rule** (all their packages Heiss-owned, not already wanted by the profile). Why: the resolver removes owned packages that are no longer wanted, so without it the next profile change would propose removing a graphics driver. The cost: unticking later does not uninstall; removal is an explicit action in the Control Center.
+- **Kernel parameters are reported, never applied.** Why: editing the boot loader cannot be verified here and a wrong value leaves the machine unbootable. NVIDIA open modules stay opt-in with their warning.
+- heiss-core pkgrel 5 -> 6, heiss-welcome 1 -> 2.

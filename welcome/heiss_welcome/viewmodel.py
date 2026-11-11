@@ -60,14 +60,15 @@ class ViewModel:
         """(lines, ok): what Apply would change. Computed on a worker thread, once per selection; a failure is
         shown but not kept when the user leaves the summary, so it is tried again on return."""
         a = self.w.final_answers()
-        key = (a["profile"], tuple(a["addons"]))
+        hwids = self.hardware_ids()
+        key = (a["profile"], tuple(a["addons"]), tuple(hwids))
         with self._lock:
             cur = self._plan
             start = cur is None or cur["key"] != key
             if start:
                 self._plan = cur = {"key": key, "state": "computing", "plan": None, "err": ""}
         if start:
-            self._spawn(lambda: self._plan_job(key, a))
+            self._spawn(lambda: self._plan_job(key, a, hwids))
             with self._lock:
                 cur = self._plan
         if cur["state"] == "computing":
@@ -80,10 +81,10 @@ class ViewModel:
         lines = ["%s: %d" % (t(lang, k), len(plan.get(f) or [])) for k, f in rows if plan.get(f)]
         return lines or [t(lang, "plan.nothing")], True
 
-    def _plan_job(self, key, answers):
+    def _plan_job(self, key, answers, hardware):
         """Worker thread body (never raises)."""
         try:
-            res = {"state": "ok", "plan": self.applier.plan(answers), "err": ""}
+            res = {"state": "ok", "plan": self.applier.plan(answers, hardware), "err": ""}
         except HeissError as e:
             res = {"state": "failed", "plan": None, "err": str(e)}
         except Exception as e:
@@ -103,6 +104,11 @@ class ViewModel:
             except Exception:  # detection is advisory: never block the wizard
                 self._report = None
         return self._report
+
+    def hardware_ids(self):
+        """Hardware profiles the user left ticked (what Apply installs). Detection failed: none."""
+        r = self.report()
+        return sorted(p.id for p in r.proposals if self._hw_selected(p)) if r else []
 
     def _hw_selected(self, p):
         return self.w.extras.get("hardware_toggles", {}).get(p.id, p.safe_by_default)
@@ -187,6 +193,8 @@ class ViewModel:
             lines = ["%s: %s" % (t(lang, "summary.profile"), self._name(a["profile"])),
                      "%s: %s" % (t(lang, "summary.addons"),
                                  ", ".join(self._name(i) for i in a["addons"]) or t(lang, "summary.none"))]
+            if self.applier and self.hardware_ids():
+                lines.append("%s: %s" % (t(lang, "summary.hardware"), ", ".join(self.hardware_ids())))
             if self.applier:
                 more, plan_ok = self._plan_facts(lang)
                 lines += more
@@ -289,11 +297,12 @@ class ViewModel:
 
     def _launch(self):
         answers = self.w.final_answers()      # read on the GUI thread; the worker never touches the wizard
+        hardware = self.hardware_ids()
         with self._lock:
             if self._job["status"] == "running":
                 return
             self._job = {"status": "running", "step": "", "log": [], "error": ""}
-        self._spawn(lambda: self.run_job(answers))
+        self._spawn(lambda: self.run_job(answers, hardware))
 
     def _update(self, **kw):
         with self._lock:
@@ -301,7 +310,7 @@ class ViewModel:
         if self.on_update:
             self.on_update()
 
-    def run_job(self, answers):
+    def run_job(self, answers, hardware=()):
         """Worker thread body. Never raises, and touches only the job record (under the lock): the wizard and
         the store belong to the GUI thread, which finishes the job in _finalize()."""
         def on_line(text):
@@ -313,7 +322,7 @@ class ViewModel:
         def on_step(n, total, desc):
             self._update(step="[%d/%d] %s" % (n, total, desc))
         try:
-            self.applier.run(answers, on_line, on_step)
+            self.applier.run(answers, on_line, on_step, hardware)
         except HeissError as e:
             return self._update(status="failed", error=str(e))
         except Exception as e:   # the thread must not die silently

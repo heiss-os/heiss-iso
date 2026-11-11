@@ -21,13 +21,16 @@ PLAN = {"install_packages": ["a", "b"], "remove_packages": [], "enable_services"
 class FakeApplier:
     def __init__(self, plan=PLAN, plan_error=None, failures=0):
         self._plan, self.plan_error, self.failures, self.runs = plan, plan_error, failures, []
+        self.plan_hw, self.run_hw = [], []
 
-    def plan(self, answers):
+    def plan(self, answers, hardware=()):
+        self.plan_hw.append(list(hardware))
         if self.plan_error:
             raise HeissError(self.plan_error)
         return self._plan
 
-    def run(self, answers, on_line, on_step):
+    def run(self, answers, on_line, on_step, hardware=()):
+        self.run_hw.append(list(hardware))
         self.runs.append((answers["profile"], list(answers["addons"])))
         on_step(1, 2, "install 2 package(s)")
         on_line("downloading")
@@ -181,10 +184,10 @@ class Threads(unittest.TestCase):
         gate, started = threading.Event(), threading.Event()
 
         class Gated(FakeApplier):
-            def run(self, answers, on_line, on_step):
+            def run(self, answers, on_line, on_step, hardware=()):
                 started.set()
                 gate.wait(5)
-                super().run(answers, on_line, on_step)
+                super().run(answers, on_line, on_step, hardware)
         with tempfile.TemporaryDirectory() as d:
             vm, store = build(d, PROFILES, applier=Gated())
             while vm.w.step_id != wz.SUMMARY:
@@ -244,6 +247,66 @@ class Threads(unittest.TestCase):
             self.assertTrue(vm.screen()["canApply"])
 
 
+class HardwareChoices(unittest.TestCase):
+    FIX = os.path.join(REPO, "core", "tests", "fixtures", "hw")
+
+    def vm(self, d, fixture, ap):
+        from heiss_core import hardware as hw
+        det = lambda: hw.detect(hw.load_fixture(os.path.join(self.FIX, fixture)),
+                                hw.load_profiles(os.path.join(REPO, "hardware")))
+        vm, _ = build(d, PROFILES, det, ap)
+        vm._spawn = lambda fn: fn()
+        return vm
+
+    def to_summary(self, vm):
+        while vm.w.step_id != wz.SUMMARY:
+            vm.next() if not vm.w.can_skip() else vm.skip()
+
+    def test_ticked_hardware_goes_to_the_plan_and_to_apply(self):
+        with tempfile.TemporaryDirectory() as d:
+            ap = FakeApplier()
+            vm = self.vm(d, "virtualbox-vmsvga", ap)
+            self.to_summary(vm)
+            s = vm.screen()
+            self.assertIn(["vm-virtualbox"], ap.plan_hw)
+            self.assertTrue(any("vm-virtualbox" in l for l in s["lines"]))
+            vm.start_apply()
+            self.assertEqual(ap.run_hw, [["vm-virtualbox"]])
+
+    def test_unticked_proposal_is_not_applied(self):
+        with tempfile.TemporaryDirectory() as d:
+            ap = FakeApplier()
+            vm = self.vm(d, "virtualbox-vmsvga", ap)
+            vm.w.step = wz.IDS.index("hardware")
+            vm.toggle_hardware("vm-virtualbox")
+            self.to_summary(vm)
+            vm.screen()
+            vm.start_apply()
+            self.assertEqual(ap.run_hw, [[]])
+
+    def test_changing_the_selection_recomputes_the_plan(self):
+        with tempfile.TemporaryDirectory() as d:
+            ap = FakeApplier()
+            vm = self.vm(d, "virtualbox-vmsvga", ap)
+            self.to_summary(vm)
+            vm.screen()
+            vm.back()
+            vm.w.step = wz.IDS.index("hardware")
+            vm.toggle_hardware("vm-virtualbox")
+            self.to_summary(vm)
+            vm.screen()
+            self.assertEqual(ap.plan_hw, [["vm-virtualbox"], []])
+
+    def test_no_detection_means_no_hardware(self):
+        with tempfile.TemporaryDirectory() as d:
+            ap = FakeApplier()
+            vm, _ = build(d, PROFILES, None, ap)
+            vm._spawn = lambda fn: fn()
+            self.to_summary(vm)
+            vm.start_apply()
+            self.assertEqual(ap.run_hw, [[]])
+
+
 class Cli(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -276,6 +339,10 @@ class Cli(unittest.TestCase):
         with self.assertRaises(HeissError) as cm:
             self.ap.plan({"profile": "base", "addons": ["--fail-plan"]})
         self.assertEqual(str(cm.exception), "no such profile")
+
+    def test_hardware_ids_become_flags(self):
+        plan = self.ap.plan({"profile": "base", "addons": []}, ["vm-virtualbox", "gpu-amd"])
+        self.assertEqual(plan["args"][-2:], ["--hardware=vm-virtualbox", "--hardware=gpu-amd"])
 
     def test_missing_command_is_a_heiss_error(self):
         with self.assertRaises(HeissError):
