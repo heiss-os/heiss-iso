@@ -27,6 +27,10 @@ Split into small PRs. Status of each page:
 - Links open only if they start with `https://` and come from `os-release`.
 - Plain QtQuick.Controls like the wizard, not Kirigami (see DECISIONS.md, 2026-11-13).
 
+## Advanced page: what the check trusts
+
+The system items of `heiss check` run with a fixed `PATH=/usr/bin:/bin`; its theme item (`kreadconfig6`, `gsettings`, `busctl --user`) uses the user's own environment, as `heiss theme status` does. No value from a file reaches a command line. `systemsettings` is started through the user's `PATH`.
+
 ## Known limit
 
 `plasmashell --version` runs on the GUI thread with a 3 s timeout when About is built. A hanging `plasmashell` would freeze the window for up to 3 s; the Appearance switch already runs on a worker thread, `plasmashell --version` does not yet.
