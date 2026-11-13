@@ -73,6 +73,10 @@ There is no method that takes a command, a file path to read, or file content.
 | 14 | Crash in validation leaves the lock held or a half-started job | Unexpected exceptions become a clean `Failed` refusal; the job lock is always released (tests). |
 | 15 | Network drops mid-install | pacman downloads first and applies the transaction atomically; a failure ends the job with an error and nothing is recorded as owned. NOT verified with real network faults. |
 
+### Saved actions in the Control Center
+
+The wizard's "apply later" queue (`~/.config/heiss/pending.json`) is user-writable and is **not a trust boundary**: it can only name a profile and add-ons by id, every package, service and drop-in still comes from the root-owned manifests through the helper's allowlist, and polkit asks for the password. The Control Center applies an item only on an explicit click (with a warning), never offline, and starts `python -I -m heiss_core profile apply` in `/` without `PYTHON*` and `LD_*` variables, because polkit's `auth_admin_keep` keeps the authorisation per calling process. The polkit message does not name the profile; the window does.
+
 ## 6. Not verified (honest list)
 
 - The GDBus glue (`service.py`, `polkit.py`, `__main__.py`) could not be run on the build VM (python-gobject is not installed and I may not install it). CI runs an integration test on a private bus with a fake authorizer; the real `CheckAuthorization` call to polkitd has never been exercised, and the `((sa{sv})sa{ss}us)` call signature comes from the polkit documentation.
