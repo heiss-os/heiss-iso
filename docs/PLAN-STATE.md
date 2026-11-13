@@ -195,7 +195,7 @@ Owner's rule (2026-11-11): no ISO build and no VM check until the whole master p
 - [ ] Privacy 3c, helper: `heiss profile apply --privacy=enhanced --yes` through the helper / expect success; run `python3 -m unittest discover -s helper/tests` where python-gobject is installed / expect the 10 skipped D-Bus tests to pass.
 - [ ] Privacy 3c, user keys: `kwriteconfig6` writes `kscreenlockerrc` as the user during Apply / expect the keys present afterwards.
 - [ ] Apply: plan preview, polkit prompt, progress, success, failure with Try again, Save for later; the signal from the worker thread to the GUI works; the window refuses to close while applying.
-- [ ] `pyside6` 6.12 runs the QML; ISO size change after adding `pyside6` (52 MiB installed per `pacman -Si`); whether `kirigami` fits the size budget if the Control Center uses it.
+- [ ] `pyside6` 6.12 runs the QML; ISO size change after adding `pyside6` (52 MiB installed per `pacman -Si`); `kirigami` is not needed by the Control Center (DECISIONS.md 2026-11-13).
 - [ ] Autostart: the wizard does NOT start in the live session (`/run/archiso` present) and starts once after the first login on the installed system.
 - [ ] `heiss-cleanup.sh` imports the Heiss key and appends `[heiss]` on a real installation; `pacman -Sy` then works; Calamares' unpackfs copies `/usr/share/pacman/keyrings/heiss.gpg` into the target.
 - [ ] ISO build order: `scripts/heiss-packages-build.sh` before `heiss-build.sh` (the keyring and welcome packages come only from `~/localrepo`).
@@ -204,6 +204,7 @@ Owner's rule (2026-11-11): no ISO build and no VM check until the whole master p
 ### Phase 6: Control Center
 - [ ] Control Center shell (`PYTHONPATH=core:control python -m heiss_control`, needs `pyside6`): the window opens; sidebar lists 11 pages; Overview shows profile, privacy level, package count, pending actions and kernel; About shows system, build, kernel, Plasma and links (a click opens the browser); unbuilt pages say "Coming soon". Screenshots in Dark, Light and ru; keyboard control (Tab, Enter, Esc clears the search); the QML has only been linted (`qmllint`), never run.
 - [ ] Control Center search: typing "wireguard" lists Network and privacy; "брандмауэр" in ru lists the Security Center; an empty result shows the "nothing found" text.
+- [ ] Overview, pending actions: put one entry in the pending queue ("Save answers, apply later" in the wizard), open the Control Center / expect the pending-actions card to show 1 and "1 waiting".
 - [ ] Overview on an installed system after Apply: profile and privacy level match what the wizard applied; `plasmashell --version` is parsed on the real Plasma.
 
 ### Tooling (not a product phase)
