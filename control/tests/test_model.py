@@ -653,7 +653,8 @@ class Runner(unittest.TestCase):
             seen["argv"], seen["kw"] = argv, kw
             return P()
         env = {"PATH": "/usr/bin", "HOME": "/home/u", "XDG_RUNTIME_DIR": "/run/user/1000", "PYTHONPATH": "/tmp/evil",
-               "PYTHONSTARTUP": "/tmp/x.py", "LD_PRELOAD": "/tmp/e.so", "LD_LIBRARY_PATH": "/tmp"}
+               "PYTHONSTARTUP": "/tmp/x.py", "LD_PRELOAD": "/tmp/e.so", "LD_LIBRARY_PATH": "/tmp",
+               "GCONV_PATH": "/tmp", "GIO_EXTRA_MODULES": "/tmp", "HEISS_PROFILES": "/tmp/m", "LOCPATH": "/tmp"}
         runner.run_item(self.item(), None, None, popen, env)
         self.assertEqual(seen["argv"][1:4], ["-I", "-m", "heiss_core"])
         self.assertEqual(seen["kw"]["cwd"], "/")

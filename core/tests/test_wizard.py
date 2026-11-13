@@ -272,6 +272,55 @@ class Pending(unittest.TestCase):
         left = self.q.list()
         self.assertEqual([(i["id"], i["status"]) for i in left], [(a, "failed")])
 
+    def test_a_new_item_that_reuses_the_id_of_a_finished_one_is_not_dropped(self):
+        for p in ("base", "cyber", "developer"):
+            self.q.add("apply-profile", {"profile": p, "addons": []})
+
+        def ex(item):
+            if item["id"] == 3:                      # while "developer" runs the user removes it, a new item takes id 3
+                other = wz.PendingQueue(self.q.path)
+                other.remove(3)
+                other.add("apply-profile", {"profile": "base", "addons": ["wireshark"]})
+        self.assertEqual(self.q.run(ex, online=True), [1, 2, 3])
+        left = self.q.list()
+        self.assertEqual([(i["id"], i["payload"]["addons"]) for i in left], [(3, ["wireshark"])])
+
+    def test_a_new_item_with_a_reused_id_does_not_inherit_the_old_failure(self):
+        a = self.q.add("apply-profile", {"profile": "base", "addons": []})["id"]
+
+        def ex(item):
+            other = wz.PendingQueue(self.q.path)
+            other.remove(a)
+            other.add("apply-profile", {"profile": "cyber", "addons": []})
+            raise HeissError("no space left")
+        self.q.run(ex, online=True)
+        left = self.q.list()
+        self.assertEqual([(i["id"], i["status"], i["error"]) for i in left], [(a, "pending", "")])
+
+    def test_an_unwritable_directory_is_a_clean_error_and_does_not_hide_the_original_one(self):
+        import stat
+        a = self.q.add("apply-profile", {"profile": "base", "addons": []})["id"]
+        d = self.d.name
+
+        def ex(item):
+            os.chmod(d, stat.S_IRUSR | stat.S_IXUSR)    # nothing can be written any more
+            raise RuntimeError("original")
+        try:
+            if os.geteuid() == 0:
+                self.skipTest("root ignores directory permissions")
+            with self.assertRaises(RuntimeError) as e:
+                self.q.run(ex, online=True)
+            self.assertEqual(str(e.exception), "original")
+        finally:
+            os.chmod(d, stat.S_IRWXU)
+        self.assertEqual([i["id"] for i in self.q.list()], [a])
+        os.chmod(d, stat.S_IRUSR | stat.S_IXUSR)
+        try:
+            with self.assertRaises(HeissError):
+                self.q.add("apply-profile", {"profile": "base", "addons": []})
+        finally:
+            os.chmod(d, stat.S_IRWXU)
+
     def test_parallel_adds_do_not_lose_items_or_share_ids(self):
         import threading
         ids, errs = [], []
