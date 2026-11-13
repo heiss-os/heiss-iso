@@ -276,3 +276,10 @@ Format: date, what, why. Newest at the bottom.
 - **Own small checks, not `lynis`/`arch-audit` yet.** Why: neither is in the ISO and adding packages is a separate decision; the page does not write an audit engine, it shows five facts the system already knows. Wrapping the two tools stays on the list.
 - **Not judged on purpose:** whether the root account is locked (reading `/etc/shadow` needs root; `heiss check` does it when run as root) and pending updates (Updates page). Secure Boot is display only; Heiss OS does not manage it.
 - heiss-control pkgrel 3 -> 4.
+
+## 2026-11-13 (Control Center: saved actions)
+
+- **The Control Center runs the wizard's saved actions by starting `heiss profile apply` in a child process, like the wizard's Apply.** Why: that command is the one tested path to the helper and polkit; the window never links GLib or D-Bus and stays responsive. The runner is a small copy of the wizard's `CliApplier.run` (not imported, so the Control Center does not depend on `heiss-welcome`); moving it into `heiss_core` is a refactor for later.
+- **Only on an explicit click, never offline, one run at a time, ids re-checked.** Why: the queue file is user-writable; `PendingQueue` validates items on every read, and the runner checks the ids again with `fullmatch` (the core pattern uses `match`, where `$` lets a trailing newline through; noted for a later core fix). A hand-edited item can therefore at most apply a profile or add-on that the helper's own allowlist already accepts.
+- **The saved privacy level and hardware choices are not applied from the queue.** Why: the queue holds only `{profile, addons}` by design (see `docs/WELCOME.md`). Re-running the wizard or `heiss profile apply --privacy=...` applies them.
+- heiss-control pkgrel 4 -> 5.

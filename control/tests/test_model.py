@@ -9,6 +9,7 @@ REPO = os.path.dirname(os.path.dirname(HERE))
 sys.path.insert(0, os.path.join(REPO, "core"))
 sys.path.insert(0, os.path.dirname(HERE))
 from heiss_control import model as m  # noqa: E402
+from heiss_control import runner  # noqa: E402
 from heiss_control import security as sec  # noqa: E402
 from heiss_control import theme as th  # noqa: E402
 from heiss_control import tools  # noqa: E402
@@ -30,6 +31,7 @@ class Fixture(unittest.TestCase):
                          apply_theme=lambda theme: (True, ""),
                          run_check=lambda: [{"name": "units", "status": "OK", "detail": "fine", "commands": []}],
                          open_settings=lambda: (True, ""),
+                         online=lambda: True, run_pending_item=lambda item, on_step: None,
                          security_facts=lambda: [{"id": "firewall", "status": "ok", "code": "active_enabled", "data": ""},
                                                  {"id": "listening", "status": "warn", "code": "some", "data": "22, 631"},
                                                  {"id": "secure_boot", "status": "info", "code": "bios", "data": ""}])
@@ -208,7 +210,7 @@ class Profiles(Fixture):
     def test_pending_items_are_listed_with_status(self):
         from heiss_core import wizard as wz
         wz.PendingQueue(self.p("user/pending.json")).add("apply-profile", {"profile": "cyber", "addons": []}, now=1)
-        self.assertEqual(self.page()["pending"], [{"text": "Apply profile Cyber", "status": "waiting", "error": ""}])
+        self.assertEqual(self.page()["pending"], [{"id": 1, "text": "Apply profile Cyber", "status": "waiting", "error": ""}])
 
     def test_each_broken_source_is_its_own_error(self):
         self.write("profile.toml", "= = =")
@@ -499,6 +501,174 @@ class SecurityPage(Fixture):
                 self.assertIn("sec.status." + status, S[lang])
             for item_id in {p[0] for p in pairs if p[1] == "warn"}:
                 self.assertIn("sec.%s.advice" % item_id, S[lang], (lang, item_id))
+
+
+class PendingActions(Fixture):
+    def queue(self):
+        from heiss_core import wizard as wz
+        return wz.PendingQueue(self.p("user/pending.json"))
+
+    def add(self, profile="cyber", addons=()):
+        return self.queue().add("apply-profile", {"profile": profile, "addons": list(addons)}, now=1)["id"]
+
+    def mod(self):
+        mod = m.Model(self.env)
+        mod.open("profiles")
+        return mod
+
+    def test_nothing_waiting_means_nothing_starts(self):
+        mod = self.mod()
+        self.assertFalse(mod.begin_pending())
+        self.assertEqual(mod.pend_state, "idle")
+
+    def test_offline_starts_nothing_and_says_so(self):
+        self.add()
+        self.env.online = lambda: False
+        called = []
+        self.env.run_pending_item = lambda item, on_step: called.append(item)
+        mod = self.mod()
+        self.assertFalse(mod.begin_pending())
+        self.assertEqual(mod.screen()["profiles"]["run"]["state"], "offline")
+        self.assertEqual(called, [])
+        self.assertEqual(len(self.queue().list()), 1)
+
+    def test_run_applies_in_order_removes_the_done_items_and_reports_steps(self):
+        a, b = self.add("base"), self.add("cyber", ["wireshark"])
+        seen, steps = [], []
+
+        def run_item(item, on_step):
+            seen.append((item["id"], item["payload"]))
+            on_step(1, 2, "install packages")
+        self.env.run_pending_item = run_item
+        mod = self.mod()
+        self.assertTrue(mod.begin_pending())
+        self.assertFalse(mod.begin_pending())   # one run at a time
+        mod.finish_pending(lambda: steps.append(mod.pend_step))
+        self.assertEqual([i for i, _ in seen], [a, b])
+        self.assertEqual(steps, ["1/2 install packages"] * 2)
+        self.assertEqual((mod.pend_state, mod.pend_step), ("ok", ""))
+        self.assertEqual(self.queue().list(), [])
+
+    def test_a_failure_stops_the_run_and_keeps_the_item_with_its_message(self):
+        from heiss_core.errors import HeissError
+        self.add("base")
+        self.add("cyber")
+
+        def run_item(item, on_step):
+            raise HeissError("pacman is locked " + "x" * 1000)
+        self.env.run_pending_item = run_item
+        mod = self.mod()
+        mod.begin_pending()
+        mod.finish_pending()
+        self.assertEqual(mod.pend_state, "failed")
+        self.assertLessEqual(len(mod.pend_message), m.MAX_MESSAGE)
+        items = self.queue().list()
+        self.assertEqual([i["status"] for i in items], ["failed", "pending"])
+        self.assertTrue(mod.begin_pending())   # retry is possible
+
+    def test_unexpected_exceptions_do_not_leave_the_button_stuck(self):
+        self.add()
+
+        def run_item(item, on_step):
+            raise RuntimeError("boom")
+        self.env.run_pending_item = run_item
+        mod = self.mod()
+        mod.begin_pending()
+        mod.finish_pending()
+        self.assertEqual(mod.pend_state, "failed")
+        self.assertTrue(mod.begin_pending())
+
+    def test_broken_queue_file_is_an_error_not_a_crash(self):
+        self.write("user/pending.json", "{")
+        mod = self.mod()
+        self.assertFalse(mod.begin_pending())
+        self.assertEqual(mod.pend_state, "failed")
+        self.assertTrue(mod.pend_message)
+
+    def test_remove_drops_one_item_and_refuses_bad_ids_and_a_running_run(self):
+        a, b = self.add("base"), self.add("cyber")
+        mod = self.mod()
+        for bad in ("1", None, True, 1.0, [1]):
+            self.assertFalse(mod.remove_pending(bad))
+        self.assertEqual(len(self.queue().list()), 2)
+        self.assertTrue(mod.remove_pending(a))
+        self.assertEqual([i["id"] for i in self.queue().list()], [b])
+        mod.begin_pending()
+        self.assertFalse(mod.remove_pending(b))
+        self.assertEqual(len(self.queue().list()), 1)
+
+    def test_screen_offers_the_labels_and_the_warning_in_both_languages(self):
+        for lang, word in (("en", "password"), ("ru", "пароль")):
+            mod = m.Model(self.env, lang)
+            mod.open("profiles")
+            run = mod.screen()["profiles"]["run"]
+            self.assertIn(word, run["warning"])
+            self.assertTrue(run["label"] and run["removeLabel"])
+
+
+class Runner(unittest.TestCase):
+    def item(self, profile="cyber", addons=("wireshark",), kind="apply-profile"):
+        return {"id": 1, "kind": kind, "payload": {"profile": profile, "addons": list(addons)}, "status": "pending"}
+
+    def test_argv_uses_the_equals_form_and_no_shell(self):
+        self.assertEqual(runner.argv_for(self.item(), ["heiss"]),
+                         ["heiss", "profile", "apply", "--yes", "--adopt", "--profile=cyber", "--addon=wireshark"])
+
+    def test_bad_ids_and_kinds_are_refused_before_anything_runs(self):
+        for bad in (self.item("--yes"), self.item("base\n"), self.item("Base"), self.item("a b"), self.item("base", ["x;y"]),
+                    self.item("base", [""]), self.item(kind="rm"), {"kind": "apply-profile"}, {}, self.item("x" * 50)):
+            from heiss_core.errors import HeissError
+            with self.assertRaises(HeissError):
+                runner.argv_for(bad, ["heiss"])
+
+    def fake(self, script):
+        import stat
+        import tempfile
+        d = tempfile.mkdtemp()
+        self.addCleanup(__import__("shutil").rmtree, d)
+        path = os.path.join(d, "fakeheiss")
+        with open(path, "w") as f:
+            f.write("#!/bin/sh\n" + script)
+        os.chmod(path, os.stat(path).st_mode | stat.S_IXUSR)
+        return [path]
+
+    def test_steps_are_reported_and_success_returns(self):
+        steps = []
+        base = self.fake('echo "[1/2] install packages"; echo noise; echo "[2/2] enable services"; exit 0')
+        runner.run_item(self.item(), lambda n, t, d: steps.append((n, t, d)), base)
+        self.assertEqual(steps, [(1, 2, "install packages"), (2, 2, "enable services")])
+
+    def test_the_child_gets_exactly_the_expected_arguments(self):
+        import tempfile
+        log = os.path.join(tempfile.mkdtemp(), "args")
+        self.addCleanup(__import__("shutil").rmtree, os.path.dirname(log))
+        base = self.fake('printf "%%s\\n" "$@" > %s' % log)
+        runner.run_item(self.item(), None, base)
+        with open(log) as f:
+            self.assertEqual(f.read().split(), ["profile", "apply", "--yes", "--adopt", "--profile=cyber", "--addon=wireshark"])
+
+    def test_failure_reports_the_heiss_line_or_the_last_line(self):
+        from heiss_core.errors import HeissError
+        with self.assertRaises(HeissError) as e:
+            runner.run_item(self.item(), None, self.fake('echo "heiss: pacman is locked"; echo trailing; exit 1'))
+        self.assertEqual(str(e.exception), "pacman is locked")
+        with self.assertRaises(HeissError) as e:
+            runner.run_item(self.item(), None, self.fake('echo only line; exit 2'))
+        self.assertEqual(str(e.exception), "only line")
+        with self.assertRaises(HeissError) as e:
+            runner.run_item(self.item(), None, self.fake('exit 3'))
+        self.assertIn("without a message", str(e.exception))
+
+    def test_a_broken_step_callback_does_not_stop_the_command(self):
+        def bad(n, t, d):
+            raise RuntimeError("x")
+        runner.run_item(self.item(), bad, self.fake('echo "[1/1] a"; echo "[1/1] b"; exit 0'))
+
+    def test_missing_command_and_non_utf8_output(self):
+        from heiss_core.errors import HeissError
+        with self.assertRaises(HeissError):
+            runner.run_item(self.item(), None, ["/nonexistent/heiss"])
+        runner.run_item(self.item(), None, self.fake("printf '\\377\\376\\n'; exit 0"))
 
 
 class Advanced(Fixture):

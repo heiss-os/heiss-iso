@@ -172,10 +172,57 @@ ApplicationWindow {
                        color: pal.accent; font.pixelSize: 18; font.bold: true }
                 Repeater {
                     model: s.page === "profiles" ? s.profiles.pending : []
-                    delegate: Text { textFormat: Text.PlainText; required property var modelData
-                                     text: modelData.text + ": " + modelData.status + (modelData.error ? " (" + modelData.error + ")" : "")
-                                     color: pal.text; font.pixelSize: 16; wrapMode: Text.WordWrap; Layout.fillWidth: true }
+                    delegate: RowLayout {
+                        id: pr
+                        required property var modelData
+                        Layout.fillWidth: true
+                        spacing: 12
+                        Text { textFormat: Text.PlainText
+                               text: pr.modelData.text + ": " + pr.modelData.status + (pr.modelData.error ? " (" + pr.modelData.error + ")" : "")
+                               color: pal.text; font.pixelSize: 16; wrapMode: Text.WordWrap; Layout.fillWidth: true }
+                        Button {
+                            id: rb
+                            text: s.profiles.run.removeLabel
+                            enabled: s.profiles.run.state !== "running"
+                            focusPolicy: Qt.StrongFocus
+                            Accessible.name: text + ": " + pr.modelData.text
+                            onClicked: control.removePending(pr.modelData.id)
+                            contentItem: Text { textFormat: Text.PlainText; text: rb.text; color: rb.enabled ? pal.text : pal.dim; font.pixelSize: 14
+                                                horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                            background: Rectangle { radius: 8; color: pal.button; border.width: rb.activeFocus ? 2 : 0; border.color: pal.text }
+                        }
+                    }
                 }
+                Text { textFormat: Text.PlainText; visible: s.page === "profiles" && s.profiles.pending.length > 0
+                       text: s.profiles ? s.profiles.run.warning : ""; color: pal.dim; font.pixelSize: 14
+                       wrapMode: Text.WordWrap; Layout.fillWidth: true }
+                Button {
+                    id: ab
+                    visible: s.page === "profiles" && s.profiles.pending.length > 0
+                    text: s.profiles ? s.profiles.run.label : ""
+                    enabled: s.profiles ? s.profiles.run.state !== "running" : false
+                    focusPolicy: Qt.StrongFocus
+                    Accessible.name: text
+                    onClicked: control.runPending()
+                    contentItem: Text { textFormat: Text.PlainText; text: ab.text; color: ab.enabled ? pal.onAccent : pal.dim; font.pixelSize: 16
+                                        horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                    background: Rectangle { radius: 8; color: ab.enabled ? pal.accent : pal.button
+                                            border.width: ab.activeFocus ? 2 : 0; border.color: pal.text }
+                }
+                ProgressBar { visible: s.page === "profiles" && s.profiles.run.state === "running"; indeterminate: true
+                              Layout.fillWidth: true; Accessible.name: s.profiles ? s.profiles.run.running : "" }
+                Text { textFormat: Text.PlainText; visible: s.page === "profiles" && s.profiles.run.state === "running"
+                       text: s.profiles ? s.profiles.run.step : ""; color: pal.accent; font.pixelSize: 15
+                       wrapMode: Text.WordWrap; Layout.fillWidth: true }
+                Text { textFormat: Text.PlainText; visible: s.page === "profiles" && s.profiles.run.state === "ok"
+                       text: s.profiles ? s.profiles.run.done : ""; color: pal.accent; font.pixelSize: 15
+                       wrapMode: Text.WordWrap; Layout.fillWidth: true }
+                Text { textFormat: Text.PlainText; visible: s.page === "profiles" && s.profiles.run.state === "offline"
+                       text: s.profiles ? s.profiles.run.offline : ""; color: pal.error; font.pixelSize: 14
+                       wrapMode: Text.WordWrap; Layout.fillWidth: true }
+                Text { textFormat: Text.PlainText; visible: s.page === "profiles" && s.profiles.run.state === "failed"
+                       text: s.profiles ? s.profiles.run.message : ""; color: pal.error; font.pixelSize: 14
+                       wrapMode: Text.WordWrap; Layout.fillWidth: true }
                 Repeater {
                     model: s.page === "profiles" ? s.profiles.sections : []
                     delegate: ColumnLayout {

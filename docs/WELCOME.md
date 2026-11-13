@@ -10,7 +10,7 @@ Master plan section 7. Stack as in `docs/ARCHITECTURE.md`: PySide6 + QML (Kiriga
 | 5b | `heiss-welcome` PySide6/QML app drawing the model; screens 0-11, en/ru strings, keyboard control | no (UI), but offline-only without it | this PR (see below) |
 | 5c | hardware screen wired to `heiss hw detect`, privacy screen items marked implemented / "coming soon" | no | this PR |
 | 5d | `heiss-welcome` package with an autostart entry for the installed system only (this PR); no `heiss-cleanup.sh` step needed | autostart: no; Apply of a non-Base profile: yes | package built locally, never run |
-| 5e | applying screen through the helper (this PR); pending queue run from the Control Center stays Phase 6 | yes (profiles other than the ISO's Base come from `[heiss]`) | repository exists; applying written, never run |
+| 5e | applying screen through the helper (this PR); pending queue run from the Control Center (done, Phase 6 step 6) | yes (profiles other than the ISO's Base come from `[heiss]`) | repository exists; applying written, never run |
 
 ## Model (5a)
 
