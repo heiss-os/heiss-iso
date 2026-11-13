@@ -19,13 +19,15 @@ STEP_RE = re.compile(r"^\[(\d+)/(\d+)\] (.*)$")   # printed by `heiss profile ap
 
 # interpreter, loader, locale, GIO module and test-override variables: none of them is needed to reach the bus and
 # the polkit agent, and HEISS_* would let the client-side plan read other manifests than the installed ones
-DROP_PREFIXES = ("PYTHON", "LD_", "GCONV", "LOCPATH", "NLSPATH", "GIO_", "HEISS_")
+DROP_PREFIXES = ("PYTHON", "LD_", "GCONV", "LOCPATH", "NLSPATH", "GIO_", "GI_", "G_", "GSETTINGS_", "HEISS_")
+# the child imports gi (helper client): GI_TYPELIB_PATH names libraries to load; the system bus address must stay the real one
+DROP_NAMES = ("DBUS_SYSTEM_BUS_ADDRESS",)
 
 
 def clean_env(environ):
     """The environment of the child: the user's session (it needs the bus and the display for the polkit agent)
     without anything that changes which code Python or the loader runs."""
-    return {k: v for k, v in environ.items() if not k.startswith(DROP_PREFIXES)}
+    return {k: v for k, v in environ.items() if not k.startswith(DROP_PREFIXES) and k not in DROP_NAMES}
 
 
 def argv_for(item, base=None):

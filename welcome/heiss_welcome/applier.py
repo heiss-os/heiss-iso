@@ -16,11 +16,13 @@ from heiss_core.errors import HeissError
 
 # interpreter, loader, locale, GIO module and test-override variables are not passed to the child: it ends up calling
 # the privileged helper, and polkit keeps the authorisation per calling process (see DECISIONS.md)
-DROP_PREFIXES = ("PYTHON", "LD_", "GCONV", "LOCPATH", "NLSPATH", "GIO_", "HEISS_")
+DROP_PREFIXES = ("PYTHON", "LD_", "GCONV", "LOCPATH", "NLSPATH", "GIO_", "GI_", "G_", "GSETTINGS_", "HEISS_")
+# the child imports gi (helper client): GI_TYPELIB_PATH names libraries to load; the system bus address must stay the real one
+DROP_NAMES = ("DBUS_SYSTEM_BUS_ADDRESS",)
 
 
 def clean_env(environ):
-    return {k: v for k, v in environ.items() if not k.startswith(DROP_PREFIXES)}
+    return {k: v for k, v in environ.items() if not k.startswith(DROP_PREFIXES) and k not in DROP_NAMES}
 
 
 STEP_RE = re.compile(r"^\[(\d+)/(\d+)\] (.*)$")   # printed by `heiss profile apply` before every helper call

@@ -75,7 +75,7 @@ There is no method that takes a command, a file path to read, or file content.
 
 ### Saved actions in the Control Center
 
-The wizard's "apply later" queue (`~/.config/heiss/pending.json`) is user-writable and is **not a trust boundary**: it can only name a profile and add-ons by id, every package, service and drop-in still comes from the root-owned manifests through the helper's allowlist, and polkit asks for the password. The Control Center applies an item only on an explicit click (with a warning), never offline, and starts `python -I -m heiss_core profile apply` in `/` without `PYTHON*` and `LD_*` variables, because polkit's `auth_admin_keep` keeps the authorisation per calling process. The polkit message does not name the profile; the window does.
+The wizard's "apply later" queue (`~/.config/heiss/pending.json`) is user-writable and is **not a trust boundary**: it can only name a profile and add-ons by id, every package, service and drop-in still comes from the root-owned manifests through the helper's allowlist, and polkit asks for the password. The Control Center applies an item only on an explicit click (with a warning), never offline, and starts `python -I -m heiss_core profile apply` in `/` without interpreter, loader, GLib/GI (`GI_TYPELIB_PATH` and friends), `HEISS_*` override and `DBUS_SYSTEM_BUS_ADDRESS` variables (the same filter in the wizard's and the Control Center's apply code), because polkit's `auth_admin_keep` keeps the authorisation per calling process. The polkit message does not name the profile; the window does.
 
 ## 6. Not verified (honest list)
 

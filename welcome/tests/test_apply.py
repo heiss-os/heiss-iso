@@ -327,7 +327,9 @@ else:
 
 class Isolation(unittest.TestCase):
     NASTY = {"PYTHONPATH": "/tmp/evil", "PYTHONSTARTUP": "/tmp/x.py", "LD_PRELOAD": "/tmp/e.so", "GCONV_PATH": "/tmp",
-             "GIO_EXTRA_MODULES": "/tmp", "LOCPATH": "/tmp", "NLSPATH": "/tmp", "HEISS_PROFILES": "/tmp/m"}
+             "GIO_EXTRA_MODULES": "/tmp", "LOCPATH": "/tmp", "NLSPATH": "/tmp", "HEISS_PROFILES": "/tmp/m",
+             "GI_TYPELIB_PATH": "/tmp/typelibs", "G_SLICE": "always-malloc", "GSETTINGS_SCHEMA_DIR": "/tmp",
+             "DBUS_SYSTEM_BUS_ADDRESS": "unix:path=/tmp/fakebus"}
 
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -371,8 +373,11 @@ class Isolation(unittest.TestCase):
     def test_clean_env_keeps_the_session_variables_polkit_needs(self):
         from heiss_welcome.applier import clean_env
         env = {"PATH": "/usr/bin", "HOME": "/home/u", "XDG_RUNTIME_DIR": "/run/user/1000",
-               "DBUS_SESSION_BUS_ADDRESS": "unix:path=/run/user/1000/bus", "WAYLAND_DISPLAY": "wayland-0", "PYTHONHOME": "/x"}
-        self.assertEqual(clean_env(env), {k: v for k, v in env.items() if k != "PYTHONHOME"})
+               "DBUS_SESSION_BUS_ADDRESS": "unix:path=/run/user/1000/bus", "WAYLAND_DISPLAY": "wayland-0", "DISPLAY": ":0",
+               "XAUTHORITY": "/home/u/.Xauthority", "LANG": "en_US.UTF-8", "PYTHONHOME": "/x", "GI_TYPELIB_PATH": "/x",
+               "DBUS_SYSTEM_BUS_ADDRESS": "unix:path=/x"}
+        self.assertEqual(clean_env(env), {k: v for k, v in env.items() if k not in ("PYTHONHOME", "GI_TYPELIB_PATH",
+                                                                                   "DBUS_SYSTEM_BUS_ADDRESS")})
 
 
 class Cli(unittest.TestCase):
