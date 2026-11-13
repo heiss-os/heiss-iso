@@ -226,6 +226,63 @@ ApplicationWindow {
                 Text { textFormat: Text.PlainText; visible: s.page === "appearance"; text: s.appearance ? s.appearance.note : ""; color: pal.dim; font.pixelSize: 14
                        wrapMode: Text.WordWrap; Layout.fillWidth: true }
 
+                // security center (read-only)
+                Text { textFormat: Text.PlainText; visible: s.page === "security"; text: s.security ? s.security.what : ""; color: pal.dim
+                       font.pixelSize: 16; wrapMode: Text.WordWrap; Layout.fillWidth: true }
+                Button {
+                    id: sb
+                    visible: s.page === "security"
+                    text: s.security ? s.security.runLabel : ""
+                    enabled: s.security ? s.security.state !== "running" : false
+                    focusPolicy: Qt.StrongFocus
+                    Accessible.name: text
+                    onClicked: control.runSecurity()
+                    contentItem: Text { textFormat: Text.PlainText; text: sb.text; color: sb.enabled ? pal.onAccent : pal.dim; font.pixelSize: 16
+                                        horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                    background: Rectangle { radius: 8; color: sb.enabled ? pal.accent : pal.button
+                                            border.width: sb.activeFocus ? 2 : 0; border.color: pal.text }
+                }
+                ProgressBar { visible: s.page === "security" && s.security.state === "running"; indeterminate: true
+                              Layout.fillWidth: true; Accessible.name: s.security ? s.security.running : "" }
+                Text { textFormat: Text.PlainText; visible: s.page === "security" && s.security.state === "failed"
+                       text: s.security ? s.security.message : ""; color: pal.error; font.pixelSize: 14
+                       wrapMode: Text.WordWrap; Layout.fillWidth: true }
+                Text { textFormat: Text.PlainText; visible: s.page === "security" && s.security.summary !== ""
+                       text: s.security ? s.security.summary : ""; color: pal.text; font.pixelSize: 16; font.bold: true
+                       wrapMode: Text.WordWrap; Layout.fillWidth: true }
+                Repeater {
+                    model: s.page === "security" ? s.security.items : []
+                    delegate: Rectangle {
+                        id: sc
+                        required property var modelData
+                        Layout.fillWidth: true
+                        implicitHeight: scc.implicitHeight + 24
+                        radius: 10
+                        color: pal.panel
+                        Accessible.role: Accessible.StaticText
+                        Accessible.name: modelData.title + ", " + modelData.statusLabel + ". " + modelData.detail + " " + modelData.advice
+                        ColumnLayout {
+                            id: scc
+                            anchors.fill: parent
+                            anchors.margins: 12
+                            spacing: 4
+                            RowLayout {
+                                Layout.fillWidth: true
+                                Text { textFormat: Text.PlainText; text: sc.modelData.title; color: pal.text; font.pixelSize: 18; font.bold: true
+                                       Layout.fillWidth: true }
+                                Text { textFormat: Text.PlainText; text: sc.modelData.statusLabel; font.pixelSize: 14; font.bold: true
+                                       color: sc.modelData.status === "warn" ? pal.error : (sc.modelData.status === "ok" ? pal.accent : pal.dim) }
+                            }
+                            Text { textFormat: Text.PlainText; text: sc.modelData.detail; color: pal.text; font.pixelSize: 15
+                                   wrapMode: Text.WordWrap; Layout.fillWidth: true }
+                            Text { textFormat: Text.PlainText; visible: sc.modelData.advice !== ""; text: sc.modelData.advice; color: pal.dim
+                                   font.pixelSize: 14; wrapMode: Text.WordWrap; Layout.fillWidth: true }
+                        }
+                    }
+                }
+                Text { textFormat: Text.PlainText; visible: s.page === "security"; text: s.security ? s.security.note : ""
+                       color: pal.dim; font.pixelSize: 14; wrapMode: Text.WordWrap; Layout.fillWidth: true }
+
                 // advanced
                 Text { textFormat: Text.PlainText; visible: s.page === "advanced"; text: s.advanced ? s.advanced.what : ""; color: pal.dim
                        font.pixelSize: 16; wrapMode: Text.WordWrap; Layout.fillWidth: true }

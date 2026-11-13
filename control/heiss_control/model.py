@@ -14,12 +14,13 @@ from heiss_core import state as st
 from heiss_core import wizard as wz
 from heiss_core.errors import HeissError
 
+from . import security
 from . import theme as th
 from . import tools
 from .strings import t
 
 # (id, built). Pages that are not built show the "coming soon" text, so the sidebar is the final one from day one.
-PAGES = (("overview", True), ("profiles", True), ("appearance", True), ("security", False), ("updates", False),
+PAGES = (("overview", True), ("profiles", True), ("appearance", True), ("security", True), ("updates", False),
          ("hardware", False), ("network", False), ("power", False), ("backups", False), ("advanced", True),
          ("about", True))
 PAGE_IDS = tuple(p for p, _ in PAGES)
@@ -43,6 +44,7 @@ class Env:
     profiles_dir: str = field(default_factory=lambda: os.environ.get("HEISS_PROFILES", "/usr/share/heiss/profiles"))
     kde_value: callable = field(default_factory=lambda: th.kreadconfig)
     apply_theme: callable = field(default_factory=lambda: th.apply_theme)
+    security_facts: callable = field(default_factory=lambda: security.collect)
     run_check: callable = field(default_factory=lambda: tools.run_check)
     open_settings: callable = field(default_factory=lambda: tools.open_settings)
     # default_factory: a plain lambda as a class default would be bound as a method
@@ -65,6 +67,7 @@ class Model:
         self.theme_state, self.theme_message = "idle", ""   # idle | running | ok | failed
         self.check_state, self.check_items, self.check_message = "idle", [], ""   # idle | running | done | failed
         self.settings_message = ""
+        self.sec_state, self.sec_facts, self.sec_message = "idle", [], ""   # idle | running | done | failed
 
     def tr(self, key):
         return t(self.language, key)
@@ -208,6 +211,46 @@ class Model:
             ok, msg = False, str(e)
         self.theme_state, self.theme_message = ("ok", "") if ok else ("failed", self._clip(msg))
 
+    # --- security center: read-only facts, no fixes yet ---
+    def begin_security(self):
+        if self.sec_state == "running":
+            return False
+        self.sec_state, self.sec_message = "running", ""
+        return True
+
+    def finish_security(self):
+        """Collects the facts; called from a worker thread, the glue refreshes the screen afterwards."""
+        try:
+            facts = []
+            for f in self.env.security_facts():
+                status = f["status"] if f["status"] in ("ok", "warn", "info") else "info"
+                facts.append({"id": str(f["id"])[:20], "status": status, "code": str(f["code"])[:30],
+                              "data": self._clip(f.get("data", ""))})
+            self.sec_facts, self.sec_state = facts, "done"
+        except Exception as e:  # noqa: BLE001
+            self.sec_facts, self.sec_state, self.sec_message = [], "failed", self._err(e)
+
+    def _sec_text(self, key, default=""):
+        try:
+            return t(self.language, key)
+        except KeyError:
+            return default
+
+    def security_page(self):
+        items = []
+        for f in self.sec_facts:
+            base = "sec.%s" % f["id"]
+            detail = self._sec_text("%s.%s" % (base, f["code"]), self.tr("sec.unknown_code"))
+            detail = detail.replace("%s", f["data"])   # not %-formatting: the data comes from the system
+            items.append({"id": f["id"], "title": self._sec_text(base, f["id"]), "status": f["status"],
+                          "statusLabel": self.tr("sec.status." + f["status"]), "detail": detail,
+                          "advice": self._sec_text(base + ".advice") if f["status"] == "warn" else ""})
+        n = {k: sum(1 for f in self.sec_facts if f["status"] == k) for k in ("ok", "warn", "info")}
+        summary = self.tr("sec.summary") % (n["ok"], len(self.sec_facts), n["warn"]) if self.sec_facts else ""
+        return {"what": self.tr("sec.what"), "runLabel": self.tr("sec.run"), "running": self.tr("sec.running"),
+                "state": self.sec_state, "message": self.sec_message, "items": items, "summary": summary,
+                "note": self.tr("sec.note")}
+
     # --- advanced: stock KDE settings and the system check ---
     def advanced(self):
         return {"what": self.tr("advanced.what"), "stockTitle": self.tr("advanced.stock"),
@@ -274,6 +317,8 @@ class Model:
             out["profiles"] = self.profiles()
         elif self.page == "appearance":
             out["appearance"] = self.appearance()
+        elif self.page == "security":
+            out["security"] = self.security_page()
         elif self.page == "advanced":
             out["advanced"] = self.advanced()
         elif self.page == "about":
