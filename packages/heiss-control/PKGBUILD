@@ -8,7 +8,9 @@ arch=('any')
 url='https://github.com/heiss-os/heiss-iso'
 license=('GPL-3.0-or-later')
 depends=('python' 'pyside6' 'heiss-core')
-optdepends=('inter-font: interface font')
+optdepends=('inter-font: interface font'
+            'kconfig: read the current colour scheme (kreadconfig6)'
+            'plasma-workspace: switch the colour scheme (plasma-apply-lookandfeel)')
 source=('heiss-src.tar.gz')
 sha256sums=('SKIP')   # archive made locally from git HEAD; not a downloaded file
 
