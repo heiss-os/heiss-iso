@@ -217,9 +217,10 @@ class QmlPlainText(unittest.TestCase):
         import re
         with open(os.path.join(REPO, "welcome", "heiss_welcome", "qml", "Main.qml"), encoding="utf-8") as f:
             qml = f.read()
-        texts = re.findall(r"(?<![A-Za-z])Text \{([^\n]*)", qml)
-        self.assertGreater(len(texts), 10)
-        for line in texts:
+        items = re.findall(r"(?<![A-Za-z])(Text|Label|TextEdit|TextArea)\s*\{([^\n]*)", qml)
+        self.assertGreater(len(items), 10)
+        for kind, line in items:
+            self.assertEqual(kind, "Text", "use Text with textFormat PlainText, not %s" % kind)
             self.assertIn("textFormat: Text.PlainText", line)
 
 
