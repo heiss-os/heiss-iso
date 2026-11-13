@@ -11,7 +11,8 @@ Split into small PRs. Status of each page:
 | Appearance (Dark and Light switch) | built; the only page that changes anything, as the user |
 | Advanced (opens the stock KDE System Settings; runs `heiss check` and lists the result) | built; the check changes no settings (it takes a short-lived lock file in the runtime directory, shared with `heiss theme sync`, so the theme item shows WARN while a sync runs) |
 | Security Center (firewall, disk encryption, Secure Boot display, SSH, open network ports) | built, read-only: plain-language facts and advice, no fix buttons, no score |
-| Updates and snapshots, Network and privacy | later PRs |
+| Network and privacy (chosen level vs. what is in place: Wi-Fi MAC setting, screen lock, firewall; the not-yet-built items listed as coming soon) | built, read-only |
+| Updates and snapshots | later PR |
 | Hardware and drivers (Phase 7), Power and display, Backups | later (sidebar entry exists, page says "Coming soon") |
 
 ## Structure
@@ -35,6 +36,10 @@ The wizard's "Save answers, apply later" and an apply attempted offline put an `
 ## Security Center: what it reads
 
 `control/heiss_control/security.py` runs five short, unprivileged checks on a worker thread (the first time the page is opened, and again on "Check again"; the window code is in `control/heiss_control/app.py`): `systemctl is-active/is-enabled firewalld`, `findmnt` then `lsblk -s` for a `crypt` layer under `/`, `/sys/firmware/efi` and the SecureBoot EFI variable (display only), `systemctl is-active sshd`, `ss -H -l -t -n` for non-loopback listening ports. Every command is a literal list with `PATH=/usr/bin:/bin` and `LC_ALL=C`; the only value from outside is the device name `findmnt` prints, passed to `lsblk` as one argument after `--` and only if it starts with `/dev/`. Nothing is changed, so there are no Fix buttons, no snapshot step and no "protection score" (five checks are too few for an honest number; the page says so). Not covered yet: root account lock (needs root to read), `arch-audit` and `lynis` wrapping (not in the ISO), pending updates (Updates page).
+
+## Network and privacy: what it reads
+
+`control/heiss_control/privacy_view.py` (first time the page is opened, and on "Check again", on a worker thread): the chosen level from the answers (`/etc/heiss/profile.toml`, else `~/.config/heiss/answers.toml`), the NetworkManager drop-in the level writes (`/etc/NetworkManager/conf.d/80-heiss-privacy.conf`, read as a file; no file means NetworkManager's own default, `preserve`), the screen-lock keys `Autolock`, `Timeout`, `LockGrace` of `kscreenlockerrc` via `kreadconfig6` with KDE's own defaults as `--default` (so an unset key counts as the default, which equals the Standard level; a key that cannot be read, or a non-numeric `Timeout` or `LockGrace`, is shown as unknown and is not compared, and `Autolock` false is "Look at this" when a level is chosen), and the firewall as in the Security Center. Each in-place value is compared with the table in `heiss_core.privacy`: equal is OK, different is "Look at this" with advice to apply the level again; with no level chosen nothing is compared. It shows the file and the settings, not the running NetworkManager's active value (that changes only when NetworkManager restarts), and it cannot change anything: re-applying a level is `heiss profile apply --privacy=LEVEL` or the wizard (a button comes with the profile-change PR). DNS over TLS, VPN and WireGuard, Bluetooth off and `linux-hardened` are listed as coming soon, as in the wizard.
 
 ## Advanced page: what the check trusts
 
