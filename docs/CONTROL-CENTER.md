@@ -21,16 +21,19 @@ Split into small PRs. Status of each page:
 ## Rules this shell follows
 
 - The GUI never runs as root and never calls the helper. The only change it makes is the Dark/Light switch (`plasma-apply-lookandfeel`, as the user, on a worker thread, same LnF ids as the wizard); a test checks that building any screen leaves the directories untouched.
+- Every `Text` in the QML is `Text.PlainText` and error messages are cut to 300 characters (a test enforces both; see DECISIONS.md, "Profiles and Appearance pages").
 - The sidebar already lists the final pages; a page that is not built says "Coming soon" instead of pretending.
 - Links open only if they start with `https://` and come from `os-release`.
 - Plain QtQuick.Controls like the wizard, not Kirigami (see DECISIONS.md, 2026-11-13).
 
 ## Known limit
 
-`plasmashell --version` runs on the GUI thread with a 3 s timeout when About is built. A hanging `plasmashell` would freeze the window for up to 3 s; moving it to a worker comes with the first page that needs a background job.
+`plasmashell --version` runs on the GUI thread with a 3 s timeout when About is built. A hanging `plasmashell` would freeze the window for up to 3 s; the Appearance switch already runs on a worker thread, `plasmashell --version` does not yet.
 
 ## Package
 
 `packages/heiss-control` (depends on `python`, `pyside6`, `heiss-core`) installs the app, `/usr/bin/heiss-control` and `/usr/share/applications/heiss-control.desktop` (visible in the launcher menu, Settings category). It is in `profile/packages.x86_64`, so it comes from `[heiss-local]`: run `scripts/heiss-packages-build.sh` before the ISO build. The dock pins are not changed (replacing the pinned System Settings is a Tier B item that needs its own "ok"). The icon is the stock `preferences-system`; a Heiss icon is not made yet.
+
+Optional dependencies: `kconfig` (`kreadconfig6`, reads the colour scheme) and `plasma-workspace` (`plasma-apply-lookandfeel`, switches it); without them the Appearance page shows "unknown" or an error text.
 
 Run from a checkout: `PYTHONPATH=core:control python -m heiss_control` (needs `pyside6`).
