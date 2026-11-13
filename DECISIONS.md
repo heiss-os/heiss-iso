@@ -241,3 +241,10 @@ Format: date, what, why. Newest at the bottom.
 - **Scope: Wi-Fi/Ethernet MAC address default and screen lock only.** Standard keeps NetworkManager's defaults explicitly (preserve) and KDE's 5-minute lock; Enhanced: stable per-network MAC, 3 minutes; Maximum: random Wi-Fi MAC, stable Ethernet MAC, 1 minute, no grace. DNS over TLS (needs systemd-resolved wiring), Bluetooth off (conflicts with Essentials), VPN and linux-hardened stay "Coming soon".
 - **Opt-in in the engine:** privacy is planned only with `--privacy`, so existing `heiss profile apply` runs are unchanged. No NetworkManager restart: it could drop the user's connection mid-apply. heiss-core pkgrel 6 -> 7, heiss-helper 1 -> 2, heiss-welcome 3 -> 4.
 - Defaults checked in the `kscreenlockersettings.kcfg` of the Arch `kscreenlocker` package: `Autolock` true, `Timeout` 5 (minutes), `LockGrace` 5 (seconds), so Standard equals KDE's defaults. `wifi.scan-rand-mac-address=yes` is written at every level on purpose: it is NetworkManager's own default (man page), made explicit so it stays on.
+
+## 2026-11-13 (Control Center shell, Phase 6)
+
+- **Plain QtQuick.Controls, not Kirigami, for the Control Center shell.** Why: the wizard already works this way and takes its colours from the Heiss tokens, so both apps look the same; Kirigami would add a dependency (7.2 MiB installed, `pacman -Si kirigami`) and a second look to keep in sync. `docs/ARCHITECTURE.md` named Kirigami as the default; this changes it for now. Revisit if a page needs a Kirigami component that is costly to rebuild.
+- **The shell is read-only and not packaged yet.** Why: it keeps the first Control Center PR small and lets the model be tested without Qt; the package, desktop file and ISO entry come with the first page that needs the helper.
+- **Search covers page titles and keywords only.** Why: there are no per-setting entries until the pages exist; each page PR adds its own entries.
+- **The About page does not state a branding licence.** Why: the repository has only the GPL-3.0 `LICENSE`; no separate branding licence file exists, and none is invented. Owner question: which licence applies to `branding/`?
