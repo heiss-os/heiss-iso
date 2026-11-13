@@ -33,7 +33,7 @@ ApplicationWindow {
         property bool primary: false
         Accessible.name: text
         focusPolicy: Qt.StrongFocus
-        contentItem: Text { text: b.text; color: b.primary ? pal.onAccent : pal.text; horizontalAlignment: Text.AlignHCenter
+        contentItem: Text { textFormat: Text.PlainText; text: b.text; color: b.primary ? pal.onAccent : pal.text; horizontalAlignment: Text.AlignHCenter
                             verticalAlignment: Text.AlignVCenter; font.pixelSize: 16 }
         background: Rectangle { radius: 8; color: b.primary ? pal.accent : pal.button
                                 border.width: b.activeFocus ? 2 : 0; border.color: pal.text }
@@ -44,11 +44,11 @@ ApplicationWindow {
         width: Math.min(parent.width - 64, 760)
         spacing: 20
 
-        Text { text: s.progressText; color: pal.dim; font.pixelSize: 14 }
+        Text { textFormat: Text.PlainText; text: s.progressText; color: pal.dim; font.pixelSize: 14 }
         ProgressBar { Layout.fillWidth: true; value: s.progress; Accessible.name: s.progressText }
-        Text { text: s.title; color: pal.text; font.pixelSize: 32; font.bold: true; wrapMode: Text.WordWrap
+        Text { textFormat: Text.PlainText; text: s.title; color: pal.text; font.pixelSize: 32; font.bold: true; wrapMode: Text.WordWrap
                Layout.fillWidth: true; Accessible.role: Accessible.Heading }
-        Text { text: s.whatLabel + ": " + s.what; color: pal.dim; font.pixelSize: 16; wrapMode: Text.WordWrap
+        Text { textFormat: Text.PlainText; text: s.whatLabel + ": " + s.what; color: pal.dim; font.pixelSize: 16; wrapMode: Text.WordWrap
                Layout.fillWidth: true }
         Repeater {
             model: s.facts
@@ -56,13 +56,13 @@ ApplicationWindow {
                 required property var modelData
                 Layout.fillWidth: true
                 spacing: 12
-                Text { text: parent.modelData.text; color: pal.text; font.pixelSize: 16; wrapMode: Text.WordWrap
+                Text { textFormat: Text.PlainText; text: parent.modelData.text; color: pal.text; font.pixelSize: 16; wrapMode: Text.WordWrap
                        Layout.fillWidth: true }
-                Text { visible: parent.modelData.badge !== ""; text: parent.modelData.badge; color: pal.accent
+                Text { textFormat: Text.PlainText; visible: parent.modelData.badge !== ""; text: parent.modelData.badge; color: pal.accent
                        font.pixelSize: 14; font.bold: true }
             }
         }
-        Repeater { model: s.lines; Text { text: modelData; color: pal.text; font.pixelSize: 18 } }
+        Repeater { model: s.lines; Text { textFormat: Text.PlainText; text: modelData; color: pal.text; font.pixelSize: 18 } }
 
         ScrollView {
             Layout.fillWidth: true
@@ -78,7 +78,7 @@ ApplicationWindow {
                         required property var modelData
                         Layout.fillWidth: true
                         spacing: 6
-                        Text { visible: text !== ""; text: q.modelData.title; color: pal.accent; font.pixelSize: 16; font.bold: true }
+                        Text { textFormat: Text.PlainText; visible: text !== ""; text: q.modelData.title; color: pal.accent; font.pixelSize: 16; font.bold: true }
                         Repeater {
                             model: q.modelData.options
                             delegate: ItemDelegate {
@@ -95,9 +95,9 @@ ApplicationWindow {
                                     else wizard.toggleAddon(modelData.value)
                                 }
                                 contentItem: ColumnLayout {
-                                    Text { text: (opt.modelData.selected ? "● " : "○ ") + opt.modelData.label
+                                    Text { textFormat: Text.PlainText; text: (opt.modelData.selected ? "● " : "○ ") + opt.modelData.label
                                            color: pal.text; font.pixelSize: 18 }
-                                    Text { visible: opt.modelData.hint !== ""; text: opt.modelData.hint; color: pal.dim
+                                    Text { textFormat: Text.PlainText; visible: opt.modelData.hint !== ""; text: opt.modelData.hint; color: pal.dim
                                            font.pixelSize: 14; wrapMode: Text.WordWrap; Layout.fillWidth: true }
                                 }
                                 background: Rectangle { radius: 8; color: opt.modelData.selected ? pal.button : pal.panel
@@ -110,14 +110,14 @@ ApplicationWindow {
             }
         }
 
-        Text { visible: s.isApplying; text: s.job.step; color: pal.accent; font.pixelSize: 16; font.bold: true
+        Text { textFormat: Text.PlainText; visible: s.isApplying; text: s.job.step; color: pal.accent; font.pixelSize: 16; font.bold: true
                wrapMode: Text.WordWrap; Layout.fillWidth: true }
         ProgressBar { visible: s.isRunning; indeterminate: true; Layout.fillWidth: true; Accessible.name: s.job.step }
-        Text { visible: s.isApplying; text: s.job.log.join("\n"); color: pal.dim; font.family: "JetBrains Mono"
+        Text { textFormat: Text.PlainText; visible: s.isApplying; text: s.job.log.join("\n"); color: pal.dim; font.family: "JetBrains Mono"
                font.pixelSize: 12; wrapMode: Text.WrapAnywhere; Layout.fillWidth: true; elide: Text.ElideNone }
 
-        Text { visible: s.note !== ""; text: s.note; color: pal.dim; wrapMode: Text.WordWrap; Layout.fillWidth: true }
-        Text { visible: s.error !== ""; text: s.error; color: "#E06C64"; wrapMode: Text.WordWrap; Layout.fillWidth: true }
+        Text { textFormat: Text.PlainText; visible: s.note !== ""; text: s.note; color: pal.dim; wrapMode: Text.WordWrap; Layout.fillWidth: true }
+        Text { textFormat: Text.PlainText; visible: s.error !== ""; text: s.error; color: "#E06C64"; wrapMode: Text.WordWrap; Layout.fillWidth: true }
 
         RowLayout {
             Layout.fillWidth: true

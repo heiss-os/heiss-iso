@@ -210,5 +210,19 @@ class HardwareAndPrivacy(unittest.TestCase):
             self.assertEqual(len(vm.screen()["facts"]), n + 1)   # linux-hardened shows for Advanced only
 
 
+class QmlPlainText(unittest.TestCase):
+    def test_every_qml_text_is_plain_text(self):
+        # Text defaults to AutoText: a string from a file or a command that looks like HTML (a package name, an
+        # error line, the apply log) would be rendered as rich text, and a remote <img> would fetch from the network
+        import re
+        with open(os.path.join(REPO, "welcome", "heiss_welcome", "qml", "Main.qml"), encoding="utf-8") as f:
+            qml = f.read()
+        items = re.findall(r"(?<![A-Za-z])(Text|Label|TextEdit|TextArea)\s*\{([^\n]*)", qml)
+        self.assertGreater(len(items), 10)
+        for kind, line in items:
+            self.assertEqual(kind, "Text", "use Text with textFormat PlainText, not %s" % kind)
+            self.assertIn("textFormat: Text.PlainText", line)
+
+
 if __name__ == "__main__":
     unittest.main()

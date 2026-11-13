@@ -199,6 +199,7 @@ Owner's rule (2026-11-11): no ISO build and no VM check until the whole master p
 - [ ] Autostart: the wizard does NOT start in the live session (`/run/archiso` present) and starts once after the first login on the installed system.
 - [ ] `heiss-cleanup.sh` imports the Heiss key and appends `[heiss]` on a real installation; `pacman -Sy` then works; Calamares' unpackfs copies `/usr/share/pacman/keyrings/heiss.gpg` into the target.
 - [ ] ISO build order: `scripts/heiss-packages-build.sh` before `heiss-build.sh` (the keyring and welcome packages come only from `~/localrepo`).
+- [ ] Wizard text as plain text: open every wizard screen in en and ru / expect everything to look as before (fonts, wrapping, colours); the apply log and error line show a literal `<` or `&` as typed, never as formatting.
 - [ ] Existing installer items still unchecked: slideshow animation, glow via QtQuick.Effects, the users page logo animation, mouse selection on the desktop under VirtualBox.
 
 ### Phase 6: Control Center
@@ -245,3 +246,7 @@ PR "feat/control-center-package": `packages/heiss-control`, `control/data/heiss-
 ## Phase 6, step 3 (2026-11-13): Profiles and Appearance pages
 
 PR "feat/control-center-profiles-appearance": read-only Profiles and software page, Appearance page (Dark and Light only, switched as the user on a worker thread), `control/heiss_control/theme.py`, tests, heiss-control pkgrel 2. Not verified: any run of the window (no `pyside6` here), the real `plasma-apply-lookandfeel` and `kreadconfig6` calls, the worker-thread signal; see the two new Phase 6 lines in the FINAL VM TEST LIST. The new CI step (`kreadconfig6` shipped by `kconfig`, needs `pacman -F`) runs for the first time in this PR's CI; it was not run locally. The wizard QML (`welcome/heiss_welcome/qml/Main.qml`) used the default `Text` format for strings from files and commands; the same fix is a separate PR, branch `fix/wizard-plain-text`, not in this PR. Not done: changing the profile or add-ons (needs the helper), the pending-queue runner, "Automatic" theme, accent, wallpapers, fonts, density, animations. Next: the security and system pages (Security Center, Updates and snapshots, Network and privacy, Advanced), or the profile change through the helper, after the owner's reply.
+
+## Phase 5 follow-up (2026-11-13): wizard QML plain text
+
+PR "fix/wizard-plain-text": all 14 `Text` items of `welcome/heiss_welcome/qml/Main.qml` are `Text.PlainText`, test added, heiss-welcome pkgrel 5. Not verified: the wizard window with the change (no `pyside6` here; the QML only passed `qmllint`). The existing wizard screenshot item in the FINAL VM TEST LIST covers it: text must look as before.
