@@ -15,11 +15,12 @@ from heiss_core import wizard as wz
 from heiss_core.errors import HeissError
 
 from . import theme as th
+from . import tools
 from .strings import t
 
 # (id, built). Pages that are not built show the "coming soon" text, so the sidebar is the final one from day one.
 PAGES = (("overview", True), ("profiles", True), ("appearance", True), ("security", False), ("updates", False),
-         ("hardware", False), ("network", False), ("power", False), ("backups", False), ("advanced", False),
+         ("hardware", False), ("network", False), ("power", False), ("backups", False), ("advanced", True),
          ("about", True))
 PAGE_IDS = tuple(p for p, _ in PAGES)
 LANGUAGES = ("en", "ru")
@@ -42,6 +43,8 @@ class Env:
     profiles_dir: str = field(default_factory=lambda: os.environ.get("HEISS_PROFILES", "/usr/share/heiss/profiles"))
     kde_value: callable = field(default_factory=lambda: th.kreadconfig)
     apply_theme: callable = field(default_factory=lambda: th.apply_theme)
+    run_check: callable = field(default_factory=lambda: tools.run_check)
+    open_settings: callable = field(default_factory=lambda: tools.open_settings)
     # default_factory: a plain lambda as a class default would be bound as a method
     kernel: callable = field(default_factory=lambda: lambda: os.uname().release)
     plasma: callable = field(default_factory=lambda: _plasma_version)
@@ -60,6 +63,8 @@ class Model:
     def __init__(self, env=None, language="en"):
         self.env, self.language, self.page = env or Env(), language if language in LANGUAGES else "en", "overview"
         self.theme_state, self.theme_message = "idle", ""   # idle | running | ok | failed
+        self.check_state, self.check_items, self.check_message = "idle", [], ""   # idle | running | done | failed
+        self.settings_message = ""
 
     def tr(self, key):
         return t(self.language, key)
@@ -203,6 +208,36 @@ class Model:
             ok, msg = False, str(e)
         self.theme_state, self.theme_message = ("ok", "") if ok else ("failed", self._clip(msg))
 
+    # --- advanced: stock KDE settings and the system check ---
+    def advanced(self):
+        return {"what": self.tr("advanced.what"), "stockTitle": self.tr("advanced.stock"),
+                "openLabel": self.tr("advanced.open_settings"), "settingsMessage": self.settings_message,
+                "checkTitle": self.tr("advanced.check"), "runLabel": self.tr("advanced.run_check"),
+                "running": self.tr("advanced.running"), "state": self.check_state, "items": self.check_items,
+                "message": self.check_message, "note": self.tr("advanced.note")}
+
+    def open_stock_settings(self):
+        try:
+            ok, msg = self.env.open_settings()
+        except Exception as e:  # noqa: BLE001
+            ok, msg = False, str(e)
+        self.settings_message = "" if ok else self._clip(msg)
+
+    def begin_check(self):
+        if self.check_state == "running":
+            return False
+        self.check_state, self.check_message = "running", ""
+        return True
+
+    def finish_check(self):
+        """Runs `heiss check`; called from a worker thread, the glue refreshes the screen afterwards."""
+        try:
+            items = [{"name": self._clip(i["name"]), "status": i["status"] if i["status"] in tools.STATUSES else "WARN",
+                      "detail": self._clip(i["detail"])} for i in self.env.run_check()]
+            self.check_items, self.check_state = items, "done"
+        except Exception as e:  # noqa: BLE001
+            self.check_items, self.check_state, self.check_message = [], "failed", self._err(e)
+
     @staticmethod
     def _safe(fn):
         try:
@@ -239,6 +274,8 @@ class Model:
             out["profiles"] = self.profiles()
         elif self.page == "appearance":
             out["appearance"] = self.appearance()
+        elif self.page == "advanced":
+            out["advanced"] = self.advanced()
         elif self.page == "about":
             out["about"] = self.about()
         return out

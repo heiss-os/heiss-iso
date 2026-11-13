@@ -2,15 +2,16 @@
 # Built from the repository HEAD by scripts/heiss-packages-build.sh (it creates heiss-src.tar.gz).
 pkgname=heiss-control
 pkgver=0.1.0
-pkgrel=2
-pkgdesc='Heiss OS Control Center: overview, profiles, appearance and system information'
+pkgrel=3
+pkgdesc='Heiss OS Control Center: overview, profiles, appearance, advanced and system information'
 arch=('any')
 url='https://github.com/heiss-os/heiss-iso'
 license=('GPL-3.0-or-later')
 depends=('python' 'pyside6' 'heiss-core')
 optdepends=('inter-font: interface font'
             'kconfig: read the current colour scheme (kreadconfig6)'
-            'plasma-workspace: switch the colour scheme (plasma-apply-lookandfeel)')
+            'plasma-workspace: switch the colour scheme (plasma-apply-lookandfeel)'
+            'systemsettings: the stock KDE settings opened from the Advanced page')
 source=('heiss-src.tar.gz')
 sha256sums=('SKIP')   # archive made locally from git HEAD; not a downloaded file
 

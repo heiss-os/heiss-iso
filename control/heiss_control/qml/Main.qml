@@ -226,6 +226,65 @@ ApplicationWindow {
                 Text { textFormat: Text.PlainText; visible: s.page === "appearance"; text: s.appearance ? s.appearance.note : ""; color: pal.dim; font.pixelSize: 14
                        wrapMode: Text.WordWrap; Layout.fillWidth: true }
 
+                // advanced
+                Text { textFormat: Text.PlainText; visible: s.page === "advanced"; text: s.advanced ? s.advanced.what : ""; color: pal.dim
+                       font.pixelSize: 16; wrapMode: Text.WordWrap; Layout.fillWidth: true }
+                Text { textFormat: Text.PlainText; visible: s.page === "advanced"; text: s.advanced ? s.advanced.stockTitle : ""
+                       color: pal.accent; font.pixelSize: 18; font.bold: true; Accessible.role: Accessible.Heading }
+                Button {
+                    id: ob
+                    visible: s.page === "advanced"
+                    text: s.advanced ? s.advanced.openLabel : ""
+                    focusPolicy: Qt.StrongFocus
+                    Accessible.name: text
+                    onClicked: control.openSettings()
+                    contentItem: Text { textFormat: Text.PlainText; text: ob.text; color: pal.text; font.pixelSize: 16
+                                        horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                    background: Rectangle { radius: 8; color: pal.button; border.width: ob.activeFocus ? 2 : 0; border.color: pal.text }
+                }
+                Text { textFormat: Text.PlainText; visible: s.page === "advanced" && s.advanced.settingsMessage !== ""
+                       text: s.advanced ? s.advanced.settingsMessage : ""; color: pal.error; font.pixelSize: 14
+                       wrapMode: Text.WordWrap; Layout.fillWidth: true }
+                Text { textFormat: Text.PlainText; visible: s.page === "advanced"; text: s.advanced ? s.advanced.checkTitle : ""
+                       color: pal.accent; font.pixelSize: 18; font.bold: true; Accessible.role: Accessible.Heading }
+                Button {
+                    id: cb
+                    visible: s.page === "advanced"
+                    text: s.advanced ? s.advanced.runLabel : ""
+                    enabled: s.advanced ? s.advanced.state !== "running" : false
+                    focusPolicy: Qt.StrongFocus
+                    Accessible.name: text
+                    onClicked: control.runCheck()
+                    contentItem: Text { textFormat: Text.PlainText; text: cb.text; color: cb.enabled ? pal.onAccent : pal.dim; font.pixelSize: 16
+                                        horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                    background: Rectangle { radius: 8; color: cb.enabled ? pal.accent : pal.button
+                                            border.width: cb.activeFocus ? 2 : 0; border.color: pal.text }
+                }
+                ProgressBar { visible: s.page === "advanced" && s.advanced.state === "running"; indeterminate: true
+                              Layout.fillWidth: true; Accessible.name: s.advanced ? s.advanced.running : "" }
+                Text { textFormat: Text.PlainText; visible: s.page === "advanced" && s.advanced.state === "failed"
+                       text: s.advanced ? s.advanced.message : ""; color: pal.error; font.pixelSize: 14
+                       wrapMode: Text.WordWrap; Layout.fillWidth: true }
+                Repeater {
+                    model: s.page === "advanced" ? s.advanced.items : []
+                    delegate: RowLayout {
+                        required property var modelData
+                        Layout.fillWidth: true
+                        spacing: 12
+                        Accessible.role: Accessible.StaticText
+                        Accessible.name: modelData.status + " " + modelData.name + ": " + modelData.detail
+                        Text { textFormat: Text.PlainText; text: parent.modelData.status; font.pixelSize: 14; font.bold: true
+                               Layout.preferredWidth: 48
+                               color: parent.modelData.status === "FAIL" ? pal.error : (parent.modelData.status === "OK" ? pal.accent : pal.dim) }
+                        Text { textFormat: Text.PlainText; text: parent.modelData.name; color: pal.text; font.pixelSize: 15
+                               Layout.preferredWidth: 160 }
+                        Text { textFormat: Text.PlainText; text: parent.modelData.detail; color: pal.dim; font.pixelSize: 14
+                               wrapMode: Text.WordWrap; Layout.fillWidth: true }
+                    }
+                }
+                Text { textFormat: Text.PlainText; visible: s.page === "advanced"; text: s.advanced ? s.advanced.note : ""
+                       color: pal.dim; font.pixelSize: 14; wrapMode: Text.WordWrap; Layout.fillWidth: true }
+
                 // about
                 Text { textFormat: Text.PlainText; visible: s.page === "about"; text: s.about ? s.about.what : ""; color: pal.dim; font.pixelSize: 16 }
                 Repeater {

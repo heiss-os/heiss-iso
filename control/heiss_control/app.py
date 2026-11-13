@@ -14,11 +14,13 @@ def main(argv=None):
     class Bridge(QObject):
         changed = Signal()
         themeDone = Signal()   # emitted from the worker thread; delivered on the GUI thread
+        checkDone = Signal()
 
         def __init__(self, model):
             super().__init__()
             self.model, self._screen, self._results = model, model.screen(), []
             self.themeDone.connect(self._set)
+            self.checkDone.connect(self._set)
 
         def _set(self):
             self._screen = self.model.screen()
@@ -47,6 +49,22 @@ def main(argv=None):
         def _switch(self, theme):
             self.model.finish_theme(theme)
             self.themeDone.emit()
+
+        @Slot()
+        def runCheck(self):
+            # `heiss check` runs several commands (up to 30 s each): never on the GUI thread
+            if self.model.begin_check():
+                threading.Thread(target=self._check, daemon=True).start()
+                self._set()
+
+        def _check(self):
+            self.model.finish_check()
+            self.checkDone.emit()
+
+        @Slot()
+        def openSettings(self):
+            self.model.open_stock_settings()
+            self._set()
 
         @Slot(str)
         def setLanguage(self, language):

@@ -211,6 +211,7 @@ Owner's rule (2026-11-11): no ISO build and no VM check until the whole master p
 - [ ] Control Center, Appearance page: open "Appearance" / expect the current scheme shown; click Light, then Dark / expect the whole desktop to switch, the window not to freeze (progress bar), the marked button to follow, and the theme-sync log to show a run; with another colour scheme set by hand expect "unknown" and no marked button; with `plasma-apply-lookandfeel` missing expect the error text, not a crash.
 - [ ] Control Center, plain text: put a package name like `<img src=http://example.invalid/x.png><b>x</b>` into the packages list of a test copy of `/var/lib/heiss/state.json`, open "Profiles and software" / expect the literal text on screen, no bold, no image and no network request; a very long error text is cut at 300 characters.
 - [ ] Control Center, optional dependencies: on the ISO run `pacman -Q kconfig plasma-workspace` / expect both installed; after `heiss-control` goes from pkgrel 1 to 2 open the Appearance page / expect the current scheme shown, not "unknown".
+- [ ] Control Center, Advanced page: open "Advanced", click "Open System Settings" / expect the stock KDE settings window, the Control Center window stays usable; click "Run the check" / expect the progress bar, then one line per item (OK, WARN, FAIL) matching `heiss check` run in Konsole on the same machine, and the button works again; with `systemsettings` missing expect the error text.
 - [ ] Control Center search: typing "wireguard" lists Network and privacy; "брандмауэр" in ru lists the Security Center; an empty result shows the "nothing found" text.
 - [ ] Overview, pending actions: put one entry in the pending queue ("Save answers, apply later" in the wizard), open the Control Center / expect the pending-actions card to show 1 and "1 waiting".
 - [ ] Overview on an installed system after Apply: profile and privacy level match what the wizard applied; `plasmashell --version` is parsed on the real Plasma.
@@ -250,3 +251,8 @@ PR "feat/control-center-profiles-appearance": read-only Profiles and software pa
 ## Phase 5 follow-up (2026-11-13): wizard QML plain text
 
 PR "fix/wizard-plain-text": all 14 `Text` items of `welcome/heiss_welcome/qml/Main.qml` are `Text.PlainText`, test added, heiss-welcome pkgrel 5. Not verified: the wizard window with the change (no `pyside6` here; the QML only passed `qmllint`). The existing wizard screenshot item in the FINAL VM TEST LIST covers it: text must look as before.
+
+
+## Phase 6, step 4 (2026-11-13): Advanced page
+
+PR "feat/control-center-advanced": `control/heiss_control/tools.py`, Advanced page (stock System Settings, `heiss check` on a worker thread), tests, heiss-control pkgrel 3. Verified by a real run on the build host (not a Heiss system): `tools.run_check()` returned its eight items with the expected OK/WARN/FAIL for a non-installed system. Not verified: the window and the worker-thread signal (no `pyside6` here), `systemsettings` starting, the check on an installed system. Not done: journal, services, Heiss logs, bug-report bundle (need decisions on what may leave the machine). Next: Security Center, Updates and snapshots, Network and privacy, or profile change through the helper, after the owner's reply.

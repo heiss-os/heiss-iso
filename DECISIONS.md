@@ -263,3 +263,9 @@ Format: date, what, why. Newest at the bottom.
 ## 2026-11-13 (wizard QML shows strings as plain text)
 
 - **Every `Text` in the wizard QML is `Text.PlainText`** (a test enforces it). Why: `Text` defaults to AutoText, so a string that looks like HTML would be drawn as rich text; the apply log, error lines and package names come from commands and files, and a remote `<img>` would make the window contact the network on its own. Found by the security review of the Control Center PR, which has the same rule. heiss-welcome pkgrel 4 -> 5.
+
+## 2026-11-13 (Control Center: Advanced page)
+
+- **The Advanced page does two things: open the stock KDE System Settings and run `heiss check`.** Why: the owner's decision is that the stock settings stay reachable under "Advanced"; `heiss check` already is the health check for an installed system and runs read-only, so the page shows its result instead of a second implementation. Both use fixed argument lists, no shell, no helper, no privileges; the check runs in this process on a worker thread (its commands can take 30 s each); statuses outside OK/WARN/FAIL are shown as WARN and all texts are plain and cut to 300 characters.
+- **Not in this page yet:** the journal, a list of services, Heiss logs and the bug-report bundle without personal data. Why: each needs a decision about what may leave the machine (the bundle) or a verified command line (journal access without root); they come in their own PRs.
+- heiss-control pkgrel 2 -> 3, `systemsettings` as an optional dependency.
