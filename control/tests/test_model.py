@@ -10,6 +10,7 @@ sys.path.insert(0, os.path.join(REPO, "core"))
 sys.path.insert(0, os.path.dirname(HERE))
 from heiss_control import model as m  # noqa: E402
 from heiss_control import theme as th  # noqa: E402
+from heiss_control import tools  # noqa: E402
 from heiss_control.strings import S  # noqa: E402
 
 OS_RELEASE = 'NAME="Heiss OS"\nPRETTY_NAME="Heiss OS"\nBUILD_ID=rolling\nHOME_URL="https://example.org/h"\n' \
@@ -25,7 +26,9 @@ class Fixture(unittest.TestCase):
                          user_dir=self.p("user"), state_file=self.p("state.json"),
                          kernel=lambda: "9.9.9-test", plasma=lambda: "6.8.2",
                          profiles_dir=os.path.join(REPO, "profiles"), kde_value=lambda f, g, k: "HeissDark",
-                         apply_theme=lambda theme: (True, ""))
+                         apply_theme=lambda theme: (True, ""),
+                         run_check=lambda: [{"name": "units", "status": "OK", "detail": "fine", "commands": []}],
+                         open_settings=lambda: (True, ""))
 
     def p(self, name):
         return os.path.join(self.d, name)
@@ -56,7 +59,7 @@ class Pages(Fixture):
         mod.open("security")
         s = mod.screen()
         self.assertFalse(s["built"])
-        for key in ("overview", "profiles", "appearance", "about"):
+        for key in ("overview", "profiles", "appearance", "advanced", "about"):
             self.assertNotIn(key, s)
 
     def test_every_language_has_every_key_of_english(self):
@@ -305,6 +308,102 @@ class Hardening(Fixture):
         item = p.screen()["profiles"]["pending"][0]
         self.assertTrue(item["error"].startswith("<img"))
         self.assertLessEqual(len(item["error"]), m.MAX_MESSAGE)
+
+
+class Advanced(Fixture):
+    def mod(self):
+        mod = m.Model(self.env)
+        mod.open("advanced")
+        return mod
+
+    def test_page_is_built_and_starts_idle(self):
+        s = self.mod().screen()
+        self.assertTrue(s["built"])
+        self.assertEqual((s["advanced"]["state"], s["advanced"]["items"]), ("idle", []))
+
+    def test_check_runs_once_at_a_time_and_lists_the_items(self):
+        mod = self.mod()
+        self.assertTrue(mod.begin_check())
+        self.assertFalse(mod.begin_check())
+        mod.finish_check()
+        a = mod.screen()["advanced"]
+        self.assertEqual(a["state"], "done")
+        self.assertEqual(a["items"], [{"name": "units", "status": "OK", "detail": "fine"}])
+        self.assertTrue(mod.begin_check())   # free again
+
+    def test_unknown_status_becomes_warn_and_text_is_cut(self):
+        self.env.run_check = lambda: [{"name": "n" * 1000, "status": "<b>HACK</b>", "detail": "d\n" * 1000}]
+        mod = self.mod()
+        mod.begin_check()
+        mod.finish_check()
+        item = mod.screen()["advanced"]["items"][0]
+        self.assertEqual(item["status"], "WARN")
+        self.assertLessEqual(len(item["name"]), m.MAX_MESSAGE)
+        self.assertLessEqual(len(item["detail"]), m.MAX_MESSAGE)
+        self.assertNotIn("\n", item["detail"])
+
+    def test_a_failing_check_is_reported_not_raised(self):
+        def boom():
+            raise RuntimeError("no luck")
+        self.env.run_check = boom
+        mod = self.mod()
+        mod.begin_check()
+        mod.finish_check()
+        a = mod.screen()["advanced"]
+        self.assertEqual((a["state"], a["items"]), ("failed", []))
+        self.assertIn("no luck", a["message"])
+        self.assertTrue(mod.begin_check())
+
+    def test_malformed_check_result_is_a_failure_not_a_crash(self):
+        for bad in (None, 5, [{"name": "x"}], {"name": 1, "status": "OK", "detail": 2}):
+            self.env.run_check = lambda bad=bad: bad
+            mod = self.mod()
+            mod.begin_check()
+            mod.finish_check()
+            self.assertEqual((mod.check_state, mod.check_items), ("failed", []), bad)
+            self.assertTrue(mod.check_message)
+
+    def test_open_settings_reports_a_failure_and_clears_it(self):
+        mod = self.mod()
+        self.env.open_settings = lambda: (False, "nope")
+        mod.open_stock_settings()
+        self.assertEqual(mod.screen()["advanced"]["settingsMessage"], "nope")
+        self.env.open_settings = lambda: (True, "")
+        mod.open_stock_settings()
+        self.assertEqual(mod.screen()["advanced"]["settingsMessage"], "")
+        def boom():
+            raise RuntimeError("x")
+        self.env.open_settings = boom
+        mod.open_stock_settings()
+        self.assertEqual(mod.settings_message, "x")
+
+
+class Tools(unittest.TestCase):
+    def test_open_settings_uses_a_fixed_argument_list_and_detaches(self):
+        seen = {}
+
+        def popen(argv, **kw):
+            seen["argv"], seen["kw"] = argv, kw
+        self.assertEqual(tools.open_settings(popen), (True, ""))
+        self.assertEqual(seen["argv"], ["systemsettings"])
+        self.assertTrue(seen["kw"]["start_new_session"])
+        self.assertNotIn("shell", seen["kw"])
+
+    def test_open_settings_failure_is_returned(self):
+        def popen(argv, **kw):
+            raise FileNotFoundError("systemsettings")
+        ok, msg = tools.open_settings(popen)
+        self.assertFalse(ok)
+        self.assertIn("cannot start System Settings", msg)
+
+    def test_run_check_returns_plain_dicts(self):
+        from heiss_core import check as ck
+        orig = (ck.run_checks, ck.CheckEnv)
+        ck.run_checks = lambda env, theme_env, profiles_dir: [ck.Item("x", ck.OK, "d", [["a", "b"]])]
+        try:
+            self.assertEqual(tools.run_check(), [{"name": "x", "status": "OK", "detail": "d", "commands": ["a b"]}])
+        finally:
+            ck.run_checks, ck.CheckEnv = orig
 
 
 class ThemeModule(unittest.TestCase):
