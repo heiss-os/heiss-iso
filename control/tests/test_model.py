@@ -654,11 +654,15 @@ class Runner(unittest.TestCase):
             return P()
         env = {"PATH": "/usr/bin", "HOME": "/home/u", "XDG_RUNTIME_DIR": "/run/user/1000", "PYTHONPATH": "/tmp/evil",
                "PYTHONSTARTUP": "/tmp/x.py", "LD_PRELOAD": "/tmp/e.so", "LD_LIBRARY_PATH": "/tmp",
-               "GCONV_PATH": "/tmp", "GIO_EXTRA_MODULES": "/tmp", "HEISS_PROFILES": "/tmp/m", "LOCPATH": "/tmp"}
+               "GCONV_PATH": "/tmp", "GIO_EXTRA_MODULES": "/tmp", "HEISS_PROFILES": "/tmp/m", "LOCPATH": "/tmp",
+               "GI_TYPELIB_PATH": "/tmp/t", "G_SLICE": "x", "GSETTINGS_BACKEND": "memory", "DBUS_SYSTEM_BUS_ADDRESS": "unix:path=/x",
+               "DBUS_SESSION_BUS_ADDRESS": "unix:path=/run/user/1000/bus", "WAYLAND_DISPLAY": "wayland-0"}
         runner.run_item(self.item(), None, None, popen, env)
         self.assertEqual(seen["argv"][1:4], ["-I", "-m", "heiss_core"])
         self.assertEqual(seen["kw"]["cwd"], "/")
-        self.assertEqual(seen["kw"]["env"], {"PATH": "/usr/bin", "HOME": "/home/u", "XDG_RUNTIME_DIR": "/run/user/1000"})
+        self.assertEqual(seen["kw"]["env"], {"PATH": "/usr/bin", "HOME": "/home/u", "XDG_RUNTIME_DIR": "/run/user/1000",
+                                           "DBUS_SESSION_BUS_ADDRESS": "unix:path=/run/user/1000/bus",
+                                           "WAYLAND_DISPLAY": "wayland-0"})
         self.assertNotIn("shell", seen["kw"])
 
     def fake(self, script):

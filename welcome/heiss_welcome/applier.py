@@ -2,15 +2,28 @@
 
 The command does the real work through the privileged helper (D-Bus + polkit); the wizard only starts it
 and shows its output. A child process keeps GLib and D-Bus out of the Qt process and the window responsive.
+The child runs isolated (python -I, cwd "/", without interpreter, loader, GLib/GI, GIO, HEISS_* and system-bus-address variables).
 Qt-free, so it is tested with a fake command. There is no cancel: the helper job keeps running on the system
 bus even if the client dies (a Phase 3 follow-up).
 """
 import json
+import os
 import re
 import subprocess
 import sys
 
 from heiss_core.errors import HeissError
+
+# interpreter, loader, locale, GIO module and test-override variables are not passed to the child: it ends up calling
+# the privileged helper, and polkit keeps the authorisation per calling process (see DECISIONS.md)
+DROP_PREFIXES = ("PYTHON", "LD_", "GCONV", "LOCPATH", "NLSPATH", "GIO_", "GI_", "G_", "GSETTINGS_", "HEISS_")
+# the child imports gi (helper client): GI_TYPELIB_PATH names libraries to load; the system bus address must stay the real one
+DROP_NAMES = ("DBUS_SYSTEM_BUS_ADDRESS",)
+
+
+def clean_env(environ):
+    return {k: v for k, v in environ.items() if not k.startswith(DROP_PREFIXES) and k not in DROP_NAMES}
+
 
 STEP_RE = re.compile(r"^\[(\d+)/(\d+)\] (.*)$")   # printed by `heiss profile apply` before every helper call
 PLAN_TIMEOUT_S = 120
@@ -18,7 +31,8 @@ PLAN_TIMEOUT_S = 120
 
 class CliApplier:
     def __init__(self, argv=None):
-        self.argv = list(argv or [sys.executable, "-m", "heiss_core"])
+        # -I: no user site, no PYTHON* variables, no current directory on sys.path (heiss_core is installed)
+        self.argv = list(argv or [sys.executable, "-I", "-m", "heiss_core"])
 
     @staticmethod
     def _selection(answers, hardware=()):
@@ -34,7 +48,8 @@ class CliApplier:
         """Read-only: the resolver plan as a dict (`profile apply --dry-run`). Raises HeissError."""
         argv = self.argv + ["--json", "profile", "apply", "--dry-run"] + self._selection(answers, hardware)
         try:
-            r = subprocess.run(argv, capture_output=True, text=True, errors="replace", timeout=PLAN_TIMEOUT_S)
+            r = subprocess.run(argv, capture_output=True, text=True, errors="replace", timeout=PLAN_TIMEOUT_S,
+                               cwd="/", env=clean_env(os.environ))
         except (OSError, subprocess.TimeoutExpired) as e:
             raise HeissError("cannot compute the plan: %s" % e)
         if r.returncode != 0:
@@ -49,7 +64,7 @@ class CliApplier:
         argv = self.argv + ["profile", "apply", "--yes"] + self._selection(answers, hardware)
         try:
             p = subprocess.Popen(argv, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, errors="replace",
-                                 bufsize=1)
+                                 bufsize=1, cwd="/", env=clean_env(os.environ))
         except OSError as e:
             raise HeissError("cannot start the apply command: %s" % e)
         tail = []
