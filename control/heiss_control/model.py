@@ -15,6 +15,7 @@ from heiss_core import wizard as wz
 from heiss_core.errors import HeissError
 from heiss_core.system import PacmanSystem
 
+from . import privacy_view
 from . import runner
 from . import security
 from . import theme as th
@@ -23,7 +24,7 @@ from .strings import t
 
 # (id, built). Pages that are not built show the "coming soon" text, so the sidebar is the final one from day one.
 PAGES = (("overview", True), ("profiles", True), ("appearance", True), ("security", True), ("updates", False),
-         ("hardware", False), ("network", False), ("power", False), ("backups", False), ("advanced", True),
+         ("hardware", False), ("network", True), ("power", False), ("backups", False), ("advanced", True),
          ("about", True))
 PAGE_IDS = tuple(p for p, _ in PAGES)
 LANGUAGES = ("en", "ru")
@@ -47,6 +48,7 @@ class Env:
     kde_value: callable = field(default_factory=lambda: th.kreadconfig)
     apply_theme: callable = field(default_factory=lambda: th.apply_theme)
     security_facts: callable = field(default_factory=lambda: security.collect)
+    privacy_facts: callable = field(default_factory=lambda: privacy_view.collect)
     online: callable = field(default_factory=lambda: lambda: PacmanSystem().network_connected())
     run_pending_item: callable = field(default_factory=lambda: runner.run_item)
     run_check: callable = field(default_factory=lambda: tools.run_check)
@@ -72,6 +74,7 @@ class Model:
         self.check_state, self.check_items, self.check_message = "idle", [], ""   # idle | running | done | failed
         self.settings_message = ""
         self.sec_state, self.sec_facts, self.sec_message = "idle", [], ""   # idle | running | done | failed
+        self.net_state, self.net_facts, self.net_message = "idle", [], ""   # idle | running | done | failed
         self.pend_state, self.pend_step, self.pend_message = "idle", "", ""   # idle | running | ok | failed | offline
 
     def tr(self, key):
@@ -286,12 +289,7 @@ class Model:
     def finish_security(self):
         """Collects the facts; called from a worker thread, the glue refreshes the screen afterwards."""
         try:
-            facts = []
-            for f in self.env.security_facts():
-                status = f["status"] if f["status"] in ("ok", "warn", "info") else "info"
-                facts.append({"id": str(f["id"])[:20], "status": status, "code": str(f["code"])[:30],
-                              "data": self._clip(f.get("data", ""))})
-            self.sec_facts, self.sec_state = facts, "done"
+            self.sec_facts, self.sec_state = self._clean_facts(self.env.security_facts()), "done"
         except Exception as e:  # noqa: BLE001
             self.sec_facts, self.sec_state, self.sec_message = [], "failed", self._err(e)
 
@@ -301,20 +299,61 @@ class Model:
         except KeyError:
             return default
 
-    def security_page(self):
+    def _facts_page(self, prefix, facts, state, message):
+        """Plain-language cards for a list of facts. prefix is "sec" or "nw": strings are `<prefix>.<id>[.<code>]`."""
         items = []
-        for f in self.sec_facts:
-            base = "sec.%s" % f["id"]
+        for f in facts:
+            base = "%s.%s" % (prefix, f["id"])
             detail = self._sec_text("%s.%s" % (base, f["code"]), self.tr("sec.unknown_code"))
             detail = detail.replace("%s", f["data"])   # not %-formatting: the data comes from the system
             items.append({"id": f["id"], "title": self._sec_text(base, f["id"]), "status": f["status"],
                           "statusLabel": self.tr("sec.status." + f["status"]), "detail": detail,
                           "advice": self._sec_text(base + ".advice") if f["status"] == "warn" else ""})
-        n = {k: sum(1 for f in self.sec_facts if f["status"] == k) for k in ("ok", "warn", "info")}
-        summary = self.tr("sec.summary") % (n["ok"], len(self.sec_facts), n["warn"]) if self.sec_facts else ""
-        return {"what": self.tr("sec.what"), "runLabel": self.tr("sec.run"), "running": self.tr("sec.running"),
-                "state": self.sec_state, "message": self.sec_message, "items": items, "summary": summary,
-                "note": self.tr("sec.note")}
+        n = {k: sum(1 for f in facts if f["status"] == k) for k in ("ok", "warn", "info")}
+        summary = self.tr("sec.summary") % (n["ok"], len(facts), n["warn"]) if facts else ""
+        return {"runLabel": self.tr("sec.run"), "running": self.tr("sec.running"), "state": state,
+                "message": message, "items": items, "summary": summary}
+
+    def _clean_facts(self, raw):
+        facts = []
+        for f in raw:
+            status = f["status"] if f["status"] in ("ok", "warn", "info") else "info"
+            facts.append({"id": str(f["id"])[:20], "status": status, "code": str(f["code"])[:30],
+                          "data": self._clip(f.get("data", ""))})
+        return facts
+
+    def security_page(self):
+        page = self._facts_page("sec", self.sec_facts, self.sec_state, self.sec_message)
+        page.update(what=self.tr("sec.what"), note=self.tr("sec.note"))
+        return page
+
+    # --- network and privacy: what is in place compared with the chosen level (read-only) ---
+    def _chosen_level(self):
+        try:
+            a = self._answers()
+            return a["privacy"]["level"] if a else None
+        except Exception:  # noqa: BLE001
+            return None
+
+    def begin_network(self):
+        if self.net_state == "running":
+            return False
+        self.net_state, self.net_message = "running", ""
+        return True
+
+    def finish_network(self):
+        """Collects the facts; called from a worker thread, the glue refreshes the screen afterwards."""
+        try:
+            self.net_facts = self._clean_facts(self.env.privacy_facts(self._chosen_level()))
+            self.net_state = "done"
+        except Exception as e:  # noqa: BLE001
+            self.net_facts, self.net_state, self.net_message = [], "failed", self._err(e)
+
+    def network_page(self):
+        page = self._facts_page("nw", self.net_facts, self.net_state, self.net_message)
+        page.update(what=self.tr("nw.what"), note=self.tr("nw.note"), soonTitle=self.tr("soon"),
+                    soon=[self.tr("nw.soon." + k) for k in ("dns", "vpn", "bluetooth", "hardened")])
+        return page
 
     # --- advanced: stock KDE settings and the system check ---
     def advanced(self):
@@ -384,6 +423,8 @@ class Model:
             out["appearance"] = self.appearance()
         elif self.page == "security":
             out["security"] = self.security_page()
+        elif self.page == "network":
+            out["network"] = self.network_page()
         elif self.page == "advanced":
             out["advanced"] = self.advanced()
         elif self.page == "about":
