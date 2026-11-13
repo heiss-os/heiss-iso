@@ -7,7 +7,7 @@ Split into small PRs. Status of each page:
 | Overview (profile, privacy level, Heiss-installed package count, pending actions, kernel) | built, read-only |
 | About (system, build, kernel, Plasma, links, licence, "not affiliated with Arch Linux") | built, read-only |
 | Search (page titles and keywords, en/ru) | built |
-| Profiles and software, Appearance | next PR |
+| Profiles and software, Appearance | next PR (read-only profile page first; changing the profile needs the helper) |
 | Security Center, Updates and snapshots, Network and privacy, Advanced | later PRs |
 | Hardware and drivers (Phase 7), Power and display, Backups | later (sidebar entry exists, page says "Coming soon") |
 
@@ -28,6 +28,8 @@ Split into small PRs. Status of each page:
 
 `plasmashell --version` runs on the GUI thread with a 3 s timeout when About is built. A hanging `plasmashell` would freeze the window for up to 3 s; moving it to a worker comes with the first page that needs a background job.
 
-## Not built or packaged yet
+## Package
 
-No `heiss-control` package, no `.desktop` file and no ISO entry in this PR. They come with the next PR, together with the first page that needs the helper. Run by hand: `PYTHONPATH=core:control python -m heiss_control` (needs `pyside6`).
+`packages/heiss-control` (depends on `python`, `pyside6`, `heiss-core`) installs the app, `/usr/bin/heiss-control` and `/usr/share/applications/heiss-control.desktop` (visible in the launcher menu, Settings category). It is in `profile/packages.x86_64`, so it comes from `[heiss-local]`: run `scripts/heiss-packages-build.sh` before the ISO build. The dock pins are not changed (replacing the pinned System Settings is a Tier B item that needs its own "ok"). The icon is the stock `preferences-system`; a Heiss icon is not made yet.
+
+Run from a checkout: `PYTHONPATH=core:control python -m heiss_control` (needs `pyside6`).

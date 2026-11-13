@@ -248,3 +248,7 @@ Format: date, what, why. Newest at the bottom.
 - **The shell is read-only and not packaged yet.** Why: it keeps the first Control Center PR small and lets the model be tested without Qt; the package, desktop file and ISO entry come with the first page that needs the helper.
 - **Search covers page titles and keywords only.** Why: there are no per-setting entries until the pages exist; each page PR adds its own entries.
 - **The About page does not state a branding licence.** Why: the repository has only the GPL-3.0 `LICENSE`; no separate branding licence file exists, and none is invented. Owner question: which licence applies to `branding/`?
+
+## 2026-11-13 (Control Center package)
+
+- **`heiss-control` is a separate package in the ISO list, with a visible launcher entry and no dock pin.** Why: the window is useful for the installed system now (Overview, About), and the dock is a Tier B surface that needs a separate "ok". The icon is the stock `preferences-system` until a Heiss icon exists. `heiss-control` pkgrel starts at 1.

@@ -244,3 +244,40 @@ class WelcomePackage(unittest.TestCase):
             self.assertRegex(f.read(), r"archive .* welcome ")
         with open(os.path.join(REPO, "profile", "packages.x86_64"), encoding="utf-8") as f:
             self.assertIn("heiss-welcome", f.read().split())
+
+
+class ControlPackage(unittest.TestCase):
+    def test_package_ships_the_app_launcher_and_desktop_file(self):
+        pk = pkgbuild("heiss-control")
+        self.assertIn("control/heiss_control", pk)
+        self.assertRegex(pk, r"control/data/heiss-control(\s|\")")
+        self.assertIn("/usr/share/applications/heiss-control.desktop", pk)
+        for dep in ("'python'", "'pyside6'", "'heiss-core'"):
+            self.assertIn(dep, pk)
+        with open(os.path.join(REPO, "packages", "pkgrel.json")) as f:
+            rel = json.load(f)
+        self.assertEqual(int(re.search(r"^pkgrel=(\d+)", pk, re.M).group(1)), rel["heiss-control"])
+        self.assertEqual(re.search(r"^pkgver=(\S+)", pk, re.M).group(1), rel["pkgver"])
+
+    def test_every_data_file_is_installed(self):
+        pk = pkgbuild("heiss-control")
+        for f in os.listdir(os.path.join(REPO, "control", "data")):
+            if f == "__pycache__":   # left behind by a local py_compile of the launcher
+                continue
+            self.assertIn("control/data/" + f, pk, f)
+
+    def test_desktop_file_is_a_visible_kde_launcher_for_the_installed_command(self):
+        with open(os.path.join(REPO, "control", "data", "heiss-control.desktop"), encoding="utf-8") as f:
+            d = dict(l.split("=", 1) for l in f.read().splitlines() if "=" in l)
+        self.assertEqual(d["Exec"], "heiss-control")
+        self.assertEqual(d["OnlyShowIn"], "KDE;")
+        self.assertNotIn("NoDisplay", d)
+        self.assertEqual(d["StartupWMClass"], "heiss-control")
+        self.assertIn("Settings", d["Categories"])
+
+    def test_build_script_archives_the_sources_and_the_iso_list_has_the_package(self):
+        with open(os.path.join(REPO, "scripts", "heiss-packages-build.sh"), encoding="utf-8") as f:
+            self.assertRegex(f.read(), r"archive .* welcome control ")
+        with open(os.path.join(REPO, "profile", "packages.x86_64"), encoding="utf-8") as f:
+            self.assertIn("heiss-control", f.read().split())
+
