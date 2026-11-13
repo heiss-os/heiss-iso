@@ -2,7 +2,7 @@
 
 Read this file at the start of every session. Source plan: `heiss-master-prompt.md` (kept outside the repo, in `~/share/`).
 
-Last updated: 2026-11-11
+Last updated: 2026-11-13
 
 ## Done
 
@@ -201,6 +201,11 @@ Owner's rule (2026-11-11): no ISO build and no VM check until the whole master p
 - [ ] ISO build order: `scripts/heiss-packages-build.sh` before `heiss-build.sh` (the keyring and welcome packages come only from `~/localrepo`).
 - [ ] Existing installer items still unchecked: slideshow animation, glow via QtQuick.Effects, the users page logo animation, mouse selection on the desktop under VirtualBox.
 
+### Phase 6: Control Center
+- [ ] Control Center shell (`PYTHONPATH=core:control python -m heiss_control`, needs `pyside6`): the window opens; sidebar lists 11 pages; Overview shows profile, privacy level, package count, pending actions and kernel; About shows system, build, kernel, Plasma and links (a click opens the browser); unbuilt pages say "Coming soon". Screenshots in Dark, Light and ru; keyboard control (Tab, Enter, Esc clears the search); the QML has only been linted (`qmllint`), never run.
+- [ ] Control Center search: typing "wireguard" lists Network and privacy; "брандмауэр" in ru lists the Security Center; an empty result shows the "nothing found" text.
+- [ ] Overview on an installed system after Apply: profile and privacy level match what the wizard applied; `plasmashell --version` is parsed on the real Plasma.
+
 ### Tooling (not a product phase)
 - [ ] In a new Claude Code session run `/agents`: `reviewer`, `security-reviewer`, `qa-verifier` and `docs-keeper` are listed; invoke each on a small diff and expect a findings list and a `Verdict:` line, and `git status` stays clean afterwards (they must not change files).
 - [ ] After the first merged PR that follows the new rules: the final report carries the line `агенты: reviewer ok, security ok, qa ok, docs ok` (`n/a` for an agent that PR did not need) and the PR text has an "automated review" block that lists each agent's result and which findings were fixed.
@@ -220,3 +225,7 @@ PR "chore/more-agents": `.claude/agents/security-reviewer.md`, `qa-verifier.md`,
 ## Round 20, item 3c (2026-11-11): privacy level applied
 
 PR "feat/apply-privacy-level": `core/heiss_core/privacy.py`, `--privacy` on `heiss profile apply|diff`, helper method `WritePrivacy` (documented in `docs/SECURITY-MODEL.md`), wizard passes the level, privacy screen marks Wi-Fi MAC and screen lock as in place, tests (`core/tests/test_privacy.py`, helper and welcome tests). Not verified: see the new Phase 5 line in the FINAL VM TEST LIST (nothing ran on a real system; key names were read from the man pages and the shipped kcfg). Still "Coming soon": DNS over TLS, VPN/WireGuard, Bluetooth off, linux-hardened. Next: Phase 6 (Control Center) after the owner's reply.
+
+## Phase 6, step 1 (2026-11-13): Control Center shell
+
+PR "feat/control-center-shell": `control/` (model without Qt, PySide6 glue, one QML window), `docs/CONTROL-CENTER.md`, tests in CI. Read-only: Overview and About are built, search covers page titles and keywords, the other nine sidebar pages say "Coming soon". No package, desktop file or ISO entry yet. Not verified: any run of the window (no `pyside6` here; the QML only passed `qmllint` with the same warning classes as the wizard). Owner question: licence of `branding/` for the About page. Next: Profiles and software and Appearance pages (with the package and desktop file), then the security and system pages.
