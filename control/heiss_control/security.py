@@ -83,7 +83,7 @@ def listening(sh):
         if len(cols) < 4:
             continue
         addr, _, port = cols[3].rpartition(":")
-        if addr.startswith("127.") or addr == "[::1]" or not port.isdigit():
+        if addr.startswith(("127.", "[::ffff:127.")) or addr == "[::1]" or not port.isdigit():
             continue
         ports.add(int(port))
     if not ports:

@@ -378,7 +378,7 @@ class SecurityFacts(unittest.TestCase):
     def test_listening_ignores_loopback_and_lists_the_rest(self):
         key = ("ss", "-H", "-l", "-t", "-n")
         out = ("LISTEN 0 128 0.0.0.0:22 0.0.0.0:*\nLISTEN 0 128 [::]:22 [::]:*\nLISTEN 0 4096 127.0.0.1:631 0.0.0.0:*\n"
-               "LISTEN 0 4096 [::1]:631 [::]:*\nLISTEN 0 5 *:8080 *:*\nLISTEN 0 1 127.0.0.53%lo:53 0.0.0.0:*\ngarbage\n")
+               "LISTEN 0 4096 [::1]:631 [::]:*\nLISTEN 0 4096 [::ffff:127.0.0.1]:9 [::]:*\nLISTEN 0 5 *:8080 *:*\nLISTEN 0 1 127.0.0.53%lo:53 0.0.0.0:*\ngarbage\n")
         r = sec.listening(FakeSystem({key: (0, out)}))
         self.assertEqual((r["code"], r["data"]), ("some", "22, 8080"))
         self.assertEqual(sec.listening(FakeSystem({key: (0, "LISTEN 0 1 127.0.0.1:631 0.0.0.0:*\n")}))["code"], "none")
