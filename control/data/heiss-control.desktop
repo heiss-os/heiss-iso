@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=Heiss Control Center
+Name[ru]=Центр управления Heiss
+Comment=System overview and settings of Heiss OS
+Comment[ru]=Обзор и настройки системы Heiss OS
+Exec=heiss-control
+Icon=preferences-system
+Categories=Settings;
+Keywords=heiss;settings;control;system;
+StartupWMClass=heiss-control
+Terminal=false
+OnlyShowIn=KDE;
