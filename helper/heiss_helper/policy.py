@@ -5,6 +5,7 @@ import stat
 
 from heiss_core import hardware as hw
 from heiss_core import manifest as mf
+from heiss_core import privacy as pv
 from heiss_core import state as st
 
 from .errors import invalid
@@ -110,6 +111,13 @@ def check_dropin(path, trusted):
     if not isinstance(path, str) or path not in trusted.dropins:
         raise invalid("drop-in not declared by any manifest")
     return path, trusted.dropins[path]
+
+
+def check_privacy_level(level):
+    """Only a level name comes from the client; path and content come from heiss_core.privacy."""
+    if not isinstance(level, str) or level not in pv.LEVELS:
+        raise invalid("unknown privacy level")
+    return level
 
 
 def check_post_action(action_id):

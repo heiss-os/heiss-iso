@@ -30,6 +30,8 @@ def build_calls(plan):
         calls.append(("SetServices", (plan.enable_services, []), "enable %d service(s)" % len(plan.enable_services)))
     for d in plan.dropins:
         calls.append(("WriteDropin", (d["path"],), "write %s" % d["path"]))
+    if plan.privacy:
+        calls.append(("WritePrivacy", (plan.privacy,), "write the %s privacy settings" % plan.privacy))
     if plan.disable_services:
         calls.append(("SetServices", ([], plan.disable_services), "disable %d service(s)" % len(plan.disable_services)))
     if plan.remove_packages:

@@ -29,6 +29,7 @@ INTROSPECTION = """
     <method name="AdoptPackages"><arg type="as" direction="in" name="packages"/><arg type="s" direction="out" name="job"/></method>
     <method name="SetServices"><arg type="as" direction="in" name="enable"/><arg type="as" direction="in" name="disable"/><arg type="s" direction="out" name="job"/></method>
     <method name="WriteDropin"><arg type="s" direction="in" name="path"/><arg type="s" direction="out" name="job"/></method>
+    <method name="WritePrivacy"><arg type="s" direction="in" name="level"/><arg type="s" direction="out" name="job"/></method>
     <method name="RunPostAction"><arg type="s" direction="in" name="action"/><arg type="s" direction="out" name="job"/></method>
     <method name="UpdateSystem"><arg type="s" direction="out" name="job"/></method>
     <method name="CreateSnapshot"><arg type="s" direction="in" name="description"/><arg type="s" direction="out" name="job"/></method>

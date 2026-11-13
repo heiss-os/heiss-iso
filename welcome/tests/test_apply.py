@@ -178,6 +178,14 @@ else:
 '''
 
 
+class PrivacyArg(unittest.TestCase):
+    def test_the_chosen_level_is_passed_with_the_equals_form(self):
+        from heiss_core import answers as ans
+        for lv in ("standard", "enhanced", "maximum"):
+            a = ans.validate({"privacy": {"level": lv}})
+            self.assertIn("--privacy=%s" % lv, CliApplier._selection(a))
+
+
 class Threads(unittest.TestCase):
     def test_real_thread_gated_job_finishes_on_the_gui_thread(self):
         import threading

@@ -333,6 +333,23 @@ class DispatcherTests(Env):
         self.assertIn("action=WriteDropin", log)
         self.assertNotIn("zram-size", log)
 
+    def test_privacy_writes_one_fixed_file_from_the_level_name(self):
+        from heiss_core import privacy as pv
+        d = self.make()
+        d.handle(":1.5", 1000, "WritePrivacy", ("maximum",))
+        d.join()
+        self.assertEqual(self.auth.asked[-1][1], "org.heiss.config.write")
+        self.assertEqual(self.events[-1][2][1], True)
+        with open(os.path.join(self.root, pv.NM_DROPIN.lstrip("/"))) as f:
+            self.assertEqual(f.read(), pv.dropins("maximum")[0]["content"])
+
+    def test_privacy_refuses_anything_but_a_level_name(self):
+        d = self.make()
+        for bad in ("paranoid", "", "../../etc/passwd", "/etc/NetworkManager/conf.d/x.conf"):
+            with self.assertRaises(HelperError):
+                d.handle(":1.5", 1000, "WritePrivacy", (bad,))
+        self.assertFalse(os.path.exists(os.path.join(self.root, "etc", "NetworkManager")))
+
     def test_audit_neutralizes_control_characters(self):
         from heiss_helper.audit import clean
         self.assertNotIn("\n", clean("a\nb\x1b[31m"))

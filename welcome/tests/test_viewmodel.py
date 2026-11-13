@@ -197,13 +197,14 @@ class HardwareAndPrivacy(unittest.TestCase):
                 self.assertTrue(scr["facts"])
                 self.assertEqual(vm.next()["id"], "appearance")
 
-    def test_privacy_marks_only_the_firewall_as_in_place(self):
+    def test_privacy_marks_firewall_mac_and_lock_as_in_place(self):
         with tempfile.TemporaryDirectory() as d:
             vm, _ = build(d, PROFILES)
             vm.w.step = wz.IDS.index("privacy")
             done = strings.S["en"]["pv.done"]
             facts = vm.screen()["facts"]
-            self.assertEqual([f["text"] for f in facts if f["badge"] == done], [strings.S["en"]["pv.firewall"]])
+            self.assertEqual(sorted(f["text"] for f in facts if f["badge"] == done),
+                             sorted(strings.S["en"][k] for k in ("pv.firewall", "pv.mac", "pv.lock")))
             n = len(facts)
             vm.choose("level", "advanced")
             self.assertEqual(len(vm.screen()["facts"]), n + 1)   # linux-hardened shows for Advanced only

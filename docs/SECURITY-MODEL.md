@@ -27,11 +27,14 @@ Files: `helper/heiss_helper/{policy,actions,dispatch,runner,audit}.py` (logic, t
 | AdoptPackages(as) | org.heiss.packages.adopt | records already installed, explicitly installed packages as Heiss-owned | name in manifests; installed; explicit; not owned yet |
 | SetServices(as, as) | org.heiss.services.manage | `systemctl enable/disable -- units` (never `--now`) | unit in manifests; no overlap |
 | WriteDropin(s) | org.heiss.config.write | writes ONE file | path must equal a drop-in declared in a manifest; the CONTENT is taken from the manifest, never from the client |
+| WritePrivacy(s) | org.heiss.config.write | writes ONE fixed file (`/etc/NetworkManager/conf.d/80-heiss-privacy.conf`) | the argument is only a level name (`standard`, `enhanced`, `maximum`); path and content are constants in `heiss_core/privacy.py`, never from the client; no service is restarted |
 | RunPostAction(s) | org.heiss.postaction.run | fixed argv (`mkinitcpio -P`, `grub-mkconfig -o /boot/grub/grub.cfg`, ...) | id must be one of four known ids |
 | UpdateSystem() | org.heiss.system.update | `pacman -Syu --noconfirm` | none needed; always a full upgrade, never `-Sy` alone |
 | CreateSnapshot(s) | org.heiss.snapshot.create | `snapper -c root create --description ...` | description regex, 80 chars |
 
 All polkit actions default to `allow_any=no`, `allow_inactive=no`, `allow_active=auth_admin_keep` (one authentication covers the several calls of one apply run). Texts are in English and Russian.
+
+Privacy level changes (including lowering to `standard`) are covered by `org.heiss.config.write`, the same trust level as `WriteDropin`; a test checks that no manifest drop-in shares the privacy file's path.
 
 There is no method that takes a command, a file path to read, or file content.
 

@@ -23,10 +23,11 @@ CHOICES = {
 }
 
 
-# privacy items: (string key, implemented today, only for Confident/Advanced). Only the firewall is real:
-# Essentials ships and enables firewalld at every level. Everything else is not applied by anything yet.
-PRIVACY_ITEMS = (("pv.firewall", True, False), ("pv.dns", False, False), ("pv.mac", False, False),
-                 ("pv.vpn", False, False), ("pv.bt", False, False), ("pv.lock", False, False),
+# privacy items: (string key, implemented today, only for Confident/Advanced). Real today: the firewall (Essentials
+# ships and enables firewalld at every level), the Wi-Fi MAC address and the screen lock (applied with the level by
+# Apply, see heiss_core.privacy). Everything else is not applied by anything yet.
+PRIVACY_ITEMS = (("pv.firewall", True, False), ("pv.dns", False, False), ("pv.mac", True, False),
+                 ("pv.vpn", False, False), ("pv.bt", False, False), ("pv.lock", True, False),
                  ("pv.hardened", False, True))
 
 
