@@ -70,7 +70,7 @@ S = {
         "nw.wifi_mac.random": "Every connection gets a new random MAC address (this can break captive portals and MAC-based allow lists).",
         "nw.wifi_mac.other": "The setting has an unusual value: %s.", "nw.wifi_mac.unknown": "The setting could not be read.",
         "nw.wifi_mac.advice": "This differs from the level you chose. Apply the level again (see the note below).",
-        "nw.lock": "Screen lock", "nw.lock.on": "The screen locks automatically after %s minutes.",
+        "nw.lock": "Screen lock", "nw.lock.on": "The screen locks automatically after %s min.",
         "nw.lock.off": "The screen does not lock automatically.", "nw.lock.unknown": "The screen lock settings could not be read.",
         "nw.lock.advice": "This differs from the level you chose. Apply the level again (see the note below).",
         "nw.firewall": "Firewall", "nw.firewall.active_enabled": "The firewall is on and starts at every boot.",

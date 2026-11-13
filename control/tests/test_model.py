@@ -813,7 +813,7 @@ class NetworkPage(Fixture):
         p = mod.screen()["network"]
         by = {i["id"]: i for i in p["items"]}
         self.assertEqual(by["level"]["detail"], "Enhanced.")
-        self.assertEqual(by["lock"]["detail"], "The screen locks automatically after 3 minutes.")
+        self.assertEqual(by["lock"]["detail"], "The screen locks automatically after 3 min.")
         self.assertTrue(by["wifi_mac"]["advice"])
         self.assertEqual(by["lock"]["advice"], "")
         self.assertEqual(len(p["soon"]), 4)
