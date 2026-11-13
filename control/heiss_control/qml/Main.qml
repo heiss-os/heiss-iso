@@ -70,14 +70,14 @@ ApplicationWindow {
                         focusPolicy: Qt.StrongFocus
                         Accessible.name: modelData.title + (modelData.built ? "" : ", " + s.soonTitle)
                         onClicked: { control.open(modelData.id); searchField.text = "" }
-                        contentItem: Text { text: row.modelData.title; font.pixelSize: 16; elide: Text.ElideRight
+                        contentItem: Text { textFormat: Text.PlainText; text: row.modelData.title; font.pixelSize: 16; elide: Text.ElideRight
                                             color: row.modelData.built ? pal.text : pal.dim
                                             font.bold: !win.searching && row.modelData.current }
                         background: Rectangle { radius: 8
                             color: (!win.searching && row.modelData.current) ? pal.button : "transparent"
                             border.width: row.activeFocus ? 2 : 0; border.color: pal.accent }
                     }
-                    footer: Text { visible: win.searching && control.results.length === 0; text: s.noResults
+                    footer: Text { textFormat: Text.PlainText; visible: win.searching && control.results.length === 0; text: s.noResults
                                    color: pal.dim; wrapMode: Text.WordWrap; width: parent.width; padding: 8 }
                 }
 
@@ -94,7 +94,7 @@ ApplicationWindow {
                             checkable: true
                             checked: s.language === modelData
                             onClicked: control.setLanguage(modelData)
-                            contentItem: Text { text: lb.text; color: lb.checked ? pal.accent : pal.dim
+                            contentItem: Text { textFormat: Text.PlainText; text: lb.text; color: lb.checked ? pal.accent : pal.dim
                                                 font.bold: lb.checked; horizontalAlignment: Text.AlignHCenter }
                         }
                     }
@@ -114,16 +114,16 @@ ApplicationWindow {
                 y: 32
                 spacing: 16
 
-                Text { text: s.title; color: pal.text; font.pixelSize: 32; font.bold: true
+                Text { textFormat: Text.PlainText; text: s.title; color: pal.text; font.pixelSize: 32; font.bold: true
                        Layout.fillWidth: true; wrapMode: Text.WordWrap; Accessible.role: Accessible.Heading }
 
                 // pages that are not built yet
-                Text { visible: !s.built; text: s.soonTitle; color: pal.accent; font.pixelSize: 18; font.bold: true }
-                Text { visible: !s.built; text: s.soonWhat; color: pal.dim; font.pixelSize: 16
+                Text { textFormat: Text.PlainText; visible: !s.built; text: s.soonTitle; color: pal.accent; font.pixelSize: 18; font.bold: true }
+                Text { textFormat: Text.PlainText; visible: !s.built; text: s.soonWhat; color: pal.dim; font.pixelSize: 16
                        wrapMode: Text.WordWrap; Layout.fillWidth: true }
 
                 // overview
-                Text { visible: s.page === "overview"; text: s.overview ? s.overview.what : ""; color: pal.dim
+                Text { textFormat: Text.PlainText; visible: s.page === "overview"; text: s.overview ? s.overview.what : ""; color: pal.dim
                        font.pixelSize: 16; wrapMode: Text.WordWrap; Layout.fillWidth: true }
                 Repeater {
                     model: s.page === "overview" ? s.overview.cards : []
@@ -141,38 +141,38 @@ ApplicationWindow {
                             anchors.fill: parent
                             anchors.margins: 12
                             spacing: 2
-                            Text { text: card.modelData.title; color: pal.dim; font.pixelSize: 14 }
-                            Text { text: card.modelData.value; color: pal.text; font.pixelSize: 22; font.bold: true }
-                            Text { visible: card.modelData.detail !== ""; text: card.modelData.detail; color: pal.dim; font.pixelSize: 14 }
-                            Text { visible: card.modelData.error !== ""; text: card.modelData.error; color: pal.error
+                            Text { textFormat: Text.PlainText; text: card.modelData.title; color: pal.dim; font.pixelSize: 14 }
+                            Text { textFormat: Text.PlainText; text: card.modelData.value; color: pal.text; font.pixelSize: 22; font.bold: true }
+                            Text { textFormat: Text.PlainText; visible: card.modelData.detail !== ""; text: card.modelData.detail; color: pal.dim; font.pixelSize: 14 }
+                            Text { textFormat: Text.PlainText; visible: card.modelData.error !== ""; text: card.modelData.error; color: pal.error
                                    font.pixelSize: 14; wrapMode: Text.WordWrap; Layout.fillWidth: true }
                         }
                     }
                 }
 
                 // profiles and software (read-only)
-                Text { visible: s.page === "profiles"; text: s.profiles ? s.profiles.what : ""; color: pal.dim
+                Text { textFormat: Text.PlainText; visible: s.page === "profiles"; text: s.profiles ? s.profiles.what : ""; color: pal.dim
                        font.pixelSize: 16; wrapMode: Text.WordWrap; Layout.fillWidth: true }
                 Repeater {
                     model: s.page === "profiles" ? s.profiles.rows : []
                     delegate: RowLayout {
                         required property var modelData
                         Layout.fillWidth: true
-                        Text { text: parent.modelData.label; color: pal.dim; font.pixelSize: 16; Layout.preferredWidth: 200 }
-                        Text { text: parent.modelData.value; color: pal.text; font.pixelSize: 16; Layout.fillWidth: true
+                        Text { textFormat: Text.PlainText; text: parent.modelData.label; color: pal.dim; font.pixelSize: 16; Layout.preferredWidth: 200 }
+                        Text { textFormat: Text.PlainText; text: parent.modelData.value; color: pal.text; font.pixelSize: 16; Layout.fillWidth: true
                                wrapMode: Text.WordWrap }
                     }
                 }
                 Repeater {
                     model: s.page === "profiles" ? s.profiles.errors : []
-                    delegate: Text { required property string modelData; text: modelData; color: pal.error; font.pixelSize: 14
+                    delegate: Text { textFormat: Text.PlainText; required property string modelData; text: modelData; color: pal.error; font.pixelSize: 14
                                      wrapMode: Text.WordWrap; Layout.fillWidth: true }
                 }
-                Text { visible: s.page === "profiles" && s.profiles.pending.length > 0; text: s.profiles ? s.profiles.pendingTitle : ""
+                Text { textFormat: Text.PlainText; visible: s.page === "profiles" && s.profiles.pending.length > 0; text: s.profiles ? s.profiles.pendingTitle : ""
                        color: pal.accent; font.pixelSize: 18; font.bold: true }
                 Repeater {
                     model: s.page === "profiles" ? s.profiles.pending : []
-                    delegate: Text { required property var modelData
+                    delegate: Text { textFormat: Text.PlainText; required property var modelData
                                      text: modelData.text + ": " + modelData.status + (modelData.error ? " (" + modelData.error + ")" : "")
                                      color: pal.text; font.pixelSize: 16; wrapMode: Text.WordWrap; Layout.fillWidth: true }
                 }
@@ -183,19 +183,19 @@ ApplicationWindow {
                         required property var modelData
                         Layout.fillWidth: true
                         spacing: 2
-                        Text { text: sec.modelData.title; color: pal.accent; font.pixelSize: 18; font.bold: true
+                        Text { textFormat: Text.PlainText; text: sec.modelData.title; color: pal.accent; font.pixelSize: 18; font.bold: true
                                Accessible.role: Accessible.Heading }
-                        Text { visible: sec.modelData.items.length > 0; text: sec.modelData.items.join("\n"); color: pal.dim
+                        Text { textFormat: Text.PlainText; visible: sec.modelData.items.length > 0; text: sec.modelData.items.join("\n"); color: pal.dim
                                font.family: "JetBrains Mono"; font.pixelSize: 13; wrapMode: Text.WrapAnywhere; Layout.fillWidth: true }
                     }
                 }
-                Text { visible: s.page === "profiles"; text: s.profiles ? s.profiles.note : ""; color: pal.dim; font.pixelSize: 14
+                Text { textFormat: Text.PlainText; visible: s.page === "profiles"; text: s.profiles ? s.profiles.note : ""; color: pal.dim; font.pixelSize: 14
                        wrapMode: Text.WordWrap; Layout.fillWidth: true }
 
                 // appearance
-                Text { visible: s.page === "appearance"; text: s.appearance ? s.appearance.what : ""; color: pal.dim
+                Text { textFormat: Text.PlainText; visible: s.page === "appearance"; text: s.appearance ? s.appearance.what : ""; color: pal.dim
                        font.pixelSize: 16; wrapMode: Text.WordWrap; Layout.fillWidth: true }
-                Text { visible: s.page === "appearance"; color: pal.text; font.pixelSize: 16
+                Text { textFormat: Text.PlainText; visible: s.page === "appearance"; color: pal.text; font.pixelSize: 16
                        text: s.appearance ? s.appearance.currentLabel + ": " + s.appearance.current : "" }
                 RowLayout {
                     visible: s.page === "appearance"
@@ -212,7 +212,7 @@ ApplicationWindow {
                             focusPolicy: Qt.StrongFocus
                             Accessible.name: text
                             onClicked: control.setTheme(modelData.id)
-                            contentItem: Text { text: tb.text; color: tb.checked ? pal.onAccent : pal.text; font.pixelSize: 16
+                            contentItem: Text { textFormat: Text.PlainText; text: tb.text; color: tb.checked ? pal.onAccent : pal.text; font.pixelSize: 16
                                                 horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
                             background: Rectangle { radius: 8; color: tb.checked ? pal.accent : pal.button
                                                     border.width: tb.activeFocus ? 2 : 0; border.color: pal.text }
@@ -221,20 +221,20 @@ ApplicationWindow {
                 }
                 ProgressBar { visible: s.page === "appearance" && s.appearance.state === "running"; indeterminate: true
                               Layout.fillWidth: true; Accessible.name: s.appearance ? s.appearance.running : "" }
-                Text { visible: s.page === "appearance" && s.appearance.state === "failed"; text: s.appearance ? s.appearance.message : ""
+                Text { textFormat: Text.PlainText; visible: s.page === "appearance" && s.appearance.state === "failed"; text: s.appearance ? s.appearance.message : ""
                        color: pal.error; font.pixelSize: 14; wrapMode: Text.WordWrap; Layout.fillWidth: true }
-                Text { visible: s.page === "appearance"; text: s.appearance ? s.appearance.note : ""; color: pal.dim; font.pixelSize: 14
+                Text { textFormat: Text.PlainText; visible: s.page === "appearance"; text: s.appearance ? s.appearance.note : ""; color: pal.dim; font.pixelSize: 14
                        wrapMode: Text.WordWrap; Layout.fillWidth: true }
 
                 // about
-                Text { visible: s.page === "about"; text: s.about ? s.about.what : ""; color: pal.dim; font.pixelSize: 16 }
+                Text { textFormat: Text.PlainText; visible: s.page === "about"; text: s.about ? s.about.what : ""; color: pal.dim; font.pixelSize: 16 }
                 Repeater {
                     model: s.page === "about" ? s.about.rows : []
                     delegate: RowLayout {
                         required property var modelData
                         Layout.fillWidth: true
-                        Text { text: parent.modelData.label; color: pal.dim; font.pixelSize: 16; Layout.preferredWidth: 160 }
-                        Text { text: parent.modelData.value; color: pal.text; font.pixelSize: 16; Layout.fillWidth: true
+                        Text { textFormat: Text.PlainText; text: parent.modelData.label; color: pal.dim; font.pixelSize: 16; Layout.preferredWidth: 160 }
+                        Text { textFormat: Text.PlainText; text: parent.modelData.value; color: pal.text; font.pixelSize: 16; Layout.fillWidth: true
                                wrapMode: Text.WrapAnywhere }
                     }
                 }
@@ -248,8 +248,8 @@ ApplicationWindow {
                         Accessible.name: modelData.label + ": " + modelData.url
                         onClicked: control.openUrl(modelData.url)
                         contentItem: RowLayout {
-                            Text { text: lk.modelData.label; color: pal.dim; font.pixelSize: 16; Layout.preferredWidth: 160 }
-                            Text { text: lk.modelData.url; color: pal.accent; font.pixelSize: 16; Layout.fillWidth: true
+                            Text { textFormat: Text.PlainText; text: lk.modelData.label; color: pal.dim; font.pixelSize: 16; Layout.preferredWidth: 160 }
+                            Text { textFormat: Text.PlainText; text: lk.modelData.url; color: pal.accent; font.pixelSize: 16; Layout.fillWidth: true
                                    elide: Text.ElideMiddle }
                         }
                         background: Rectangle { radius: 8; color: "transparent"
@@ -258,7 +258,7 @@ ApplicationWindow {
                 }
                 Repeater {
                     model: s.page === "about" ? s.about.notes : []
-                    delegate: Text { required property string modelData; text: modelData; color: pal.dim; font.pixelSize: 14
+                    delegate: Text { textFormat: Text.PlainText; required property string modelData; text: modelData; color: pal.dim; font.pixelSize: 14
                                      wrapMode: Text.WordWrap; Layout.fillWidth: true }
                 }
             }

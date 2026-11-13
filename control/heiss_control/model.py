@@ -23,6 +23,7 @@ PAGES = (("overview", True), ("profiles", True), ("appearance", True), ("securit
          ("about", True))
 PAGE_IDS = tuple(p for p, _ in PAGES)
 LANGUAGES = ("en", "ru")
+MAX_MESSAGE = 300   # longest error text shown; messages can echo file content
 MAX_LIST = 200   # longest list of package names drawn on the page
 
 
@@ -63,6 +64,14 @@ class Model:
     def tr(self, key):
         return t(self.language, key)
 
+    @staticmethod
+    def _clip(text):
+        text = " ".join(str(text).split())
+        return text if len(text) <= MAX_MESSAGE else text[:MAX_MESSAGE - 3] + "..."
+
+    def _err(self, e):
+        return self._clip(self.tr("error.read") % e)
+
     def set_language(self, language):
         if language in LANGUAGES:
             self.language = language
@@ -100,7 +109,7 @@ class Model:
             return {"id": cid, "title": self.tr("card." + cid), "value": value, "detail": detail, "error": ""}
         except Exception as e:  # a source must never stop the window, whatever it raises
             return {"id": cid, "title": self.tr("card." + cid), "value": self.tr("unknown"), "detail": "",
-                    "error": self.tr("error.read") % e}
+                    "error": self._err(e)}
 
     def overview(self):
         def profile():
@@ -141,7 +150,7 @@ class Model:
     def profiles(self):
         manifests, errors = self._manifests(), []
         if not manifests:
-            errors.append(self.tr("error.read") % self.env.profiles_dir)
+            errors.append(self._err(self.env.profiles_dir))
         rows, sections, pending = [], [], []
         try:
             a = self._answers()
@@ -149,7 +158,7 @@ class Model:
             addons = ", ".join(self._pname(x, manifests) for x in a["addons"]) if a and a["addons"] else self.tr("none")
             rows += [("profiles.chosen", chosen[0]), ("profiles.addons", addons)]
         except Exception as e:  # noqa: BLE001
-            errors.append(self.tr("error.read") % e)
+            errors.append(self._err(e))
         try:
             doc = st.load(self.env.state_file)
             applied = doc["applied"]["profile"]
@@ -159,13 +168,13 @@ class Model:
                 shown = items[:MAX_LIST] + (["... +%d" % (len(items) - MAX_LIST)] if len(items) > MAX_LIST else [])
                 sections.append({"title": "%s (%d)" % (self.tr("profiles." + key), len(items)), "items": shown})
         except Exception as e:  # noqa: BLE001
-            errors.append(self.tr("error.read") % e)
+            errors.append(self._err(e))
         try:
             for i in wz.PendingQueue(os.path.join(self.env.user_dir, "pending.json")).list():
                 text = self.tr("profiles.pending_apply") % self._pname(i["payload"]["profile"], manifests)
-                pending.append({"text": text, "status": self.tr("pstatus." + i["status"]), "error": i["error"]})
+                pending.append({"text": text, "status": self.tr("pstatus." + i["status"]), "error": self._clip(i["error"])})
         except Exception as e:  # noqa: BLE001
-            errors.append(self.tr("error.read") % e)
+            errors.append(self._err(e))
         return {"what": self.tr("profiles.what"), "rows": [{"label": self.tr(k), "value": v} for k, v in rows],
                 "sections": sections, "pendingTitle": self.tr("card.pending"), "pending": pending,
                 "errors": errors, "note": self.tr("profiles.note")}
@@ -192,7 +201,7 @@ class Model:
             ok, msg = self.env.apply_theme(theme)
         except Exception as e:  # noqa: BLE001
             ok, msg = False, str(e)
-        self.theme_state, self.theme_message = ("ok", "") if ok else ("failed", msg)
+        self.theme_state, self.theme_message = ("ok", "") if ok else ("failed", self._clip(msg))
 
     @staticmethod
     def _safe(fn):

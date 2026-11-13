@@ -271,6 +271,42 @@ class Appearance(Fixture):
         self.assertEqual((mod.theme_state, mod.theme_message), ("failed", "x"))
 
 
+class Hardening(Fixture):
+    def test_every_qml_text_is_plain_text(self):
+        # Text defaults to AutoText: a package name or error string that looks like HTML would be rendered
+        import re
+        with open(os.path.join(os.path.dirname(HERE), "heiss_control", "qml", "Main.qml"), encoding="utf-8") as f:
+            qml = f.read()
+        texts = re.findall(r"(?<![A-Za-z])Text \{([^\n]*)", qml)
+        self.assertGreater(len(texts), 10)
+        for line in texts:
+            self.assertIn("textFormat: Text.PlainText", line)
+
+    def test_error_texts_are_cut_and_flattened(self):
+        self.write("profile.toml", "x = '" + "A" * 2000 + "\n" + "B" * 50 + "'")
+        err = {c["id"]: c for c in m.Model(self.env).overview()["cards"]}["profile"]["error"]
+        self.assertLessEqual(len(err), m.MAX_MESSAGE)
+        self.assertNotIn("\n", err)
+
+    def test_theme_failure_message_is_cut(self):
+        self.env.apply_theme = lambda t: (False, "x" * 5000)
+        mod = m.Model(self.env)
+        mod.begin_theme("dark")
+        mod.finish_theme("dark")
+        self.assertEqual(len(mod.theme_message), m.MAX_MESSAGE)
+
+    def test_markup_in_a_pending_error_is_kept_as_text_and_cut(self):
+        import json as j
+        q = [{"id": 1, "kind": "apply-profile", "payload": {"profile": "base", "addons": []}, "created": 1,
+              "status": "failed", "error": "<img src='http://x'>" + "y" * 1000}]
+        self.write("user/pending.json", j.dumps(q))
+        p = m.Model(self.env)
+        p.open("profiles")
+        item = p.screen()["profiles"]["pending"][0]
+        self.assertTrue(item["error"].startswith("<img"))
+        self.assertLessEqual(len(item["error"]), m.MAX_MESSAGE)
+
+
 class ThemeModule(unittest.TestCase):
     class Run:
         def __init__(self, rc=0, out="", err="", raises=None):
