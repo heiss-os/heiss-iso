@@ -775,7 +775,7 @@ class PrivacyFacts(unittest.TestCase):
     def test_odd_values_are_shown_not_trusted(self):
         f = self.facts(FakePrivacySystem({NM: nm_file("<b>x</b>")}, {"Timeout": "abc"}), "standard")
         self.assertEqual((f["wifi_mac"]["code"], f["wifi_mac"]["data"]), ("other", "<b>x</b>"))
-        self.assertEqual(f["lock"]["data"], "?")
+        self.assertEqual((f["lock"]["code"], f["lock"]["status"]), ("unknown", "info"))
 
     def test_unreadable_lock_settings_are_unknown(self):
         sh = FakePrivacySystem()

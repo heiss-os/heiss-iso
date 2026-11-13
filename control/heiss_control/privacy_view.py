@@ -64,7 +64,9 @@ def lock(sh, chosen):
         return _item("lock", "info", "unknown")
     if vals["Autolock"] != "true":
         return _item("lock", "warn" if chosen in pv.LEVELS else "info", "off")
-    minutes = vals["Timeout"] if vals["Timeout"].isdigit() else "?"
+    if not (vals["Timeout"].isdigit() and vals["LockGrace"].isdigit()):
+        return _item("lock", "info", "unknown")      # an unusual value is not guessed at
+    minutes = vals["Timeout"]
     status = "info"
     if chosen in pv.LEVELS:
         want = pv._TABLE[chosen]
