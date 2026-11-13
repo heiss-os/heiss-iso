@@ -315,6 +315,66 @@ class HardwareChoices(unittest.TestCase):
             self.assertEqual(ap.run_hw, [[]])
 
 
+FAKE_ENV = r'''
+import json, os, sys
+if "--dry-run" in sys.argv:
+    print(json.dumps({"cwd": os.getcwd(), "env": sorted(os.environ)}))
+else:
+    print("[1/1] env")
+    print(json.dumps({"cwd": os.getcwd(), "env": sorted(os.environ)}))
+'''
+
+
+class Isolation(unittest.TestCase):
+    NASTY = {"PYTHONPATH": "/tmp/evil", "PYTHONSTARTUP": "/tmp/x.py", "LD_PRELOAD": "/tmp/e.so", "GCONV_PATH": "/tmp",
+             "GIO_EXTRA_MODULES": "/tmp", "LOCPATH": "/tmp", "NLSPATH": "/tmp", "HEISS_PROFILES": "/tmp/m"}
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        script = os.path.join(self.tmp.name, "fake_env.py")
+        with open(script, "w") as f:
+            f.write(FAKE_ENV)
+        self.ap = CliApplier([sys.executable, script])
+        old = {k: os.environ.get(k) for k in self.NASTY}
+        os.environ.update(self.NASTY)
+        os.environ["HEISS_TEST_KEEP"] = "x"
+        self.addCleanup(self.restore, old)
+
+    @staticmethod
+    def restore(old):
+        os.environ.pop("HEISS_TEST_KEEP", None)
+        for k, v in old.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+
+    def test_plan_child_has_no_dangerous_variables_and_runs_in_the_root_directory(self):
+        out = self.ap.plan({"profile": "base", "addons": []})
+        self.assertEqual(out["cwd"], "/")
+        for k in list(self.NASTY) + ["HEISS_TEST_KEEP"]:
+            self.assertNotIn(k, out["env"])
+        self.assertIn("PATH", out["env"])
+
+    def test_apply_child_gets_the_same_treatment(self):
+        lines = []
+        self.ap.run({"profile": "base", "addons": []}, lines.append, lambda *a: None)
+        seen = json.loads(lines[-1])
+        self.assertEqual(seen["cwd"], "/")
+        for k in self.NASTY:
+            self.assertNotIn(k, seen["env"])
+
+    def test_default_command_is_isolated_python(self):
+        self.assertEqual(CliApplier().argv, [sys.executable, "-I", "-m", "heiss_core"])
+
+    def test_clean_env_keeps_the_session_variables_polkit_needs(self):
+        from heiss_welcome.applier import clean_env
+        env = {"PATH": "/usr/bin", "HOME": "/home/u", "XDG_RUNTIME_DIR": "/run/user/1000",
+               "DBUS_SESSION_BUS_ADDRESS": "unix:path=/run/user/1000/bus", "WAYLAND_DISPLAY": "wayland-0", "PYTHONHOME": "/x"}
+        self.assertEqual(clean_env(env), {k: v for k, v in env.items() if k != "PYTHONHOME"})
+
+
 class Cli(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()

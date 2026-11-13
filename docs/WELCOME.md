@@ -27,7 +27,7 @@ Master plan section 7. Stack as in `docs/ARCHITECTURE.md`: PySide6 + QML (Kiriga
 - `welcome/heiss_welcome/viewmodel.py`: no Qt; builds each screen as a dict (title, "what this will change", options, buttons) and runs the actions; saves resume state after each action. Tested in `welcome/tests`.
 - `strings.py`: en/ru texts (a test checks both languages have the same keys). Profile and add-on names come from the manifests.
 - `app.py`: thin PySide6 glue (one `wizard` object for QML). `qml/Main.qml`: one data-driven window, Inter font, Heiss palette, sand accent, Back/Next/Skip, Alt+Left for Back, visible focus ring, accessible names.
-- Run by hand: `PYTHONPATH=core:welcome python -m heiss_welcome --force` (needs `pyside6`; config dir override `HEISS_CONFIG_DIR`, manifests `HEISS_PROFILES`).
+- Run by hand: `PYTHONPATH=core:welcome python -m heiss_welcome --force` (needs `pyside6`; config dir override `HEISS_CONFIG_DIR`, manifests `HEISS_PROFILES`). The plan and Apply start `python -I -m heiss_core` in `/` without `PYTHON*`, `LD_*`, `GCONV*`, `LOCPATH`, `NLSPATH`, `GIO_*` and `HEISS_*` variables, so from a source checkout they only work with `heiss_core` installed (installed packages are the supported way; the screens themselves run from a checkout).
 - **Not in this PR, on purpose:** Apply (needs the repository, 5e), so the summary offers only "Save answers, apply later" (writes `answers.toml` and one `apply-profile` queue item). The hardware and backups screens are "coming soon" placeholders (5c). Accent, density, font size and the per-item privacy toggles have no screen yet. No autostart, no package (5d). Wizard-side live preview of the theme is not done.
 
 ## Hardware and privacy screens (5c)

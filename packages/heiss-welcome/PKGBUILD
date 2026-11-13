@@ -2,7 +2,7 @@
 # Built from the repository HEAD by scripts/heiss-packages-build.sh (it creates heiss-src.tar.gz).
 pkgname=heiss-welcome
 pkgver=0.1.0
-pkgrel=5
+pkgrel=6
 pkgdesc='Heiss OS first-run wizard: profile choice, hardware and privacy screens, applying through the helper'
 arch=('any')
 url='https://github.com/heiss-os/heiss-iso'
