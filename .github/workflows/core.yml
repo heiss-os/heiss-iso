@@ -51,6 +51,14 @@ jobs:
             exit 1
           fi
           echo "plasma-workspace ships plasma-apply-lookandfeel"
+      - name: The tool the Control Center uses to read the colour scheme is shipped by kconfig
+        run: |
+          if ! pacman -F usr/bin/kreadconfig6 | grep -q '/kconfig '; then
+            echo "::error::usr/bin/kreadconfig6 is not shipped by kconfig"
+            pacman -F usr/bin/kreadconfig6 || true
+            exit 1
+          fi
+          echo "kconfig ships kreadconfig6"
       - name: Dock pins exist in Base packages; installer desktop files are consistent
         run: python3 scripts/check-launchers.py --require-file-db
       - name: Menu hide stubs are well formed and still match a shipped entry
