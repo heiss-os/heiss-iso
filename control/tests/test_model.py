@@ -597,6 +597,21 @@ class PendingActions(Fixture):
         self.assertFalse(mod.remove_pending(b))
         self.assertEqual(len(self.queue().list()), 1)
 
+    def test_removing_the_failed_item_clears_its_error(self):
+        from heiss_core.errors import HeissError
+        a = self.add("base")
+
+        def run_item(item, on_step):
+            raise HeissError("pacman is locked")
+        self.env.run_pending_item = run_item
+        mod = self.mod()
+        mod.begin_pending()
+        mod.finish_pending()
+        self.assertEqual(mod.pend_state, "failed")
+        self.assertTrue(mod.remove_pending(a))
+        run = mod.screen()["profiles"]["run"]
+        self.assertEqual((run["state"], run["message"]), ("idle", ""))
+
     def test_screen_offers_the_labels_and_the_warning_in_both_languages(self):
         for lang, word in (("en", "password"), ("ru", "пароль")):
             mod = m.Model(self.env, lang)
@@ -620,6 +635,30 @@ class Runner(unittest.TestCase):
             from heiss_core.errors import HeissError
             with self.assertRaises(HeissError):
                 runner.argv_for(bad, ["heiss"])
+
+    def test_the_child_is_isolated_and_gets_a_clean_environment(self):
+        seen = {}
+
+        class P:
+            stdout = iter(())
+            returncode = 0
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+
+        def popen(argv, **kw):
+            seen["argv"], seen["kw"] = argv, kw
+            return P()
+        env = {"PATH": "/usr/bin", "HOME": "/home/u", "XDG_RUNTIME_DIR": "/run/user/1000", "PYTHONPATH": "/tmp/evil",
+               "PYTHONSTARTUP": "/tmp/x.py", "LD_PRELOAD": "/tmp/e.so", "LD_LIBRARY_PATH": "/tmp"}
+        runner.run_item(self.item(), None, None, popen, env)
+        self.assertEqual(seen["argv"][1:4], ["-I", "-m", "heiss_core"])
+        self.assertEqual(seen["kw"]["cwd"], "/")
+        self.assertEqual(seen["kw"]["env"], {"PATH": "/usr/bin", "HOME": "/home/u", "XDG_RUNTIME_DIR": "/run/user/1000"})
+        self.assertNotIn("shell", seen["kw"])
 
     def fake(self, script):
         import stat

@@ -251,6 +251,50 @@ class Pending(unittest.TestCase):
         self.assertEqual(self.q.run(lambda i: None, online=True), ids[1:])   # retry works
         self.assertEqual(self.q.list(), [])
 
+    def test_an_item_added_while_a_run_is_going_is_kept(self):
+        a = self.q.add("apply-profile", {"profile": "base", "addons": []})["id"]
+        added = []
+
+        def ex(item):
+            added.append(wz.PendingQueue(self.q.path).add("apply-profile", {"profile": "cyber", "addons": []})["id"])
+        self.assertEqual(self.q.run(ex, online=True), [a])
+        self.assertEqual([i["id"] for i in self.q.list()], added)
+
+    def test_an_item_removed_while_a_run_is_going_is_not_brought_back(self):
+        a = self.q.add("apply-profile", {"profile": "base", "addons": []})["id"]
+        b = self.q.add("apply-profile", {"profile": "cyber", "addons": []})["id"]
+
+        def ex(item):
+            if item["id"] == a:
+                wz.PendingQueue(self.q.path).remove(b)
+                raise HeissError("no space left")
+        self.assertEqual(self.q.run(ex, online=True), [])
+        left = self.q.list()
+        self.assertEqual([(i["id"], i["status"]) for i in left], [(a, "failed")])
+
+    def test_parallel_adds_do_not_lose_items_or_share_ids(self):
+        import threading
+        ids, errs = [], []
+
+        def add():
+            try:
+                ids.append(wz.PendingQueue(self.q.path).add("apply-profile", {"profile": "base", "addons": []})["id"])
+            except Exception as e:  # noqa: BLE001
+                errs.append(e)
+        threads = [threading.Thread(target=add) for _ in range(12)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errs, [])
+        self.assertEqual(sorted(ids), list(range(1, 13)))
+        self.assertEqual(len(self.q.list()), 12)
+
+    def test_an_id_with_a_trailing_newline_is_refused(self):
+        for bad in ({"profile": "base\n", "addons": []}, {"profile": "base", "addons": ["x\n"]}):
+            with self.assertRaises(ValidationError):
+                self.q.add("apply-profile", bad)
+
     def test_unexpected_executor_error_still_saves_finished_items(self):
         ids = [self.q.add("apply-profile", {"profile": p, "addons": []})["id"] for p in ("base", "cyber")]
 

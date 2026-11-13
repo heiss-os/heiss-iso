@@ -243,7 +243,10 @@ class Model:
         if self.pend_state == "running" or not isinstance(item_id, int) or isinstance(item_id, bool):
             return False
         try:
-            self._queue().remove(item_id)
+            q = self._queue()
+            q.remove(item_id)
+            if not any(i["status"] == "failed" for i in q.list()):
+                self.pend_state, self.pend_step, self.pend_message = "idle", "", ""   # the old error is gone with its item
         except Exception as e:  # noqa: BLE001
             self.pend_state, self.pend_message = "failed", self._err(e)
             return False

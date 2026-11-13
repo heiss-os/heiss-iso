@@ -10,7 +10,9 @@ Flathub, update policy, privacy level) are validated by `answers.validate`. The 
 options (accent, density, font size, hardware toggles, backups) are kept in `extras`: saved and
 resumable, but NOT applied by anything yet (see docs/WELCOME.md).
 """
+import contextlib
 import copy
+import fcntl
 import json
 import os
 import time
@@ -240,9 +242,9 @@ def summary_plan(wiz, manifests, state, system, adopt=True):
 def _valid_payload(kind, payload):
     if kind == "apply-profile":
         return (isinstance(payload, dict) and set(payload) == {"profile", "addons"}
-                and isinstance(payload["profile"], str) and mf.ID_RE.match(payload["profile"]) is not None
+                and isinstance(payload["profile"], str) and mf.ID_RE.fullmatch(payload["profile"]) is not None
                 and isinstance(payload["addons"], list)
-                and all(isinstance(a, str) and mf.ID_RE.match(a) for a in payload["addons"]))
+                and all(isinstance(a, str) and mf.ID_RE.fullmatch(a) for a in payload["addons"]))
     return False
 
 
@@ -274,20 +276,31 @@ class PendingQueue:
     def _save(self, items):
         atomic_write(self.path, json.dumps(items, indent=2, sort_keys=True) + "\n")
 
+    @contextlib.contextmanager
+    def _locked(self):
+        """Exclusive lock around load-modify-save, so the wizard and the Control Center cannot overwrite each
+        other. Never held while an action runs (that can take minutes)."""
+        os.makedirs(os.path.dirname(self.path) or ".", exist_ok=True)
+        with open(self.path + ".lock", "a") as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX)
+            yield
+
     def list(self):
         return self._load()
 
     def add(self, kind, payload, now=None):
         if kind not in PENDING_KINDS or not _valid_payload(kind, payload):
             raise ValidationError("pending action %r with this payload is not allowed" % kind)
-        items = self._load()
-        item = {"id": (max([i["id"] for i in items]) + 1) if items else 1, "kind": kind, "payload": dict(payload),
-                "created": int(now if now is not None else time.time()), "status": "pending", "error": ""}
-        self._save(items + [item])
+        with self._locked():
+            items = self._load()
+            item = {"id": (max([i["id"] for i in items]) + 1) if items else 1, "kind": kind, "payload": dict(payload),
+                    "created": int(now if now is not None else time.time()), "status": "pending", "error": ""}
+            self._save(items + [item])
         return item
 
     def remove(self, item_id):
-        self._save([i for i in self._load() if i["id"] != item_id])
+        with self._locked():
+            self._save([i for i in self._load() if i["id"] != item_id])
 
     def run(self, executor, online):
         """Run pending items in order. Offline: nothing runs. A failure stops the run and keeps the item
@@ -296,18 +309,24 @@ class PendingQueue:
         Returns the ids that were done."""
         if not online:
             return []
-        items, done = self._load(), []
+        items, done, failed = self._load(), [], {}
         try:
             for it in items:
                 try:
                     executor(copy.deepcopy(it))
                 except HeissError as e:
-                    it["status"], it["error"] = "failed", str(e)
+                    failed[it["id"]] = str(e)
                     break
-                it["status"], it["error"] = "done", ""
                 done.append(it["id"])
         finally:
-            self._save([i for i in items if i["status"] != "done"])
+            # merge into the file as it is now: an item another process added or removed while the (long)
+            # run was going is kept as it is; only what this run did is applied
+            with self._locked():
+                now = self._load()
+                for it in now:
+                    if it["id"] in failed:
+                        it["status"], it["error"] = "failed", failed[it["id"]]
+                self._save([i for i in now if i["id"] not in done])
         return done
 
 

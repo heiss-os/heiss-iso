@@ -56,6 +56,22 @@ class Manifests(unittest.TestCase):
             mf.closure({"a": a, "b": b}, ["a", "b"])
 
 
+class TrailingNewline(unittest.TestCase):
+    """`$` alone matches before a trailing newline; ids and file names are matched in full."""
+    def test_ids_with_a_trailing_newline_are_refused(self):
+        self.assertIsNone(mf.ID_RE.fullmatch("base\n"))
+        doc = {"schema_version": 1, "id": "base\n", "kind": "profile", "tier": "important",
+               "name": {"en": "x", "ru": "x"}, "description": {"en": "x", "ru": "x"}}
+        with self.assertRaises(ValidationError):
+            mf.parse(doc, "t.toml")
+
+    def test_list_entries_with_a_trailing_newline_are_refused(self):
+        doc = {"schema_version": 1, "id": "base", "kind": "profile", "tier": "important",
+               "name": {"en": "x", "ru": "x"}, "description": {"en": "x", "ru": "x"}, "requires": ["essentials\n"]}
+        with self.assertRaises(ValidationError):
+            mf.parse(doc, "t.toml")
+
+
 class Answers(unittest.TestCase):
     def test_defaults_and_roundtrip(self):
         doc = ans.validate({"profile": "cyber", "addons": ["addon-kitty"]})

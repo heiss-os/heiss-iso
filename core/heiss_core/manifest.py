@@ -48,7 +48,7 @@ def _strs(doc, key, regex, where):
     if not isinstance(vals, list) or not all(isinstance(v, str) for v in vals):
         raise ValidationError("%s: '%s' must be a list of strings" % (where, key))
     for v in vals:
-        if not regex.match(v):
+        if not regex.fullmatch(v):   # fullmatch: "$" alone would let a trailing newline through
             raise ValidationError("%s: invalid %s entry %r" % (where, key, v))
     if len(set(vals)) != len(vals):
         raise ValidationError("%s: duplicate entries in '%s'" % (where, key))
@@ -82,7 +82,7 @@ def _kde(doc, where):
     for k in doc.get("kde_settings", []):
         if set(k) != {"file", "group", "key", "value"} or not all(isinstance(v, str) for v in k.values()):
             raise ValidationError("%s: kde_settings entries need file, group, key, value (strings)" % where)
-        if not re.match(r"^[A-Za-z0-9_.-]+$", k["file"]):
+        if not re.fullmatch(r"[A-Za-z0-9_.-]+", k["file"]):
             raise ValidationError("%s: bad kde_settings file %r" % (where, k["file"]))
         out.append(dict(k))
     return tuple(out)
@@ -96,7 +96,7 @@ def parse(doc, source="manifest"):
     if doc.get("schema_version") != 1:
         raise ValidationError("%s: schema_version must be 1" % where)
     mid = doc.get("id", "")
-    if not isinstance(mid, str) or not ID_RE.match(mid):
+    if not isinstance(mid, str) or not ID_RE.fullmatch(mid):
         raise ValidationError("%s: invalid id %r" % (where, mid))
     if doc.get("kind") not in KINDS:
         raise ValidationError("%s: kind must be one of %s" % (where, KINDS))

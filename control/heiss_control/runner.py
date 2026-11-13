@@ -3,9 +3,10 @@
 The command does the real work through the privileged helper (D-Bus and polkit: the system asks for the
 password); this window only starts it and shows the step lines. The queue item was validated when it was saved
 and again when it was read; the ids are checked once more here and passed in the `--option=value` form, so an id
-can never be read as an option. No shell. The same command as the wizard's apply (`heiss_welcome.applier`),
+can never be read as an option. No shell. The child runs isolated (`-I`), in `/`, without PYTHON* and LD_* variables. The same command as the wizard's apply (`heiss_welcome.applier`),
 duplicated on purpose so the Control Center does not depend on the wizard package.
 """
+import os
 import re
 import subprocess
 import sys
@@ -16,21 +17,30 @@ from heiss_core.errors import HeissError
 STEP_RE = re.compile(r"^\[(\d+)/(\d+)\] (.*)$")   # printed by `heiss profile apply` before every helper call
 
 
+def clean_env(environ):
+    """The environment of the child: the user's session (it needs the bus and the display for the polkit agent)
+    without anything that changes which code Python or the loader runs."""
+    return {k: v for k, v in environ.items() if not k.startswith(("PYTHON", "LD_"))}
+
+
 def argv_for(item, base=None):
     payload = item.get("payload", {}) if isinstance(item, dict) else {}
     ids = [payload.get("profile")] + list(payload.get("addons", []))
     if item.get("kind") != "apply-profile" or not all(isinstance(i, str) and mf.ID_RE.fullmatch(i) for i in ids):
         raise HeissError("this saved action is not valid")
-    argv = list(base or [sys.executable, "-m", "heiss_core"]) + ["profile", "apply", "--yes", "--adopt",
+    argv = list(base or [sys.executable, "-I", "-m", "heiss_core"]) + ["profile", "apply", "--yes", "--adopt",
                                                                   "--profile=%s" % payload["profile"]]
     return argv + ["--addon=%s" % a for a in payload["addons"]]
 
 
-def run_item(item, on_step=None, base=None, popen=subprocess.Popen):
+def run_item(item, on_step=None, base=None, popen=subprocess.Popen, environ=None):
     """Apply one saved action. on_step(n, total, description) for each helper call. Raises HeissError."""
     argv = argv_for(item, base)
     try:
-        p = popen(argv, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, errors="replace", bufsize=1)
+        # -I: no user site, no PYTHON* variables, no current directory on sys.path; cwd "/": nothing of the user's
+        # is next to the interpreter that then calls the helper (whose polkit authorisation is kept per process)
+        p = popen(argv, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, errors="replace", bufsize=1,
+                  cwd="/", env=clean_env(os.environ if environ is None else environ))
     except OSError as e:
         raise HeissError("cannot start the apply command: %s" % e)
     tail = []
