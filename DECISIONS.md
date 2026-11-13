@@ -252,3 +252,7 @@ Format: date, what, why. Newest at the bottom.
 ## 2026-11-13 (Control Center package)
 
 - **`heiss-control` is a separate package in the ISO list (this supersedes "not packaged yet" in the shell entry above: it ships now, before the first helper page), with a visible launcher entry and no dock pin.** Why: the window is useful for the installed system now (Overview, About), and the dock is a Tier B surface that needs a separate "ok". The icon is the stock `preferences-system` until a Heiss icon exists. `heiss-control` pkgrel starts at 1.
+
+## 2026-11-13 (wizard QML shows strings as plain text)
+
+- **Every `Text` in the wizard QML is `Text.PlainText`** (a test enforces it). Why: `Text` defaults to AutoText, so a string that looks like HTML would be drawn as rich text; the apply log, error lines and package names come from commands and files, and a remote `<img>` would make the window contact the network on its own. Found by the security review of the Control Center PR, which has the same rule. heiss-welcome pkgrel 4 -> 5.

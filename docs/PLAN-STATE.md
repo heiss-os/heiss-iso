@@ -237,3 +237,7 @@ PR "feat/control-center-shell": `control/` (model without Qt, PySide6 glue, one 
 ## Phase 6, step 2 (2026-11-13): Control Center package
 
 PR "feat/control-center-package": `packages/heiss-control`, `control/data/heiss-control.desktop`, entry in `profile/packages.x86_64`, build script archives `control/`, tests. Not verified: a real ISO build and the launcher entry in Kickoff (final VM test list, Phase 6). `pyside6` is already in the ISO via the wizard, so there is no new runtime dependency. The new cases in `core/tests/test_packages.py` ran (221 core tests OK) and `makepkg` was run locally with the package contents listed. Next: Profiles and software (read-only) and Appearance pages.
+
+## Wizard QML plain text (2026-11-13)
+
+PR "fix/wizard-plain-text": all 14 `Text` items of `welcome/heiss_welcome/qml/Main.qml` are `Text.PlainText`, test added, heiss-welcome pkgrel 5. Not verified: the wizard window with the change (no `pyside6` here; the QML only passed `qmllint`). The existing wizard screenshot item in the FINAL VM TEST LIST covers it: text must look as before.
