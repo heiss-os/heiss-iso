@@ -16,6 +16,7 @@ def main(argv=None):
         themeDone = Signal()   # emitted from the worker thread; delivered on the GUI thread
         checkDone = Signal()
         securityDone = Signal()
+        pendingProgress = Signal()   # every step and the end of a saved-actions run, from the worker thread
 
         def __init__(self, model):
             super().__init__()
@@ -23,6 +24,7 @@ def main(argv=None):
             self.themeDone.connect(self._set)
             self.checkDone.connect(self._set)
             self.securityDone.connect(self._set)
+            self.pendingProgress.connect(self._set)
 
         def _set(self):
             self._screen = self.model.screen()
@@ -37,6 +39,24 @@ def main(argv=None):
             self._set()
             if page_id == "security" and self.model.sec_state == "idle":
                 self.runSecurity()
+
+        @Slot()
+        def runPending(self):
+            # installs through the helper (the system asks for the password): only on a click, in a worker thread
+            if self.model.begin_pending():
+                threading.Thread(target=self._pending, daemon=True).start()
+            self._set()
+
+        def _pending(self):
+            try:
+                self.model.finish_pending(self.pendingProgress.emit)
+            finally:
+                self.pendingProgress.emit()
+
+        @Slot(int)
+        def removePending(self, item_id):
+            self.model.remove_pending(item_id)
+            self._set()
 
         @Slot()
         def runSecurity(self):

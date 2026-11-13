@@ -7,7 +7,7 @@ Split into small PRs. Status of each page:
 | Overview (profile, privacy level, Heiss-installed package count, pending actions, kernel) | built, read-only |
 | About (system, build, kernel, Plasma, links, licence, "not affiliated with Arch Linux") | built, read-only |
 | Search (page titles and keywords, en/ru) | built |
-| Profiles and software (chosen and applied profile, add-ons, what Heiss OS installed, pending actions) | built, read-only; changing the profile needs the helper (later PR) |
+| Profiles and software (chosen and applied profile, add-ons, what Heiss OS installed, pending actions) | built; shows what is chosen and installed; applies or removes the actions saved by the wizard ("apply later"); changing the profile needs its own PR |
 | Appearance (Dark and Light switch) | built; the only page that changes anything, as the user |
 | Advanced (opens the stock KDE System Settings; runs `heiss check` and lists the result) | built; the check changes no settings (it takes a short-lived lock file in the runtime directory, shared with `heiss theme sync`, so the theme item shows WARN while a sync runs) |
 | Security Center (firewall, disk encryption, Secure Boot display, SSH, open network ports) | built, read-only: plain-language facts and advice, no fix buttons, no score |
@@ -27,6 +27,10 @@ Split into small PRs. Status of each page:
 - The sidebar already lists the final pages; a page that is not built says "Coming soon" instead of pretending.
 - Links open only if they start with `https://` and come from `os-release`.
 - Plain QtQuick.Controls like the wizard, not Kirigami (see DECISIONS.md, 2026-11-13).
+
+## Saved actions ("apply later")
+
+The wizard's "Save answers, apply later" and an apply attempted offline put an `apply-profile` item (`{profile, addons}`) into `~/.config/heiss/pending.json`. The Profiles page lists them. "Apply saved actions now" (only on a click, with a warning that it installs software, asks for the password and needs the network) refuses to start offline (NetworkManager's state from `nmcli`, as `heiss profile apply` does; a missing or failing `nmcli` counts as online and pacman then reports the real failure) and otherwise runs `heiss_core.wizard.PendingQueue.run` on a worker thread: for each item `heiss profile apply --yes --adopt --profile=ID --addon=ID...` in a child process (`control/heiss_control/runner.py`), which goes through the helper and polkit exactly like the wizard's Apply. The ids are checked against the manifest id pattern with `fullmatch` before they reach a command line and are passed in the `--option=value` form. Done items leave the queue; a failure stops the run, keeps the item as failed with the message, and "Apply" tries again. "Remove" drops one item without running it. Not carried over: the privacy level and hardware choices of the wizard (the queue holds only profile and add-ons). The queue file is locked (`pending.json.lock`) around every load-modify-save, never while an action runs, and a run merges its result into the file as it is then: an action another process saved during the run is kept, one removed meanwhile is not brought back. The child runs as `python -I -m heiss_core` in `/` without `PYTHON*` and `LD_*` variables, so nothing in the user's directory or environment is imported before the helper call; consequently Apply does not work from a source checkout (`PYTHONPATH=...`), only from the installed packages.
 
 ## Security Center: what it reads
 

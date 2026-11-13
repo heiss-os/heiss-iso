@@ -13,7 +13,9 @@ from heiss_core import manifest as mf
 from heiss_core import state as st
 from heiss_core import wizard as wz
 from heiss_core.errors import HeissError
+from heiss_core.system import PacmanSystem
 
+from . import runner
 from . import security
 from . import theme as th
 from . import tools
@@ -45,6 +47,8 @@ class Env:
     kde_value: callable = field(default_factory=lambda: th.kreadconfig)
     apply_theme: callable = field(default_factory=lambda: th.apply_theme)
     security_facts: callable = field(default_factory=lambda: security.collect)
+    online: callable = field(default_factory=lambda: lambda: PacmanSystem().network_connected())
+    run_pending_item: callable = field(default_factory=lambda: runner.run_item)
     run_check: callable = field(default_factory=lambda: tools.run_check)
     open_settings: callable = field(default_factory=lambda: tools.open_settings)
     # default_factory: a plain lambda as a class default would be bound as a method
@@ -68,6 +72,7 @@ class Model:
         self.check_state, self.check_items, self.check_message = "idle", [], ""   # idle | running | done | failed
         self.settings_message = ""
         self.sec_state, self.sec_facts, self.sec_message = "idle", [], ""   # idle | running | done | failed
+        self.pend_state, self.pend_step, self.pend_message = "idle", "", ""   # idle | running | ok | failed | offline
 
     def tr(self, key):
         return t(self.language, key)
@@ -180,12 +185,72 @@ class Model:
         try:
             for i in wz.PendingQueue(os.path.join(self.env.user_dir, "pending.json")).list():
                 text = self.tr("profiles.pending_apply") % self._pname(i["payload"]["profile"], manifests)
-                pending.append({"text": text, "status": self.tr("pstatus." + i["status"]), "error": self._clip(i["error"])})
+                pending.append({"id": i["id"], "text": text, "status": self.tr("pstatus." + i["status"]),
+                                "error": self._clip(i["error"])})
         except Exception as e:  # noqa: BLE001
             errors.append(self._err(e))
         return {"what": self.tr("profiles.what"), "rows": [{"label": self.tr(k), "value": v} for k, v in rows],
                 "sections": sections, "pendingTitle": self.tr("card.pending"), "pending": pending,
-                "errors": errors, "note": self.tr("profiles.note")}
+                "errors": errors, "note": self.tr("profiles.note"),
+                "run": {"label": self.tr("profiles.run"), "removeLabel": self.tr("profiles.remove"),
+                        "warning": self.tr("profiles.run_warning"), "state": self.pend_state,
+                        "step": self.pend_step, "message": self.pend_message,
+                        "offline": self.tr("profiles.offline"), "running": self.tr("profiles.running"),
+                        "done": self.tr("profiles.done")}}
+
+    # --- saved ("apply later") actions: run them, or drop them ---
+    def _queue(self):
+        return wz.PendingQueue(os.path.join(self.env.user_dir, "pending.json"))
+
+    def begin_pending(self):
+        """True when the run may start: nothing runs already, something is waiting, and the network is up."""
+        if self.pend_state == "running":
+            return False
+        try:
+            waiting = bool(self._queue().list())
+            online = bool(self.env.online())
+        except Exception as e:  # noqa: BLE001
+            self.pend_state, self.pend_step, self.pend_message = "failed", "", self._err(e)
+            return False
+        if not waiting:
+            return False
+        if not online:
+            self.pend_state, self.pend_step, self.pend_message = "offline", "", ""
+            return False
+        self.pend_state, self.pend_step, self.pend_message = "running", "", ""
+        return True
+
+    def finish_pending(self, notify=None):
+        """Runs the queue in order; called from a worker thread. notify() is called on every step."""
+        def on_step(n, total, text):
+            self.pend_step = self._clip("%d/%d %s" % (n, total, text))
+            if notify:
+                notify()
+        try:
+            q = self._queue()
+            q.run(lambda item: self.env.run_pending_item(item, on_step), True)
+            failed = [i for i in q.list() if i["status"] == "failed"]
+            if failed:
+                self.pend_state, self.pend_message = "failed", self._clip(failed[0]["error"])
+            else:
+                self.pend_state, self.pend_message = "ok", ""
+        except Exception as e:  # noqa: BLE001
+            self.pend_state, self.pend_message = "failed", self._err(e)
+        self.pend_step = ""
+
+    def remove_pending(self, item_id):
+        """Drop one saved action without running it. Not while a run is in progress."""
+        if self.pend_state == "running" or not isinstance(item_id, int) or isinstance(item_id, bool):
+            return False
+        try:
+            q = self._queue()
+            q.remove(item_id)
+            if not any(i["status"] == "failed" for i in q.list()):
+                self.pend_state, self.pend_step, self.pend_message = "idle", "", ""   # the old error is gone with its item
+        except Exception as e:  # noqa: BLE001
+            self.pend_state, self.pend_message = "failed", self._err(e)
+            return False
+        return True
 
     # --- appearance: Dark and Light only ---
     def appearance(self):
