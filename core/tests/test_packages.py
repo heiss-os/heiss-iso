@@ -280,4 +280,3 @@ class ControlPackage(unittest.TestCase):
             self.assertRegex(f.read(), r"archive .* welcome control ")
         with open(os.path.join(REPO, "profile", "packages.x86_64"), encoding="utf-8") as f:
             self.assertIn("heiss-control", f.read().split())
-
