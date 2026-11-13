@@ -9,7 +9,7 @@ Split into small PRs. Status of each page:
 | Search (page titles and keywords, en/ru) | built |
 | Profiles and software (chosen and applied profile, add-ons, what Heiss OS installed, pending actions) | built, read-only; changing the profile needs the helper (later PR) |
 | Appearance (Dark and Light switch) | built; the only page that changes anything, as the user |
-| Advanced (opens the stock KDE System Settings; runs `heiss check` and lists the result) | built; the check only reads |
+| Advanced (opens the stock KDE System Settings; runs `heiss check` and lists the result) | built; the check changes no settings (it takes a short-lived lock file in the runtime directory, shared with `heiss theme sync`, so the theme item shows WARN while a sync runs) |
 | Security Center, Updates and snapshots, Network and privacy | later PRs |
 | Hardware and drivers (Phase 7), Power and display, Backups | later (sidebar entry exists, page says "Coming soon") |
 
@@ -21,7 +21,7 @@ Split into small PRs. Status of each page:
 
 ## Rules this shell follows
 
-- The GUI never runs as root and never calls the helper. The only changes it makes are the Dark/Light switch (`plasma-apply-lookandfeel`, as the user, on a worker thread, same LnF ids as the wizard) and starting `systemsettings` detached from Advanced; the system check is `heiss check` run in the same process on a worker thread (read-only); a test checks that building any screen leaves the directories untouched.
+- The GUI never runs as root and never calls the helper. The only changes it makes are the Dark/Light switch (`plasma-apply-lookandfeel`, as the user, on a worker thread, same LnF ids as the wizard) and starting `systemsettings` detached from Advanced; the system check is `heiss check` run in the same process on a worker thread (it changes no settings; it only takes the short-lived theme-sync lock file); a test checks that building any screen leaves the directories untouched.
 - Every `Text` in the QML is `Text.PlainText` and error messages are cut to 300 characters (a test enforces both; see DECISIONS.md, "Profiles and Appearance pages").
 - The sidebar already lists the final pages; a page that is not built says "Coming soon" instead of pretending.
 - Links open only if they start with `https://` and come from `os-release`.

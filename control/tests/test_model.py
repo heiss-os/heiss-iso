@@ -355,12 +355,13 @@ class Advanced(Fixture):
         self.assertTrue(mod.begin_check())
 
     def test_malformed_check_result_is_a_failure_not_a_crash(self):
-        for bad in (None, 5, [{"name": "x"}], [{"name": 1, "status": "OK", "detail": 2}][0]):
+        for bad in (None, 5, [{"name": "x"}], {"name": 1, "status": "OK", "detail": 2}):
             self.env.run_check = lambda bad=bad: bad
             mod = self.mod()
             mod.begin_check()
             mod.finish_check()
-            self.assertIn(mod.check_state, ("failed", "done"))
+            self.assertEqual((mod.check_state, mod.check_items), ("failed", []), bad)
+            self.assertTrue(mod.check_message)
 
     def test_open_settings_reports_a_failure_and_clears_it(self):
         mod = self.mod()

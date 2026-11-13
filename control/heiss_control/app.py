@@ -58,8 +58,10 @@ def main(argv=None):
                 self._set()
 
         def _check(self):
-            self.model.finish_check()
-            self.checkDone.emit()
+            try:
+                self.model.finish_check()
+            finally:
+                self.checkDone.emit()
 
         @Slot()
         def openSettings(self):
