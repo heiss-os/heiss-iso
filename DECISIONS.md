@@ -269,3 +269,10 @@ Format: date, what, why. Newest at the bottom.
 - **The Advanced page does two things: open the stock KDE System Settings and run `heiss check`.** Why: the owner's decision is that the stock settings stay reachable under "Advanced"; `heiss check` already is the health check for an installed system and changes no settings (its theme item takes the short-lived theme-sync lock file in `$XDG_RUNTIME_DIR`, or `/tmp` when unset, and shows WARN while a sync holds it), so the page shows its result instead of a second implementation. Both use fixed argument lists, no shell, no helper, no privileges; the check runs in this process on a worker thread (its commands can take 30 s each); statuses outside OK/WARN/FAIL are shown as WARN and all texts are plain and cut to 300 characters.
 - **Not in this page yet:** the journal, a list of services, Heiss logs and the bug-report bundle without personal data. Why: each needs a decision about what may leave the machine (the bundle) or a verified command line (journal access without root); they come in their own PRs.
 - heiss-control pkgrel 2 -> 3, `systemsettings` as an optional dependency.
+
+## 2026-11-13 (Control Center: Security Center page)
+
+- **The Security Center is read-only and has no score and no Fix buttons in this step.** Why: the master plan asks for snapshot-first fixes and a score; both need the helper and the snapshot work (Btrfs is a separate Tier A item), and five unprivileged facts are too few for a number that would not mislead. Each fact comes with plain-language advice (a command to run yourself) only when it needs a look.
+- **Own small checks, not `lynis`/`arch-audit` yet.** Why: neither is in the ISO and adding packages is a separate decision; the page does not write an audit engine, it shows five facts the system already knows. Wrapping the two tools stays on the list.
+- **Not judged on purpose:** whether the root account is locked (reading `/etc/shadow` needs root; `heiss check` does it when run as root) and pending updates (Updates page). Secure Boot is display only; Heiss OS does not manage it.
+- heiss-control pkgrel 3 -> 4.

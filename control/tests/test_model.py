@@ -9,6 +9,7 @@ REPO = os.path.dirname(os.path.dirname(HERE))
 sys.path.insert(0, os.path.join(REPO, "core"))
 sys.path.insert(0, os.path.dirname(HERE))
 from heiss_control import model as m  # noqa: E402
+from heiss_control import security as sec  # noqa: E402
 from heiss_control import theme as th  # noqa: E402
 from heiss_control import tools  # noqa: E402
 from heiss_control.strings import S  # noqa: E402
@@ -28,7 +29,10 @@ class Fixture(unittest.TestCase):
                          profiles_dir=os.path.join(REPO, "profiles"), kde_value=lambda f, g, k: "HeissDark",
                          apply_theme=lambda theme: (True, ""),
                          run_check=lambda: [{"name": "units", "status": "OK", "detail": "fine", "commands": []}],
-                         open_settings=lambda: (True, ""))
+                         open_settings=lambda: (True, ""),
+                         security_facts=lambda: [{"id": "firewall", "status": "ok", "code": "active_enabled", "data": ""},
+                                                 {"id": "listening", "status": "warn", "code": "some", "data": "22, 631"},
+                                                 {"id": "secure_boot", "status": "info", "code": "bios", "data": ""}])
 
     def p(self, name):
         return os.path.join(self.d, name)
@@ -56,10 +60,10 @@ class Pages(Fixture):
 
     def test_unbuilt_page_is_marked_soon_and_has_no_data(self):
         mod = m.Model(self.env)
-        mod.open("security")
+        mod.open("hardware")
         s = mod.screen()
         self.assertFalse(s["built"])
-        for key in ("overview", "profiles", "appearance", "advanced", "about"):
+        for key in ("overview", "profiles", "appearance", "security", "advanced", "about"):
             self.assertNotIn(key, s)
 
     def test_every_language_has_every_key_of_english(self):
@@ -308,6 +312,193 @@ class Hardening(Fixture):
         item = p.screen()["profiles"]["pending"][0]
         self.assertTrue(item["error"].startswith("<img"))
         self.assertLessEqual(len(item["error"]), m.MAX_MESSAGE)
+
+
+class FakeSystem:
+    """Stands in for security.RealSystem: answers by argv, records every call."""
+    def __init__(self, answers=None, files=None, paths=()):
+        self.answers, self.files, self.paths, self.calls = answers or {}, files or {}, set(paths), []
+
+    def run(self, argv):
+        self.calls.append(list(argv))
+        return self.answers.get(tuple(argv), (127, ""))
+
+    def read_bytes(self, path):
+        return self.files.get(path)
+
+    def exists(self, path):
+        return path in self.paths
+
+
+class SecurityFacts(unittest.TestCase):
+    def one(self, fn, sh):
+        return fn(sh)
+
+    def test_firewall_states(self):
+        act = ("systemctl", "is-active", "firewalld")
+        ena = ("systemctl", "is-enabled", "firewalld")
+        self.assertEqual(sec.firewall(FakeSystem({act: (0, "active\n"), ena: (0, "enabled\n")}))["code"], "active_enabled")
+        self.assertEqual(sec.firewall(FakeSystem({act: (0, "active\n"), ena: (1, "disabled\n")}))["code"], "active_not_enabled")
+        self.assertEqual(sec.firewall(FakeSystem({act: (3, "inactive\n")}))["code"], "inactive")
+        self.assertEqual(sec.firewall(FakeSystem())["code"], "unknown")   # systemctl missing (exit 127)
+
+    def test_ssh(self):
+        key = ("systemctl", "is-active", "sshd")
+        self.assertEqual(sec.ssh(FakeSystem({key: (0, "active\n")}))["status"], "warn")
+        self.assertEqual(sec.ssh(FakeSystem({key: (3, "inactive\n")}))["status"], "ok")
+        self.assertEqual(sec.ssh(FakeSystem())["status"], "info")
+
+    def test_disk_encryption_follows_the_ancestors_of_the_root_device(self):
+        fm = ("findmnt", "-n", "-o", "SOURCE", "/")
+        ls = lambda dev: ("lsblk", "-s", "-r", "-n", "-o", "TYPE", "--", dev)
+        self.assertEqual(sec.disk_encryption(FakeSystem({fm: (0, "/dev/mapper/root\n"), ls("/dev/mapper/root"): (0, "crypt\npart\ndisk\n")}))["code"], "encrypted")
+        self.assertEqual(sec.disk_encryption(FakeSystem({fm: (0, "/dev/sda2\n"), ls("/dev/sda2"): (0, "part\ndisk\n")}))["code"], "plain")
+        # btrfs subvolume suffix is removed before the device name is used
+        sh = FakeSystem({fm: (0, "/dev/sda2[/@]\n"), ls("/dev/sda2"): (0, "part\ndisk\n")})
+        self.assertEqual(sec.disk_encryption(sh)["code"], "plain")
+        self.assertIn(list(ls("/dev/sda2")), sh.calls)
+
+    def test_disk_encryption_does_not_trust_odd_sources(self):
+        fm = ("findmnt", "-n", "-o", "SOURCE", "/")
+        for out in ("overlay\n", "-rf /\n", "", "tmpfs\n"):
+            sh = FakeSystem({fm: (0, out)})
+            self.assertEqual(sec.disk_encryption(sh)["code"], "unknown", out)
+            self.assertEqual(sh.calls, [list(fm)])   # nothing else was run with that text
+        self.assertEqual(sec.disk_encryption(FakeSystem())["code"], "unknown")
+
+    def test_secure_boot(self):
+        self.assertEqual(sec.secure_boot(FakeSystem())["code"], "bios")
+        on = bytes([6, 0, 0, 0, 1])
+        off = bytes([6, 0, 0, 0, 0])
+        self.assertEqual(sec.secure_boot(FakeSystem(files={sec.SECURE_BOOT_VAR: on}, paths=["/sys/firmware/efi"]))["code"], "enabled")
+        self.assertEqual(sec.secure_boot(FakeSystem(files={sec.SECURE_BOOT_VAR: off}, paths=["/sys/firmware/efi"]))["code"], "disabled")
+        self.assertEqual(sec.secure_boot(FakeSystem(paths=["/sys/firmware/efi"]))["code"], "unknown")
+        self.assertEqual(sec.secure_boot(FakeSystem(files={sec.SECURE_BOOT_VAR: b"\x06"}, paths=["/sys/firmware/efi"]))["code"], "unknown")
+
+    def test_listening_ignores_loopback_and_lists_the_rest(self):
+        key = ("ss", "-H", "-l", "-t", "-n")
+        out = ("LISTEN 0 128 0.0.0.0:22 0.0.0.0:*\nLISTEN 0 128 [::]:22 [::]:*\nLISTEN 0 4096 127.0.0.1:631 0.0.0.0:*\n"
+               "LISTEN 0 4096 [::1]:631 [::]:*\nLISTEN 0 4096 [::ffff:127.0.0.1]:9 [::]:*\nLISTEN 0 5 *:8080 *:*\nLISTEN 0 1 127.0.0.53%lo:53 0.0.0.0:*\ngarbage\n")
+        r = sec.listening(FakeSystem({key: (0, out)}))
+        self.assertEqual((r["code"], r["data"]), ("some", "22, 8080"))
+        self.assertEqual(sec.listening(FakeSystem({key: (0, "LISTEN 0 1 127.0.0.1:631 0.0.0.0:*\n")}))["code"], "none")
+        self.assertEqual(sec.listening(FakeSystem())["code"], "unknown")
+
+    def test_many_ports_are_cut(self):
+        key = ("ss", "-H", "-l", "-t", "-n")
+        out = "".join("LISTEN 0 1 0.0.0.0:%d 0.0.0.0:*\n" % p for p in range(1000, 1100))
+        data = sec.listening(FakeSystem({key: (0, out)}))["data"]
+        self.assertTrue(data.endswith(" ..."))
+        self.assertEqual(len(data.replace(" ...", "").split(", ")), sec.MAX_PORTS)
+
+    def test_one_broken_fact_does_not_hide_the_others(self):
+        class Bad(FakeSystem):
+            def run(self, argv):
+                if argv[0] == "ss":
+                    raise RuntimeError("boom")
+                return super().run(argv)
+        facts = sec.collect(Bad())
+        self.assertEqual([f["id"] for f in facts], ["firewall", "disk", "secure_boot", "ssh", "listening"])
+        self.assertEqual(facts[-1], {"id": "listening", "status": "info", "code": "unknown", "data": ""})
+
+    def test_every_command_is_a_literal_list_with_a_fixed_environment(self):
+        sh = FakeSystem()
+        sec.collect(sh)
+        self.assertTrue(sh.calls)
+        for argv in sh.calls:
+            self.assertIn(argv[0], ("systemctl", "findmnt", "lsblk", "ss"))
+        self.assertEqual(sec.ENV["PATH"], "/usr/bin:/bin")
+
+    def test_real_system_never_raises_for_a_missing_tool(self):
+        self.assertEqual(sec.RealSystem().run(["/nonexistent/tool"]), (127, ""))
+        self.assertIsNone(sec.RealSystem().read_bytes("/nonexistent/file"))
+
+
+class SecurityPage(Fixture):
+    def mod(self, lang="en"):
+        mod = m.Model(self.env, lang)
+        mod.open("security")
+        return mod
+
+    def test_page_is_built_and_starts_idle(self):
+        s = self.mod().screen()
+        self.assertTrue(s["built"])
+        self.assertEqual((s["security"]["state"], s["security"]["items"], s["security"]["summary"]), ("idle", [], ""))
+
+    def test_facts_become_plain_language_with_advice_only_for_warnings(self):
+        mod = self.mod()
+        self.assertTrue(mod.begin_security())
+        self.assertFalse(mod.begin_security())
+        mod.finish_security()
+        p = mod.screen()["security"]
+        by = {i["id"]: i for i in p["items"]}
+        self.assertEqual(by["firewall"]["detail"], "The firewall is on and starts at every boot.")
+        self.assertEqual(by["firewall"]["advice"], "")
+        self.assertIn("22, 631", by["listening"]["detail"])
+        self.assertTrue(by["listening"]["advice"])
+        self.assertEqual(by["secure_boot"]["statusLabel"], "For your information")
+        self.assertEqual(p["summary"], "1 of 3 checks look fine, 1 need a look, the rest are for information.")
+        self.assertNotIn("score", p["summary"].lower())
+
+    def test_russian(self):
+        mod = self.mod("ru")
+        mod.begin_security()
+        mod.finish_security()
+        by = {i["id"]: i for i in mod.screen()["security"]["items"]}
+        self.assertEqual(by["firewall"]["title"], "Брандмауэр")
+        self.assertIn("22, 631", by["listening"]["detail"])
+
+    def test_unknown_ids_codes_and_statuses_are_shown_safely(self):
+        self.env.security_facts = lambda: [{"id": "zzz", "status": "<b>PANIC</b>", "code": "x%sy", "data": "d" * 5000},
+                                           {"id": "firewall", "status": "ok", "code": "no_such_code", "data": ""}]
+        mod = self.mod()
+        mod.begin_security()
+        mod.finish_security()
+        items = mod.screen()["security"]["items"]
+        self.assertEqual(items[0]["status"], "info")
+        self.assertEqual(items[0]["detail"], "Could not be judged.")
+        self.assertEqual(items[1]["detail"], "Could not be judged.")
+
+    def test_percent_signs_in_data_never_break_the_text(self):
+        self.env.security_facts = lambda: [{"id": "listening", "status": "warn", "code": "some", "data": "%s %d %(x)s"}]
+        mod = self.mod()
+        mod.begin_security()
+        mod.finish_security()
+        self.assertIn("%s %d %(x)s", mod.screen()["security"]["items"][0]["detail"])
+
+    def test_a_failing_source_is_reported_and_frees_the_button(self):
+        def boom():
+            raise RuntimeError("no luck")
+        self.env.security_facts = boom
+        mod = self.mod()
+        mod.begin_security()
+        mod.finish_security()
+        p = mod.screen()["security"]
+        self.assertEqual((p["state"], p["items"]), ("failed", []))
+        self.assertIn("no luck", p["message"])
+        self.assertTrue(mod.begin_security())
+
+    def test_malformed_results_are_a_failure_not_a_crash(self):
+        for bad in (None, 5, [None], [{"id": 1}], [{"status": "ok"}]):
+            self.env.security_facts = lambda bad=bad: bad
+            mod = self.mod()
+            mod.begin_security()
+            mod.finish_security()
+            self.assertEqual(mod.sec_state, "failed", bad)
+
+    def test_every_code_the_checks_can_return_has_text_in_both_languages(self):
+        import re
+        with open(os.path.join(os.path.dirname(HERE), "heiss_control", "security.py"), encoding="utf-8") as f:
+            src = f.read()
+        pairs = set(re.findall(r'_item\("(\w+)", "(\w+)", "(\w+)"', src))
+        self.assertGreater(len(pairs), 12)
+        from heiss_control.strings import S
+        for lang in S:
+            for item_id, status, code in pairs:
+                self.assertIn("sec.%s.%s" % (item_id, code), S[lang], (lang, item_id, code))
+                self.assertIn("sec.status." + status, S[lang])
+            for item_id in {p[0] for p in pairs if p[1] == "warn"}:
+                self.assertIn("sec.%s.advice" % item_id, S[lang], (lang, item_id))
 
 
 class Advanced(Fixture):

@@ -15,12 +15,14 @@ def main(argv=None):
         changed = Signal()
         themeDone = Signal()   # emitted from the worker thread; delivered on the GUI thread
         checkDone = Signal()
+        securityDone = Signal()
 
         def __init__(self, model):
             super().__init__()
             self.model, self._screen, self._results = model, model.screen(), []
             self.themeDone.connect(self._set)
             self.checkDone.connect(self._set)
+            self.securityDone.connect(self._set)
 
         def _set(self):
             self._screen = self.model.screen()
@@ -33,6 +35,21 @@ def main(argv=None):
         def open(self, page_id):
             self.model.open(page_id)
             self._set()
+            if page_id == "security" and self.model.sec_state == "idle":
+                self.runSecurity()
+
+        @Slot()
+        def runSecurity(self):
+            # a handful of short commands, but still never on the GUI thread
+            if self.model.begin_security():
+                threading.Thread(target=self._security, daemon=True).start()
+                self._set()
+
+        def _security(self):
+            try:
+                self.model.finish_security()
+            finally:
+                self.securityDone.emit()
 
         @Slot(str)
         def search(self, query):
