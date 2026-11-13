@@ -24,6 +24,7 @@ ApplicationWindow {
         readonly property color text: win.dark ? "#ECEAE5" : "#26282B"
         readonly property color dim: win.dark ? "#A9A7A1" : "#6B6963"
         readonly property color accent: win.dark ? "#C9B28A" : "#8C7448"
+        readonly property color onAccent: win.dark ? "#26282B" : "#F5F3EF"
         readonly property color error: win.dark ? "#E06C64" : "#B3382F"
     }
     font.family: "Inter"
@@ -148,6 +149,82 @@ ApplicationWindow {
                         }
                     }
                 }
+
+                // profiles and software (read-only)
+                Text { visible: s.page === "profiles"; text: s.profiles ? s.profiles.what : ""; color: pal.dim
+                       font.pixelSize: 16; wrapMode: Text.WordWrap; Layout.fillWidth: true }
+                Repeater {
+                    model: s.page === "profiles" ? s.profiles.rows : []
+                    delegate: RowLayout {
+                        required property var modelData
+                        Layout.fillWidth: true
+                        Text { text: parent.modelData.label; color: pal.dim; font.pixelSize: 16; Layout.preferredWidth: 200 }
+                        Text { text: parent.modelData.value; color: pal.text; font.pixelSize: 16; Layout.fillWidth: true
+                               wrapMode: Text.WordWrap }
+                    }
+                }
+                Repeater {
+                    model: s.page === "profiles" ? s.profiles.errors : []
+                    delegate: Text { required property string modelData; text: modelData; color: pal.error; font.pixelSize: 14
+                                     wrapMode: Text.WordWrap; Layout.fillWidth: true }
+                }
+                Text { visible: s.page === "profiles" && s.profiles.pending.length > 0; text: s.profiles ? s.profiles.pendingTitle : ""
+                       color: pal.accent; font.pixelSize: 18; font.bold: true }
+                Repeater {
+                    model: s.page === "profiles" ? s.profiles.pending : []
+                    delegate: Text { required property var modelData
+                                     text: modelData.text + ": " + modelData.status + (modelData.error ? " (" + modelData.error + ")" : "")
+                                     color: pal.text; font.pixelSize: 16; wrapMode: Text.WordWrap; Layout.fillWidth: true }
+                }
+                Repeater {
+                    model: s.page === "profiles" ? s.profiles.sections : []
+                    delegate: ColumnLayout {
+                        id: sec
+                        required property var modelData
+                        Layout.fillWidth: true
+                        spacing: 2
+                        Text { text: sec.modelData.title; color: pal.accent; font.pixelSize: 18; font.bold: true
+                               Accessible.role: Accessible.Heading }
+                        Text { visible: sec.modelData.items.length > 0; text: sec.modelData.items.join("\n"); color: pal.dim
+                               font.family: "JetBrains Mono"; font.pixelSize: 13; wrapMode: Text.WrapAnywhere; Layout.fillWidth: true }
+                    }
+                }
+                Text { visible: s.page === "profiles"; text: s.profiles ? s.profiles.note : ""; color: pal.dim; font.pixelSize: 14
+                       wrapMode: Text.WordWrap; Layout.fillWidth: true }
+
+                // appearance
+                Text { visible: s.page === "appearance"; text: s.appearance ? s.appearance.what : ""; color: pal.dim
+                       font.pixelSize: 16; wrapMode: Text.WordWrap; Layout.fillWidth: true }
+                Text { visible: s.page === "appearance"; color: pal.text; font.pixelSize: 16
+                       text: s.appearance ? s.appearance.currentLabel + ": " + s.appearance.current : "" }
+                RowLayout {
+                    visible: s.page === "appearance"
+                    spacing: 12
+                    Repeater {
+                        model: s.page === "appearance" ? s.appearance.choices : []
+                        delegate: Button {
+                            id: tb
+                            required property var modelData
+                            text: modelData.label
+                            enabled: s.appearance.state !== "running"
+                            checkable: true
+                            checked: modelData.selected
+                            focusPolicy: Qt.StrongFocus
+                            Accessible.name: text
+                            onClicked: control.setTheme(modelData.id)
+                            contentItem: Text { text: tb.text; color: tb.checked ? pal.onAccent : pal.text; font.pixelSize: 16
+                                                horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                            background: Rectangle { radius: 8; color: tb.checked ? pal.accent : pal.button
+                                                    border.width: tb.activeFocus ? 2 : 0; border.color: pal.text }
+                        }
+                    }
+                }
+                ProgressBar { visible: s.page === "appearance" && s.appearance.state === "running"; indeterminate: true
+                              Layout.fillWidth: true; Accessible.name: s.appearance ? s.appearance.running : "" }
+                Text { visible: s.page === "appearance" && s.appearance.state === "failed"; text: s.appearance ? s.appearance.message : ""
+                       color: pal.error; font.pixelSize: 14; wrapMode: Text.WordWrap; Layout.fillWidth: true }
+                Text { visible: s.page === "appearance"; text: s.appearance ? s.appearance.note : ""; color: pal.dim; font.pixelSize: 14
+                       wrapMode: Text.WordWrap; Layout.fillWidth: true }
 
                 // about
                 Text { visible: s.page === "about"; text: s.about ? s.about.what : ""; color: pal.dim; font.pixelSize: 16 }

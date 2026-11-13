@@ -252,3 +252,9 @@ Format: date, what, why. Newest at the bottom.
 ## 2026-11-13 (Control Center package)
 
 - **`heiss-control` is a separate package in the ISO list (this supersedes "not packaged yet" in the shell entry above: it ships now, before the first helper page), with a visible launcher entry and no dock pin.** Why: the window is useful for the installed system now (Overview, About), and the dock is a Tier B surface that needs a separate "ok". The icon is the stock `preferences-system` until a Heiss icon exists. `heiss-control` pkgrel starts at 1.
+
+## 2026-11-13 (Control Center: Profiles and Appearance pages)
+
+- **The Profiles page is read-only; the Appearance page offers only Dark and Light.** Why: changing the profile or add-ons needs the helper and the removal rules (Heiss-owned packages only), which is its own PR with a security review; Appearance uses the same user-level `plasma-apply-lookandfeel` call as the wizard. "Automatic", accent colour, wallpapers, fonts, density and animations are not offered because nothing applies them yet (the page says so).
+- **The current theme is read with `kreadconfig6` (`kdeglobals/General/ColorScheme`) and mapped through `heiss_core.themesync.THEME_OF`;** any other scheme shows as "unknown" and neither button is marked.
+- heiss-control pkgrel 1 -> 2.

@@ -7,7 +7,8 @@ Split into small PRs. Status of each page:
 | Overview (profile, privacy level, Heiss-installed package count, pending actions, kernel) | built, read-only |
 | About (system, build, kernel, Plasma, links, licence, "not affiliated with Arch Linux") | built, read-only |
 | Search (page titles and keywords, en/ru) | built |
-| Profiles and software, Appearance | next PR (read-only profile page first; changing the profile needs the helper) |
+| Profiles and software (chosen and applied profile, add-ons, what Heiss OS installed, pending actions) | built, read-only; changing the profile needs the helper (later PR) |
+| Appearance (Dark and Light switch) | built; the only page that changes anything, as the user |
 | Security Center, Updates and snapshots, Network and privacy, Advanced | later PRs |
 | Hardware and drivers (Phase 7), Power and display, Backups | later (sidebar entry exists, page says "Coming soon") |
 
@@ -19,7 +20,7 @@ Split into small PRs. Status of each page:
 
 ## Rules this shell follows
 
-- The GUI never runs as root and this version never writes anything: no helper call, no file written. A test checks that building the screen leaves the directories untouched.
+- The GUI never runs as root and never calls the helper. The only change it makes is the Dark/Light switch (`plasma-apply-lookandfeel`, as the user, on a worker thread, same LnF ids as the wizard); a test checks that building any screen leaves the directories untouched.
 - The sidebar already lists the final pages; a page that is not built says "Coming soon" instead of pretending.
 - Links open only if they start with `https://` and come from `os-release`.
 - Plain QtQuick.Controls like the wizard, not Kirigami (see DECISIONS.md, 2026-11-13).

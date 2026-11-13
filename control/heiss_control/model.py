@@ -9,18 +9,21 @@ import subprocess
 from dataclasses import dataclass, field
 
 from heiss_core import answers as ans
+from heiss_core import manifest as mf
 from heiss_core import state as st
 from heiss_core import wizard as wz
 from heiss_core.errors import HeissError
 
+from . import theme as th
 from .strings import t
 
 # (id, built). Pages that are not built show the "coming soon" text, so the sidebar is the final one from day one.
-PAGES = (("overview", True), ("profiles", False), ("appearance", False), ("security", False), ("updates", False),
+PAGES = (("overview", True), ("profiles", True), ("appearance", True), ("security", False), ("updates", False),
          ("hardware", False), ("network", False), ("power", False), ("backups", False), ("advanced", False),
          ("about", True))
 PAGE_IDS = tuple(p for p, _ in PAGES)
 LANGUAGES = ("en", "ru")
+MAX_LIST = 200   # longest list of package names drawn on the page
 
 
 def _plasma_version():
@@ -35,6 +38,9 @@ class Env:
     user_dir: str = field(default_factory=lambda: os.path.join(
         os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config"), "heiss"))
     state_file: str = "/var/lib/heiss/state.json"
+    profiles_dir: str = field(default_factory=lambda: os.environ.get("HEISS_PROFILES", "/usr/share/heiss/profiles"))
+    kde_value: callable = field(default_factory=lambda: th.kreadconfig)
+    apply_theme: callable = field(default_factory=lambda: th.apply_theme)
     # default_factory: a plain lambda as a class default would be bound as a method
     kernel: callable = field(default_factory=lambda: lambda: os.uname().release)
     plasma: callable = field(default_factory=lambda: _plasma_version)
@@ -52,6 +58,7 @@ def parse_os_release(text):
 class Model:
     def __init__(self, env=None, language="en"):
         self.env, self.language, self.page = env or Env(), language if language in LANGUAGES else "en", "overview"
+        self.theme_state, self.theme_message = "idle", ""   # idle | running | ok | failed
 
     def tr(self, key):
         return t(self.language, key)
@@ -98,7 +105,7 @@ class Model:
     def overview(self):
         def profile():
             a = self._answers()
-            return (a["profile"], "") if a else (self.tr("not_set"), "")
+            return (self._pname(a["profile"]), "") if a else (self.tr("not_set"), "")
 
         def privacy():
             a = self._answers()
@@ -119,6 +126,73 @@ class Model:
                 "cards": [self._card("profile", profile), self._card("privacy", privacy),
                           self._card("managed", managed), self._card("pending", pending),
                           self._card("kernel", lambda: (self.env.kernel(), ""))]}
+
+    # --- profiles and software (read-only) ---
+    def _manifests(self):
+        try:
+            return mf.load_dir(self.env.profiles_dir)
+        except (OSError, ValueError, HeissError):
+            return {}
+
+    def _pname(self, item_id, manifests=None):
+        m = (self._manifests() if manifests is None else manifests).get(item_id)
+        return (m.name.get(self.language) or m.name.get("en") or item_id) if m else item_id
+
+    def profiles(self):
+        manifests, errors = self._manifests(), []
+        if not manifests:
+            errors.append(self.tr("error.read") % self.env.profiles_dir)
+        rows, sections, pending = [], [], []
+        try:
+            a = self._answers()
+            chosen = [self._pname(a["profile"], manifests)] if a else [self.tr("not_set")]
+            addons = ", ".join(self._pname(x, manifests) for x in a["addons"]) if a and a["addons"] else self.tr("none")
+            rows += [("profiles.chosen", chosen[0]), ("profiles.addons", addons)]
+        except Exception as e:  # noqa: BLE001
+            errors.append(self.tr("error.read") % e)
+        try:
+            doc = st.load(self.env.state_file)
+            applied = doc["applied"]["profile"]
+            rows.append(("profiles.applied", self._pname(applied, manifests) if applied else self.tr("not_set")))
+            for key in ("packages", "services", "flatpaks"):
+                items = sorted(doc[key])
+                shown = items[:MAX_LIST] + (["... +%d" % (len(items) - MAX_LIST)] if len(items) > MAX_LIST else [])
+                sections.append({"title": "%s (%d)" % (self.tr("profiles." + key), len(items)), "items": shown})
+        except Exception as e:  # noqa: BLE001
+            errors.append(self.tr("error.read") % e)
+        try:
+            for i in wz.PendingQueue(os.path.join(self.env.user_dir, "pending.json")).list():
+                text = self.tr("profiles.pending_apply") % self._pname(i["payload"]["profile"], manifests)
+                pending.append({"text": text, "status": self.tr("pstatus." + i["status"]), "error": i["error"]})
+        except Exception as e:  # noqa: BLE001
+            errors.append(self.tr("error.read") % e)
+        return {"what": self.tr("profiles.what"), "rows": [{"label": self.tr(k), "value": v} for k, v in rows],
+                "sections": sections, "pendingTitle": self.tr("card.pending"), "pending": pending,
+                "errors": errors, "note": self.tr("profiles.note")}
+
+    # --- appearance: Dark and Light only ---
+    def appearance(self):
+        cur = th.read_current(self.env.kde_value)
+        return {"what": self.tr("appearance.what"), "currentLabel": self.tr("appearance.current"),
+                "current": self.tr("theme." + cur) if cur else self.tr("unknown"),
+                "choices": [{"id": c, "label": self.tr("theme." + c), "selected": c == cur} for c in ("dark", "light")],
+                "state": self.theme_state, "message": self.theme_message, "running": self.tr("appearance.running"),
+                "note": self.tr("appearance.note")}
+
+    def begin_theme(self, theme):
+        """Accept a theme change (True) or ignore it: unknown value, or one is already running."""
+        if theme not in ("dark", "light") or self.theme_state == "running":
+            return False
+        self.theme_state, self.theme_message = "running", ""
+        return True
+
+    def finish_theme(self, theme):
+        """Runs the switch; called from a worker thread, the glue refreshes the screen afterwards."""
+        try:
+            ok, msg = self.env.apply_theme(theme)
+        except Exception as e:  # noqa: BLE001
+            ok, msg = False, str(e)
+        self.theme_state, self.theme_message = ("ok", "") if ok else ("failed", msg)
 
     @staticmethod
     def _safe(fn):
@@ -152,6 +226,10 @@ class Model:
                "soonTitle": self.tr("soon"), "soonWhat": self.tr("soon.what"), "language": self.language}
         if self.page == "overview":
             out["overview"] = self.overview()
+        elif self.page == "profiles":
+            out["profiles"] = self.profiles()
+        elif self.page == "appearance":
+            out["appearance"] = self.appearance()
         elif self.page == "about":
             out["about"] = self.about()
         return out

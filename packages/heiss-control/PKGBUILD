@@ -2,8 +2,8 @@
 # Built from the repository HEAD by scripts/heiss-packages-build.sh (it creates heiss-src.tar.gz).
 pkgname=heiss-control
 pkgver=0.1.0
-pkgrel=1
-pkgdesc='Heiss OS Control Center: overview and system information (read-only in this version)'
+pkgrel=2
+pkgdesc='Heiss OS Control Center: overview, profiles, appearance and system information'
 arch=('any')
 url='https://github.com/heiss-os/heiss-iso'
 license=('GPL-3.0-or-later')
