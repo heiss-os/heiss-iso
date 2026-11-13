@@ -253,6 +253,13 @@ Format: date, what, why. Newest at the bottom.
 
 - **`heiss-control` is a separate package in the ISO list (this supersedes "not packaged yet" in the shell entry above: it ships now, before the first helper page), with a visible launcher entry and no dock pin.** Why: the window is useful for the installed system now (Overview, About), and the dock is a Tier B surface that needs a separate "ok". The icon is the stock `preferences-system` until a Heiss icon exists. `heiss-control` pkgrel starts at 1.
 
+## 2026-11-13 (Control Center: Profiles and Appearance pages)
+
+- **The Profiles page is read-only; the Appearance page offers only Dark and Light.** Why: changing the profile or add-ons needs the helper and the removal rules (Heiss-owned packages only), which is its own PR with a security review; Appearance uses the same user-level `plasma-apply-lookandfeel` call as the wizard. "Automatic", accent colour, wallpapers, fonts, density and animations are not offered because nothing applies them yet (the page says so).
+- **The current theme is read with `kreadconfig6` (`kdeglobals/General/ColorScheme`) and mapped through `heiss_core.themesync.THEME_OF`;** any other scheme shows as "unknown" and neither button is marked.
+- **`kconfig` and `plasma-workspace` are optional dependencies, not hard ones:** every Plasma system has them, and the page shows "unknown" or an error text without them. A CI step checks that `kconfig` ships `kreadconfig6` (the same kind of check as for `plasma-apply-lookandfeel`). heiss-control pkgrel 1 -> 2.
+- **Every `Text` in the Control Center QML is `Text.PlainText`, and error messages are flattened and cut to 300 characters** (a test enforces both). Why: `Text` defaults to AutoText, so a package name or error string from a file that looks like HTML would be rendered as rich text (a remote `<img>` would make the window contact the network on its own). Found by the security review of this PR. The wizard's QML has the same default; it is fixed in a separate PR (branch `fix/wizard-plain-text`), not here (see PLAN-STATE).
+
 ## 2026-11-13 (wizard QML shows strings as plain text)
 
 - **Every `Text` in the wizard QML is `Text.PlainText`** (a test enforces it). Why: `Text` defaults to AutoText, so a string that looks like HTML would be drawn as rich text; the apply log, error lines and package names come from commands and files, and a remote `<img>` would make the window contact the network on its own. Found by the security review of the Control Center PR, which has the same rule. heiss-welcome pkgrel 4 -> 5.

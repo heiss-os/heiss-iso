@@ -1,6 +1,7 @@
 """PySide6 glue: exposes the model to QML as one object. All logic lives in model.py."""
 import os
 import sys
+import threading
 
 from .model import Model
 
@@ -12,10 +13,12 @@ def main(argv=None):
 
     class Bridge(QObject):
         changed = Signal()
+        themeDone = Signal()   # emitted from the worker thread; delivered on the GUI thread
 
         def __init__(self, model):
             super().__init__()
             self.model, self._screen, self._results = model, model.screen(), []
+            self.themeDone.connect(self._set)
 
         def _set(self):
             self._screen = self.model.screen()
@@ -33,6 +36,17 @@ def main(argv=None):
         def search(self, query):
             self._results = self.model.search(query)
             self.changed.emit()
+
+        @Slot(str)
+        def setTheme(self, theme):
+            # plasma-apply-lookandfeel can take seconds: never on the GUI thread
+            if self.model.begin_theme(theme):
+                threading.Thread(target=self._switch, args=(theme,), daemon=True).start()
+                self._set()
+
+        def _switch(self, theme):
+            self.model.finish_theme(theme)
+            self.themeDone.emit()
 
         @Slot(str)
         def setLanguage(self, language):
