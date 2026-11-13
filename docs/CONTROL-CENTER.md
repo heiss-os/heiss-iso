@@ -24,6 +24,10 @@ Split into small PRs. Status of each page:
 - Links open only if they start with `https://` and come from `os-release`.
 - Plain QtQuick.Controls like the wizard, not Kirigami (see DECISIONS.md, 2026-11-13).
 
+## Known limit
+
+`plasmashell --version` runs on the GUI thread with a 3 s timeout when About is built. A hanging `plasmashell` would freeze the window for up to 3 s; moving it to a worker comes with the first page that needs a background job.
+
 ## Not built or packaged yet
 
 No `heiss-control` package, no `.desktop` file and no ISO entry in this PR. They come with the next PR, together with the first page that needs the helper. Run by hand: `PYTHONPATH=core:control python -m heiss_control` (needs `pyside6`).

@@ -25,7 +25,7 @@ Rule: the GUI never runs as root; the helper accepts only structured commands (a
 | `heiss-core` | Python 3, stdlib + PyYAML/tomllib, no Qt | Answers model, manifests, resolver, state, hardware detection, CLI |
 | `heiss-helper` | Python 3, `dbus` binding from official repos | Privileged executor on the system bus |
 | `heiss-welcome` | PySide6 + QML (Kirigami) | First-run wizard, installed system only |
-| `heiss-control` | PySide6 + QML (Kirigami) | Control Center |
+| `heiss-control` | PySide6 + QML (plain QtQuick.Controls, see DECISIONS.md 2026-11-13) | Control Center |
 | `heiss-profile-*` | metapackages | `essentials`, `base`, `cyber`, `developer` |
 | `heiss-theme` | generated files | Output of `scripts/gen-theme.py` |
 | `heiss-drivers` | data + core module | Hardware profiles |

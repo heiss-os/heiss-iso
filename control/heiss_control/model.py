@@ -24,7 +24,7 @@ LANGUAGES = ("en", "ru")
 
 
 def _plasma_version():
-    r = subprocess.run(["plasmashell", "--version"], capture_output=True, text=True, timeout=10)
+    r = subprocess.run(["plasmashell", "--version"], capture_output=True, text=True, timeout=3)
     return r.stdout.strip().removeprefix("plasmashell").strip() if r.returncode == 0 else ""
 
 
@@ -91,7 +91,7 @@ class Model:
         try:
             value, detail = fn()
             return {"id": cid, "title": self.tr("card." + cid), "value": value, "detail": detail, "error": ""}
-        except (OSError, ValueError, HeissError) as e:
+        except Exception as e:  # a source must never stop the window, whatever it raises
             return {"id": cid, "title": self.tr("card." + cid), "value": self.tr("unknown"), "detail": "",
                     "error": self.tr("error.read") % e}
 
@@ -120,20 +120,24 @@ class Model:
                           self._card("managed", managed), self._card("pending", pending),
                           self._card("kernel", lambda: (self.env.kernel(), ""))]}
 
+    @staticmethod
+    def _safe(fn):
+        try:
+            return fn()
+        except Exception:  # noqa: BLE001 - same rule as the cards
+            return ""
+
     # --- about ---
     def about(self):
         try:
-            with open(self.env.os_release, encoding="utf-8") as f:
+            with open(self.env.os_release, encoding="utf-8", errors="replace") as f:
                 rel = parse_os_release(f.read())
-        except OSError:
+        except (OSError, ValueError):
             rel = {}
-        try:
-            plasma = self.env.plasma()
-        except (OSError, subprocess.SubprocessError):
-            plasma = ""
+        plasma, kernel = self._safe(self.env.plasma), self._safe(self.env.kernel)
         un = self.tr("unknown")
         rows = [("about.system", rel.get("PRETTY_NAME") or un), ("about.build", rel.get("BUILD_ID") or un),
-                ("about.kernel", self.env.kernel() or un), ("about.plasma", plasma or un)]
+                ("about.kernel", kernel or un), ("about.plasma", plasma or un)]
         links = [(k, rel[v]) for k, v in (("about.home", "HOME_URL"), ("about.docs", "DOCUMENTATION_URL"),
                                           ("about.bugs", "BUG_REPORT_URL"), ("about.support", "SUPPORT_URL")) if rel.get(v)]
         return {"what": self.tr("about.what"),

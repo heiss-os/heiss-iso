@@ -165,6 +165,23 @@ class About(Fixture):
         self.assertEqual((rows["System"], rows["Plasma"]), ("unknown", "unknown"))
         self.assertEqual(a["links"], [])
 
+    def test_non_utf8_os_release_does_not_raise(self):
+        with open(self.p("os-release"), "wb") as f:
+            f.write(b"\xff\xfe\x00PRETTY_NAME=\xc3\nBUILD_ID=rolling\n")
+        rows = {r["label"]: r["value"] for r in m.Model(self.env).about()["rows"]}
+        self.assertEqual(rows["Build"], "rolling")
+
+    def test_any_exception_from_plasma_or_kernel_is_contained(self):
+        def boom():
+            raise RuntimeError("x")
+        mod = m.Model(m.Env(os_release=self.p("none"), user_dir=self.p("u"), state_file=self.p("s"),
+                            system_answers=self.p("a"), kernel=boom, plasma=boom))
+        rows = {r["label"]: r["value"] for r in mod.about()["rows"]}
+        self.assertEqual((rows["Kernel"], rows["Plasma"]), ("unknown", "unknown"))
+        card = {c["id"]: c for c in mod.overview()["cards"]}["kernel"]
+        self.assertEqual(card["value"], "unknown")
+        self.assertTrue(card["error"])
+
     def test_parse_os_release_ignores_comments_and_quotes(self):
         self.assertEqual(m.parse_os_release('# c\nA="b c"\nD=e\n\nbad line\n'), {"A": "b c", "D": "e"})
 
