@@ -338,6 +338,22 @@ class ThemeModule(unittest.TestCase):
         self.assertFalse(ok)
         self.assertIn("cannot switch the theme", msg)
 
+    def test_tool_output_is_decoded_leniently_and_bounded(self):
+        self.assertEqual(th.apply_theme("dark", self.Run(rc=1, err="x" * 100000))[1], "x" * th.MAX_OUTPUT)
+        self.assertEqual(len(th.kreadconfig("a", "b", "c", self.Run(out="y" * 100000))), th.MAX_OUTPUT)
+        ok, msg = th.apply_theme("dark", self.Run(raises=UnicodeDecodeError("utf-8", b"\xff", 0, 1, "bad")))
+        self.assertFalse(ok)
+
+    def test_subprocess_is_asked_to_replace_bad_bytes(self):
+        seen = {}
+
+        def run(argv, **kw):
+            import subprocess
+            seen.update(kw)
+            return subprocess.CompletedProcess(argv, 0, "", "")
+        th.apply_theme("dark", run)
+        self.assertEqual(seen["errors"], "replace")
+
     def test_kreadconfig_reads_with_a_fixed_argument_list(self):
         run = self.Run(out="HeissLight\n")
         self.assertEqual(th.kreadconfig("kdeglobals", "General", "ColorScheme", run), "HeissLight")

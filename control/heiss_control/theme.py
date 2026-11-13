@@ -16,9 +16,13 @@ def read_current(kde_value):
         return ""
 
 
+MAX_OUTPUT = 4096   # characters kept of a tool's output; the rest is never used
+
+
 def kreadconfig(file, group, key, run=subprocess.run):
-    r = run(["kreadconfig6", "--file", file, "--group", group, "--key", key], capture_output=True, text=True, timeout=5)
-    return r.stdout.strip() if r.returncode == 0 else ""
+    r = run(["kreadconfig6", "--file", file, "--group", group, "--key", key], capture_output=True, text=True,
+            errors="replace", timeout=5)
+    return r.stdout[:MAX_OUTPUT].strip() if r.returncode == 0 else ""
 
 
 def apply_theme(theme, run=subprocess.run):
@@ -26,9 +30,11 @@ def apply_theme(theme, run=subprocess.run):
     if theme not in LNF_PACKAGE:
         return False, "unknown theme"
     try:
-        r = run(["plasma-apply-lookandfeel", "--apply", LNF_PACKAGE[theme]], capture_output=True, text=True, timeout=60)
-    except (OSError, subprocess.TimeoutExpired) as e:
+        r = run(["plasma-apply-lookandfeel", "--apply", LNF_PACKAGE[theme]], capture_output=True, text=True,
+                errors="replace", timeout=60)
+    except (OSError, ValueError, subprocess.TimeoutExpired) as e:
         return False, "cannot switch the theme: %s" % e
     if r.returncode != 0:
-        return False, ((r.stderr or r.stdout or "").strip().splitlines() or ["theme switch failed"])[-1]
+        text = (r.stderr or r.stdout or "")[-MAX_OUTPUT:]
+        return False, (text.strip().splitlines() or ["theme switch failed"])[-1]
     return True, ""
