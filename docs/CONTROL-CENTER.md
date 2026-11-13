@@ -29,7 +29,7 @@ Split into small PRs. Status of each page:
 
 ## Advanced page: what the check trusts
 
-The system items of `heiss check` run with a fixed `PATH=/usr/bin:/bin`; its theme item (`kreadconfig6`, `gsettings`, `busctl --user`) uses the user's own environment, as `heiss theme status` does. No value from a file reaches a command line. `systemsettings` is started through the user's `PATH`.
+The system items of `heiss check` run with a fixed `PATH=/usr/bin:/bin`; its theme item (`kreadconfig6`, `gsettings`, `busctl --user`) uses the user's own environment, as `heiss theme status` does. Every command line of the check is a literal list (read in `core/heiss_core/check.py`); values from files are only compared and shown. `systemsettings` is started through the user's `PATH`.
 
 ## Known limit
 
