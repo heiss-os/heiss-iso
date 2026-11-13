@@ -199,6 +199,7 @@ Owner's rule (2026-11-11): no ISO build and no VM check until the whole master p
 - [ ] Autostart: the wizard does NOT start in the live session (`/run/archiso` present) and starts once after the first login on the installed system.
 - [ ] `heiss-cleanup.sh` imports the Heiss key and appends `[heiss]` on a real installation; `pacman -Sy` then works; Calamares' unpackfs copies `/usr/share/pacman/keyrings/heiss.gpg` into the target.
 - [ ] ISO build order: `scripts/heiss-packages-build.sh` before `heiss-build.sh` (the keyring and welcome packages come only from `~/localrepo`).
+- [ ] Wizard text as plain text: open every wizard screen in en and ru / expect everything to look as before (fonts, wrapping, colours); the apply log and error line show a literal `<` or `&` as typed, never as formatting.
 - [ ] Existing installer items still unchecked: slideshow animation, glow via QtQuick.Effects, the users page logo animation, mouse selection on the desktop under VirtualBox.
 
 ### Phase 6: Control Center
