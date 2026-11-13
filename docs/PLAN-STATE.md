@@ -252,7 +252,6 @@ PR "feat/control-center-profiles-appearance": read-only Profiles and software pa
 
 PR "fix/wizard-plain-text": all 14 `Text` items of `welcome/heiss_welcome/qml/Main.qml` are `Text.PlainText`, test added, heiss-welcome pkgrel 5. Not verified: the wizard window with the change (no `pyside6` here; the QML only passed `qmllint`). The existing wizard screenshot item in the FINAL VM TEST LIST covers it: text must look as before.
 
-
 ## Phase 6, step 4 (2026-11-13): Advanced page
 
 PR "feat/control-center-advanced": `control/heiss_control/tools.py`, Advanced page (stock System Settings, `heiss check` on a worker thread), tests, heiss-control pkgrel 3. Verified by a real run on the build host (not a Heiss system): `tools.run_check()` returned its eight items with the expected OK/WARN/FAIL for a non-installed system. Not verified: the window and the worker-thread signal (no `pyside6` here), `systemsettings` starting, the check on an installed system. Not done: journal, services, Heiss logs, bug-report bundle (need decisions on what may leave the machine). Next: Security Center, Updates and snapshots, Network and privacy, or profile change through the helper, after the owner's reply.
