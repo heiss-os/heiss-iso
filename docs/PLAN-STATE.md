@@ -203,7 +203,9 @@ Owner's rule (2026-11-11): no ISO build and no VM check until the whole master p
 
 ### Phase 6: Control Center
 - [ ] Control Center shell (`PYTHONPATH=core:control python -m heiss_control`, needs `pyside6`): the window opens; sidebar lists 11 pages; Overview shows profile, privacy level, package count, pending actions and kernel; About shows system, build, kernel, Plasma and links (a click opens the browser); unbuilt pages say "Coming soon". Screenshots in Dark, Light and ru; keyboard control (Tab, Enter, Esc clears the search); the QML has only been linted (`qmllint`), never run.
-- [ ] Control Center package: after `scripts/heiss-packages-build.sh` and an ISO build, the Kickoff menu lists "Heiss Control Center" (Settings), it starts from there and with `heiss-control`, the stock `preferences-system` icon looks right in Dark and Light, and the window is not started by anything in the live session; the dock is unchanged.
+- [ ] Control Center package, install: run `scripts/heiss-packages-build.sh`, build the ISO, boot it, open Kickoff and search "Heiss" / expect "Heiss Control Center" under Settings with the stock `preferences-system` icon (check in Dark and Light), and no `heiss-control` window on the live desktop.
+- [ ] Control Center package, start: click the Kickoff entry, then run `heiss-control` in Konsole / expect the same window both times, with its taskbar entry grouped under the launcher entry (`StartupWMClass=heiss-control`).
+- [ ] Control Center package, dock: look at the dock / expect the pins unchanged (Dolphin, Konsole, System Settings, Firefox).
 - [ ] Control Center search: typing "wireguard" lists Network and privacy; "брандмауэр" in ru lists the Security Center; an empty result shows the "nothing found" text.
 - [ ] Overview, pending actions: put one entry in the pending queue ("Save answers, apply later" in the wizard), open the Control Center / expect the pending-actions card to show 1 and "1 waiting".
 - [ ] Overview on an installed system after Apply: profile and privacy level match what the wizard applied; `plasmashell --version` is parsed on the real Plasma.
@@ -234,4 +236,4 @@ PR "feat/control-center-shell": `control/` (model without Qt, PySide6 glue, one 
 
 ## Phase 6, step 2 (2026-11-13): Control Center package
 
-PR "feat/control-center-package": `packages/heiss-control`, `control/data/heiss-control.desktop`, entry in `profile/packages.x86_64`, build script archives `control/`, tests. Not verified: a real ISO build and the launcher entry in Kickoff (final VM test list, Phase 6). Next: Profiles and software (read-only) and Appearance pages.
+PR "feat/control-center-package": `packages/heiss-control`, `control/data/heiss-control.desktop`, entry in `profile/packages.x86_64`, build script archives `control/`, tests. Not verified: a real ISO build and the launcher entry in Kickoff (final VM test list, Phase 6). `pyside6` is already in the ISO via the wizard, so there is no new runtime dependency. The new cases in `core/tests/test_packages.py` ran (221 core tests OK) and `makepkg` was run locally with the package contents listed. Next: Profiles and software (read-only) and Appearance pages.
