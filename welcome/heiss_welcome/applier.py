@@ -2,7 +2,7 @@
 
 The command does the real work through the privileged helper (D-Bus + polkit); the wizard only starts it
 and shows its output. A child process keeps GLib and D-Bus out of the Qt process and the window responsive.
-The child runs isolated (python -I, cwd "/", without interpreter, loader, GIO and HEISS_* variables).
+The child runs isolated (python -I, cwd "/", without interpreter, loader, GLib/GI, GIO, HEISS_* and system-bus-address variables).
 Qt-free, so it is tested with a fake command. There is no cancel: the helper job keeps running on the system
 bus even if the client dies (a Phase 3 follow-up).
 """
