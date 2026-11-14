@@ -17,6 +17,7 @@ def main(argv=None):
         checkDone = Signal()
         securityDone = Signal()
         networkDone = Signal()
+        updatesDone = Signal()
         pendingProgress = Signal()   # every step and the end of a saved-actions run, from the worker thread
 
         def __init__(self, model):
@@ -26,6 +27,7 @@ def main(argv=None):
             self.checkDone.connect(self._set)
             self.securityDone.connect(self._set)
             self.networkDone.connect(self._set)
+            self.updatesDone.connect(self._set)
             self.pendingProgress.connect(self._set)
 
         def _set(self):
@@ -43,6 +45,20 @@ def main(argv=None):
                 self.runSecurity()
             if page_id == "network" and self.model.net_state == "idle":
                 self.runNetwork()
+            if page_id == "updates" and self.model.up_state == "idle":
+                self.runUpdates()
+
+        @Slot()
+        def runUpdates(self):
+            if self.model.begin_updates():
+                threading.Thread(target=self._updates, daemon=True).start()
+                self._set()
+
+        def _updates(self):
+            try:
+                self.model.finish_updates()
+            finally:
+                self.updatesDone.emit()
 
         @Slot()
         def runNetwork(self):

@@ -12,7 +12,7 @@ Split into small PRs. Status of each page:
 | Advanced (opens the stock KDE System Settings; runs `heiss check` and lists the result) | built; the check changes no settings (it takes a short-lived lock file in the runtime directory, shared with `heiss theme sync`, so the theme item shows WARN while a sync runs) |
 | Security Center (firewall, disk encryption, Secure Boot display, SSH, open network ports) | built, read-only: plain-language facts and advice, no fix buttons, no score |
 | Network and privacy (chosen level vs. what is in place: Wi-Fi MAC setting, screen lock, firewall; the not-yet-built items listed as coming soon) | built, read-only |
-| Updates and snapshots | later PR |
+| Updates and snapshots (updates waiting, last system update, restart needed, snapshots set up) | built, read-only |
 | Hardware and drivers (Phase 7), Power and display, Backups | later (sidebar entry exists, page says "Coming soon") |
 
 ## Structure
@@ -40,6 +40,10 @@ The wizard's "Save answers, apply later" and an apply attempted offline put an `
 ## Network and privacy: what it reads
 
 `control/heiss_control/privacy_view.py` (first time the page is opened, and on "Check again", on a worker thread): the chosen level from the answers (`/etc/heiss/profile.toml`, else `~/.config/heiss/answers.toml`), the NetworkManager drop-in the level writes (`/etc/NetworkManager/conf.d/80-heiss-privacy.conf`, read as a file; no file means NetworkManager's own default, `preserve`), the screen-lock keys `Autolock`, `Timeout`, `LockGrace` of `kscreenlockerrc` via `kreadconfig6` with KDE's own defaults as `--default` (so an unset key counts as the default, which equals the Standard level; a key that cannot be read, or a non-numeric `Timeout` or `LockGrace`, is shown as unknown and is not compared, and `Autolock` false is "Look at this" when a level is chosen), and the firewall as in the Security Center. Each in-place value is compared with the table in `heiss_core.privacy`: equal is OK, different is "Look at this" with advice to apply the level again; with no level chosen nothing is compared. It shows the file and the settings, not the running NetworkManager's active value (that changes only when NetworkManager restarts), and it cannot change anything: re-applying a level is `heiss profile apply --privacy=LEVEL` or the wizard (a button comes with the profile-change PR). DNS over TLS, VPN and WireGuard, Bluetooth off and `linux-hardened` are listed as coming soon, as in the wizard.
+
+## Updates and snapshots: what it reads
+
+`control/heiss_control/updates_view.py` (first time the page is opened, and on "Check again", on a worker thread): `pacman -Qu` (reads the local package database; no network, no root, so the count is as of the last refresh; exit 1 with the pacman lock held counts as unknown, other pacman errors cannot be told from "no updates"), the last `starting full system upgrade` line in the last 256 KiB of `/var/log/pacman.log` (older than 30 days is a warning; "unknown" if the log is longer than that and the line is not in the tail, or if the date is in the future), whether `/usr/lib/modules/<running kernel>` still exists (if not, the kernel was replaced and a restart is needed), and `findmnt -n -o FSTYPE /` plus `/etc/snapper/configs/root` for snapshots. Commands are literal lists with `PATH=/usr/bin:/bin`. Nothing is changed: no update button, no rollback, no snapshot listing (`snapper list` needs root) and no Arch news (needs network).
 
 ## Advanced page: what the check trusts
 

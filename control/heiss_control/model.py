@@ -20,10 +20,11 @@ from . import runner
 from . import security
 from . import theme as th
 from . import tools
+from . import updates_view
 from .strings import t
 
 # (id, built). Pages that are not built show the "coming soon" text, so the sidebar is the final one from day one.
-PAGES = (("overview", True), ("profiles", True), ("appearance", True), ("security", True), ("updates", False),
+PAGES = (("overview", True), ("profiles", True), ("appearance", True), ("security", True), ("updates", True),
          ("hardware", False), ("network", True), ("power", False), ("backups", False), ("advanced", True),
          ("about", True))
 PAGE_IDS = tuple(p for p, _ in PAGES)
@@ -49,6 +50,7 @@ class Env:
     apply_theme: callable = field(default_factory=lambda: th.apply_theme)
     security_facts: callable = field(default_factory=lambda: security.collect)
     privacy_facts: callable = field(default_factory=lambda: privacy_view.collect)
+    update_facts: callable = field(default_factory=lambda: updates_view.collect)
     online: callable = field(default_factory=lambda: lambda: PacmanSystem().network_connected())
     run_pending_item: callable = field(default_factory=lambda: runner.run_item)
     run_check: callable = field(default_factory=lambda: tools.run_check)
@@ -75,6 +77,7 @@ class Model:
         self.settings_message = ""
         self.sec_state, self.sec_facts, self.sec_message = "idle", [], ""   # idle | running | done | failed
         self.net_state, self.net_facts, self.net_message = "idle", [], ""   # idle | running | done | failed
+        self.up_state, self.up_facts, self.up_message = "idle", [], ""   # idle | running | done | failed
         self.pend_state, self.pend_step, self.pend_message = "idle", "", ""   # idle | running | ok | failed | offline
 
     def tr(self, key):
@@ -355,6 +358,25 @@ class Model:
                     soon=[self.tr("nw.soon." + k) for k in ("dns", "vpn", "bluetooth", "hardened")])
         return page
 
+    # --- updates and snapshots: read-only facts ---
+    def begin_updates(self):
+        if self.up_state == "running":
+            return False
+        self.up_state, self.up_message = "running", ""
+        return True
+
+    def finish_updates(self):
+        """Collects the facts; called from a worker thread, the glue refreshes the screen afterwards."""
+        try:
+            self.up_facts, self.up_state = self._clean_facts(self.env.update_facts()), "done"
+        except Exception as e:  # noqa: BLE001
+            self.up_facts, self.up_state, self.up_message = [], "failed", self._err(e)
+
+    def updates_page(self):
+        page = self._facts_page("up", self.up_facts, self.up_state, self.up_message)
+        page.update(what=self.tr("up.what"), note=self.tr("up.note"))
+        return page
+
     # --- advanced: stock KDE settings and the system check ---
     def advanced(self):
         return {"what": self.tr("advanced.what"), "stockTitle": self.tr("advanced.stock"),
@@ -423,6 +445,8 @@ class Model:
             out["appearance"] = self.appearance()
         elif self.page == "security":
             out["security"] = self.security_page()
+        elif self.page == "updates":
+            out["updates"] = self.updates_page()
         elif self.page == "network":
             out["network"] = self.network_page()
         elif self.page == "advanced":
