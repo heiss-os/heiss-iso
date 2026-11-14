@@ -8,7 +8,7 @@ could not be checked on the build host (no UEFI, no real GPU, the pacman file da
 A bad GPU driver can leave the user with a black screen and no way back. Today:
 
 - The NVIDIA profile (`hardware/gpu-nvidia-open.toml`) tells the user: "If the screen stays black, choose the safe
-  graphics boot entry". **That entry does not exist.** The warning promises something we do not ship.
+  graphics boot entry". That entry did not exist when this was written; it is built by the package `heiss-safe-graphics` (see Status). The warning promises something we do not ship.
 - The helper takes a best-effort snapshot before install/remove/update, but only when `snapper` and
   `/etc/snapper/configs/root` exist (`helper/heiss_helper/actions.py`). The installer creates ext4 today
   (`docs/PLAN-STATE.md`, Phase 6 note: Btrfs and snapshots are a separate Tier A item), so on a fresh install
