@@ -373,7 +373,7 @@ class Model:
         """Detects the hardware; called from a worker thread, the glue refreshes the screen afterwards."""
         try:
             raw = self.env.hardware_data()
-            drivers = [{"id": str(d["id"])[:41], "name": dict(d["name"]), "description": dict(d["description"]),
+            drivers = [{"id": "".join(c for c in str(d["id"]) if c.isalnum() or c == "-")[:41], "name": dict(d["name"]), "description": dict(d["description"]),
                         "warning": dict(d["warning"]), "safe": bool(d["safe"]),
                         "state": d["state"] if d["state"] in hardware_view.DRIVER_STATES else "unknown",
                         "missing": [str(x)[:60] for x in d["missing"]][:20]} for d in raw["drivers"]]

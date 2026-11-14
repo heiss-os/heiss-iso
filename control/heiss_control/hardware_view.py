@@ -23,8 +23,13 @@ CODES = {
     "hybrid": ("yes",),
     "bluetooth": ("yes", "no"),
 }
+_VIRT = re.compile(r"^[a-z0-9-]{1,30}$")
 _KERNEL = re.compile(r"^[0-9A-Za-z.+_-]{1,40}$")
 DRIVER_STATES = ("installed", "missing", "nothing", "unknown")   # per proposal
+
+
+def virt_name(virt):
+    return virt if _VIRT.match(virt or "") else "other"
 
 
 def _item(item_id, status, code, data=""):
@@ -36,7 +41,7 @@ def vendor_name(vendor_id):
 
 
 def facts_of(report, has_bluetooth):
-    out = [_item("form", "info", report.form_factor, report.virt if report.form_factor == "vm" else ""),
+    out = [_item("form", "info", report.form_factor, virt_name(report.virt) if report.form_factor == "vm" else ""),
            _item("cpu", "info", CPUS.get(report.cpu_vendor, "other"))]
     if report.gpus:
         out.append(_item("gpu", "info", "some", ", ".join("%s (%s:%s)" % (vendor_name(g["vendor"]), g["vendor"], g["device"])
@@ -68,7 +73,7 @@ def report_text(report, drivers, has_bluetooth, kernel):
     kernel = kernel if _KERNEL.match(kernel or "") else "other"
     lines = ["Heiss OS hardware report (no personal data: no hostname, serial numbers, addresses or user names)",
              "kernel: %s" % kernel, "form factor: %s" % report.form_factor, "cpu vendor: %s" % (CPUS.get(report.cpu_vendor, "other")),
-             "virtualization: %s" % report.virt, "bluetooth: %s" % ("yes" if has_bluetooth else "no")]
+             "virtualization: %s" % virt_name(report.virt), "bluetooth: %s" % ("yes" if has_bluetooth else "no")]
     for g in report.gpus:
         lines.append("gpu: %s:%s" % (g["vendor"], g["device"]))
     if report.hybrid_graphics:

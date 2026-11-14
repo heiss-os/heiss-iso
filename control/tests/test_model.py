@@ -1061,6 +1061,14 @@ class HardwareFacts(unittest.TestCase):
         self.assertIn("cpu vendor: other", d["report"])
         self.assertNotIn("john", d["report"].lower())
 
+    def test_a_hostile_virtualization_string_cannot_forge_report_lines(self):
+        facts = hwc.load_fixture(os.path.join(FIX, "virtualbox-vmsvga"))
+        facts.virt = "x\nhostname: bob"
+        d = hwv.collect(hardware_dir=HW_DIR, facts=facts, installed={"a"}, kernel="6.1")
+        self.assertNotIn("hostname: bob", d["report"])
+        self.assertIn("virtualization: other", d["report"])
+        self.assertEqual({f["id"]: f for f in d["facts"]}["form"]["data"], "other")
+
     def test_a_long_report_is_cut_with_a_marker(self):
         self.assertTrue(m.Model._report_text("x" * (m.MAX_REPORT + 5)).endswith("[truncated]\n"))
         self.assertEqual(m.Model._report_text("short"), "short")
@@ -1140,6 +1148,12 @@ class HardwarePage(Fixture):
         mod.finish_hardware()
         d = mod.screen()["hardware"]["drivers"][0]
         self.assertEqual((d["state"], d["status"], d["title"]), ("unknown", "info", "A"))
+        self.env.hardware_data = lambda: {"facts": [], "drivers": [{"id": "a\x00b\nc", "name": {}, "description": {}, "warning": {},
+                                                                    "safe": True, "state": "installed", "missing": []}], "report": "r"}
+        mod = self.mod()
+        mod.begin_hardware()
+        mod.finish_hardware()
+        self.assertEqual(mod.screen()["hardware"]["drivers"][0]["id"], "abc")
         self.env.hardware_data = lambda: {"facts": [], "drivers": [], "report": "r"}
         mod = self.mod()
         mod.begin_hardware()
