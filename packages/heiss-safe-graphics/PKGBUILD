@@ -9,7 +9,7 @@ url='https://github.com/heiss-os/heiss-iso'
 license=('GPL-3.0-or-later')
 depends=('grub')
 source=('41_heiss_safe')
-sha256sums=('533e0706621466259febee47c8e9a2ea41876eaf2f1d1e7b9e96f78234330383')
+sha256sums=('7073af8b0b92a092715f11e11ce7a2b692cc4e5f2edd57162d5e83087394b698')
 
 package() {
   # /etc/grub.d is read by grub-mkconfig; the script is not a config file the user edits (no backup=).

@@ -1,6 +1,6 @@
 """The safe-graphics GRUB entry (packages/heiss-safe-graphics/41_heiss_safe).
 
-The script is run with `sh` against a stub of grub-mkconfig_lib and a scratch /boot (HEISS_SAFE_BOOT).
+The script is run with `sh` against a stub of grub-mkconfig_lib and a scratch /boot (a copy of the script with the path replaced).
 Not covered here: a real grub-mkconfig run, booting the entry, UEFI, NVIDIA hardware.
 """
 import hashlib
@@ -39,11 +39,17 @@ def run_script(files=("vmlinuz-linux", "initramfs-linux.img"), **env):
             open(os.path.join(boot, f), "w").close()
         with open(os.path.join(d, "grub-mkconfig_lib"), "w") as f:
             f.write(STUB_LIB)
-        e = {"PATH": "/usr/bin:/bin", "pkgdatadir": d, "HEISS_SAFE_BOOT": boot,
+        # the script has no override for /boot (it runs as root); the tests run a copy with the path replaced
+        script = os.path.join(d, "41_heiss_safe")
+        src = read(SCRIPT)
+        assert 'boot_dir="/boot"' in src
+        with open(script, "w", encoding="utf-8") as f:
+            f.write(src.replace('boot_dir="/boot"', 'boot_dir="%s"' % boot))
+        e = {"PATH": "/usr/bin:/bin", "pkgdatadir": d,
              "GRUB_DEVICE": "/dev/vda2", "GRUB_DEVICE_UUID": "1111-2222", "GRUB_FS": "ext4",
              "GRUB_CMDLINE_LINUX": ""}
         e.update(env)
-        r = subprocess.run(["sh", SCRIPT], env=e, capture_output=True, text=True)
+        r = subprocess.run(["sh", script], env=e, capture_output=True, text=True)
         return r, boot
 
 
@@ -95,6 +101,15 @@ class Script(unittest.TestCase):
         self.assertIn("(linux-lts)", r.stdout)
         ids = re.findall(r"'(heiss-safe-graphics-[^']+)'", r.stdout)
         self.assertEqual(len(set(ids)), 2)
+
+    def test_glob_characters_in_the_command_line_are_not_expanded(self):
+        r, _ = run_script(GRUB_CMDLINE_LINUX="foo=* ?")
+        words = linux_lines(r.stdout)[0].split()
+        self.assertIn("foo=*", words)
+        self.assertIn("?", words)
+
+    def test_no_environment_override_of_the_kernel_directory(self):
+        self.assertNotIn("HEISS_SAFE_BOOT", read(SCRIPT))
 
     def test_script_does_not_touch_the_network_or_write_files(self):
         text = read(SCRIPT)

@@ -9,8 +9,7 @@ prefix="/usr"
 exec_prefix="/usr"
 datarootdir="/usr/share"
 : "${pkgdatadir:=/usr/share/grub}"
-# Only the tests change this; grub-mkconfig always runs the script with the default.
-: "${HEISS_SAFE_BOOT:=/boot}"
+boot_dir="/boot"
 
 . "$pkgdatadir/grub-mkconfig_lib"
 
@@ -33,20 +32,22 @@ fi
 # Keep the user's own parameters, drop anything that asks for the NVIDIA driver or a graphics mode
 # (for example nvidia-drm.modeset=1 from the NVIDIA profile).
 SAFE_ARGS=""
+set -f   # no pathname expansion of the words below
 for word in ${GRUB_CMDLINE_LINUX}; do
   case "$word" in
     nvidia*|nomodeset|modprobe.blacklist=*) ;;
     *) SAFE_ARGS="${SAFE_ARGS} ${word}" ;;
   esac
 done
+set +f
 SAFE_ARGS="${SAFE_ARGS# } nomodeset modprobe.blacklist=nvidia,nvidia_modeset,nvidia_uvm,nvidia_drm"
 
 for kname in linux linux-lts; do
-  kernel="${HEISS_SAFE_BOOT}/vmlinuz-${kname}"
+  kernel="${boot_dir}/vmlinuz-${kname}"
   [ -e "$kernel" ] || continue
   initrd="initramfs-${kname}.img"
-  [ -e "${HEISS_SAFE_BOOT}/$initrd" ] || continue
-  rel_dirname="$(make_system_path_relative_to_its_root "${HEISS_SAFE_BOOT}")"
+  [ -e "${boot_dir}/$initrd" ] || continue
+  rel_dirname="$(make_system_path_relative_to_its_root "${boot_dir}")"
   boot_device_id="$(grub_get_device_id "${GRUB_DEVICE}")"
   title="Heiss OS, safe graphics (${kname})"
   gettext_printf "Found safe graphics kernel: %s\n" "$kernel" >&2
