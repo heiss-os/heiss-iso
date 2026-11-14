@@ -18,6 +18,7 @@ def main(argv=None):
         securityDone = Signal()
         networkDone = Signal()
         updatesDone = Signal()
+        hardwareDone = Signal()
         pendingProgress = Signal()   # every step and the end of a saved-actions run, from the worker thread
 
         def __init__(self, model):
@@ -28,6 +29,7 @@ def main(argv=None):
             self.securityDone.connect(self._set)
             self.networkDone.connect(self._set)
             self.updatesDone.connect(self._set)
+            self.hardwareDone.connect(self._set)
             self.pendingProgress.connect(self._set)
 
         def _set(self):
@@ -47,6 +49,25 @@ def main(argv=None):
                 self.runNetwork()
             if page_id == "updates" and self.model.up_state == "idle":
                 self.runUpdates()
+            if page_id == "hardware" and self.model.hw_state == "idle":
+                self.runHardware()
+
+        @Slot()
+        def runHardware(self):
+            if self.model.begin_hardware():
+                threading.Thread(target=self._hardware, daemon=True).start()
+                self._set()
+
+        def _hardware(self):
+            try:
+                self.model.finish_hardware()
+            finally:
+                self.hardwareDone.emit()
+
+        @Slot()
+        def copyReport(self):
+            self.model.copy_report(QGuiApplication.clipboard().setText)
+            self._set()
 
         @Slot()
         def runUpdates(self):

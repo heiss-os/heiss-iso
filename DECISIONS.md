@@ -309,3 +309,11 @@ Format: date, what, why. Newest at the bottom.
 - **"Restart needed" is the running kernel's module directory missing.** Why: cheap, needs no privileges; it does not detect a microcode, glibc or systemd update that also wants a restart.
 - **When a value cannot be told, the page says "unknown", never "none" or "OK".** Why: `pacman -Qu` exit 1 with the database lock held, a last-upgrade line that is not in the last 256 KiB of `pacman.log`, and a last-upgrade date in the future could all read as "no updates" or "updated recently". A warning is shown only for a known date older than 30 days. Other pacman errors still cannot be told from "no updates" (`pacman -Qu` exits 1 for both): a known limit.
 - heiss-control pkgrel 8 -> 9.
+
+## 2026-11-14 (Control Center: Hardware and drivers page)
+
+- **The page is read-only and installs nothing; it points to the wizard or `heiss profile apply --hardware=ID`.** Why: a driver install is a privileged helper job and needs the snapshot and safe-graphics work (rest of Phase 7) before it is offered with one click; NVIDIA in particular has a black-screen risk that was never tested on real hardware.
+- **It reuses `heiss_core.hardware` detection and the shipped hardware profiles, not a second detector.** Why: one source of truth with the wizard and `heiss hw detect`.
+- **The driver doctor report is plain text with an explicit list of what it leaves out** (hostname, user, serials, PCI slots, MAC addresses, DMI vendor and product). Why: it is meant to be pasted into a bug report. DMI strings are left out although they are not personal in themselves, because they identify a machine model closely enough to be unnecessary for a first diagnosis. A test covers the PCI slots and DMI strings of every fixture. The report is English only.
+- **When `pacman -Qq` gives no list, every proposal reads "unknown", not "not installed".** Why: an empty answer would otherwise claim a missing driver.
+- **The clipboard copy is the only thing the page writes, and only on a click.** heiss-control pkgrel 9 -> 10.
