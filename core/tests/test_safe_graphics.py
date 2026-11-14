@@ -17,7 +17,7 @@ PKG = os.path.join(REPO, "packages", "heiss-safe-graphics")
 SCRIPT = os.path.join(PKG, "41_heiss_safe")
 
 STUB_LIB = r"""
-make_system_path_relative_to_its_root () { echo "$1"; }
+make_system_path_relative_to_its_root () { if [ "$1" = / ]; then echo "${STUB_ROOT_REL:-/}"; else echo "$1"; fi; }
 grub_get_device_id () { echo "devid"; }
 prepare_grub_to_access_device () { echo "set root='hd0,1'"; }
 grub_add_tab () { sed 's/^/\t/'; }
@@ -82,6 +82,14 @@ class Script(unittest.TestCase):
         self.assertNotIn("nvidia.NVreg_X=1", words)
         self.assertNotIn("modprobe.blacklist=nouveau", words)
         self.assertEqual(words.count("nomodeset"), 1)
+
+    def test_btrfs_root_subvolume_keeps_rootflags(self):
+        r, _ = run_script(GRUB_FS="btrfs", STUB_ROOT_REL="/@", GRUB_CMDLINE_LINUX="foo=bar")
+        words = linux_lines(r.stdout)[0].split()
+        self.assertIn("rootflags=subvol=@", words)
+        self.assertIn("foo=bar", words)
+        r, _ = run_script(GRUB_FS="btrfs", STUB_ROOT_REL="/")
+        self.assertNotIn("rootflags", r.stdout)
 
     def test_no_uuid_falls_back_to_the_device(self):
         r, _ = run_script(GRUB_DEVICE_UUID="")

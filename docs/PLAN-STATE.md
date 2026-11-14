@@ -244,6 +244,7 @@ Owner's rule (2026-11-11): no ISO build and no VM check until the whole master p
 - [ ] Safe-graphics entry, after the installer: a fresh installation made by Calamares has the entry in `/boot/grub/grub.cfg` without any manual `grub-mkconfig` (Calamares runs it; `heiss-safe-graphics` is copied into the target with the other ISO packages), and the Heiss GRUB theme looks unchanged.
 - [ ] Safe-graphics entry on NVIDIA hardware: with `nvidia-open` installed and the `heiss-nvidia.conf` initramfs drop-in present, the entry still reaches a login. `modprobe.blacklist=` does not stop a module that is named explicitly in the initramfs `MODULES`, so this may fail; if it does, the entry needs `rd.`-style handling or a drop-in change. Never tried on real NVIDIA hardware.
 - [ ] Safe-graphics entry with a Btrfs root subvolume (`rootflags=subvol=`) and with `linux-lts` installed (a second entry): fakes only.
+- [ ] Safe-graphics entry, script environment: the script runs under the strict `/bin/sh` of the installed system (tests used the build host's `sh`); `grub-mkconfig` does not change with `os-prober` entries, `GRUB_DISABLE_SUBMENU`, or a separate `/boot` (`GRUB_DEVICE_BOOT`); the entry appears at the expected place in the menu. `prepare_grub_to_access_device` output was never seen with a real device.
 - [ ] NVIDIA warning text in the wizard and the Control Center in en and ru: names "Heiss OS, safe graphics" and `nvidia-open-lts`; the entry name in the menu matches it letter for letter.
 
 ### Tooling (not a product phase)
