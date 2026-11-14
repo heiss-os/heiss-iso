@@ -15,6 +15,8 @@ from heiss_control import security as sec  # noqa: E402
 from heiss_control import theme as th  # noqa: E402
 from heiss_control import tools  # noqa: E402
 from heiss_control import updates_view as upv  # noqa: E402
+from heiss_control import hardware_view as hwv  # noqa: E402
+from heiss_core import hardware as hwc  # noqa: E402
 from heiss_control.strings import S  # noqa: E402
 
 OS_RELEASE = 'NAME="Heiss OS"\nPRETTY_NAME="Heiss OS"\nBUILD_ID=rolling\nHOME_URL="https://example.org/h"\n' \
@@ -38,6 +40,15 @@ class Fixture(unittest.TestCase):
                                                        {"id": "lock", "status": "ok", "code": "on", "data": "3"}],
                          update_facts=lambda: [{"id": "pending", "status": "warn", "code": "some", "data": "3"},
                                                {"id": "reboot", "status": "ok", "code": "no", "data": ""}],
+                         hardware_data=lambda: {"facts": [{"id": "form", "status": "info", "code": "laptop", "data": ""},
+                                                          {"id": "gpu", "status": "info", "code": "some", "data": "Intel (8086:9a49)"}],
+                                                "drivers": [{"id": "gpu-intel", "name": {"en": "Intel graphics", "ru": "Графика Intel"},
+                                                             "description": {"en": "Mesa", "ru": "Mesa ru"}, "warning": {}, "safe": True,
+                                                             "state": "missing", "missing": ["mesa"]},
+                                                            {"id": "gpu-nvidia-legacy", "name": {"en": "Old NVIDIA", "ru": "Старая NVIDIA"},
+                                                             "description": {"en": "d", "ru": "д"}, "warning": {"en": "careful <b>", "ru": "осторожно"},
+                                                             "safe": False, "state": "nothing", "missing": []}],
+                                                "report": "Heiss OS hardware report\nkernel: 1\n"},
                          online=lambda: True, run_pending_item=lambda item, on_step: None,
                          security_facts=lambda: [{"id": "firewall", "status": "ok", "code": "active_enabled", "data": ""},
                                                  {"id": "listening", "status": "warn", "code": "some", "data": "22, 631"},
@@ -69,10 +80,10 @@ class Pages(Fixture):
 
     def test_unbuilt_page_is_marked_soon_and_has_no_data(self):
         mod = m.Model(self.env)
-        mod.open("hardware")
+        mod.open("power")
         s = mod.screen()
         self.assertFalse(s["built"])
-        for key in ("overview", "profiles", "appearance", "security", "updates", "network", "advanced", "about"):
+        for key in ("overview", "profiles", "appearance", "security", "updates", "hardware", "network", "advanced", "about"):
             self.assertNotIn(key, s)
 
     def test_every_language_has_every_key_of_english(self):
@@ -955,7 +966,8 @@ class UpdateFacts(unittest.TestCase):
             self.assertTrue(cut)
             self.assertEqual(len(text.encode()), upv.MAX_LOG)
             small = os.path.join(d, "small")
-            open(small, "w").write("abc")
+            with open(small, "w") as f:
+                f.write("abc")
             self.assertEqual(upv.RealSystem().read_tail(small), ("abc", False))
         self.assertEqual(len(upv.collect()), 4)
 
@@ -1002,6 +1014,151 @@ class UpdatesPage(Fixture):
                     self.assertIn("up.%s.%s" % (fact, code), S[lang], (lang, fact, code))
             for fact in ("pending", "last", "reboot"):
                 self.assertIn("up.%s.advice" % fact, S[lang])
+
+
+HW_DIR = os.path.join(REPO, "hardware")
+FIX = os.path.join(REPO, "core", "tests", "fixtures", "hw")
+
+
+class HardwareFacts(unittest.TestCase):
+    def data(self, fixture, installed, kernel="6.1"):
+        return hwv.collect(hardware_dir=HW_DIR, facts=hwc.load_fixture(os.path.join(FIX, fixture)), installed=installed, kernel=kernel)
+
+    def test_hybrid_laptop_facts_and_driver_states(self):
+        d = self.data("nvidia-hybrid-laptop", {"nvidia-prime", "intel-ucode"})
+        by = {f["id"]: f for f in d["facts"]}
+        self.assertEqual((by["form"]["code"], by["hybrid"]["code"]), ("laptop", "yes"))
+        self.assertIn("NVIDIA (10de:", by["gpu"]["data"])
+        st = {x["id"]: x for x in d["drivers"]}
+        self.assertEqual(st["hybrid-nvidia-intel"]["state"], "installed")
+        self.assertEqual(st["cpu-microcode-intel"]["state"], "installed")
+        self.assertEqual(st["gpu-intel"]["state"], "missing")
+        self.assertIn("mesa", st["gpu-intel"]["missing"])
+
+    def test_nothing_to_install_and_unknown_when_pacman_gives_no_list(self):
+        empty = hwc.HwProfile(id="p", name={}, description={}, safe_by_default=True, match={})
+        self.assertEqual(hwv.driver_state(empty, {"x"}), "nothing")
+        st = {x["id"]: x for x in self.data("nvidia-desktop-old", {"x"})["drivers"]}
+        self.assertEqual(st["gpu-nvidia-legacy"]["state"], "missing")
+        st = {x["id"]: x for x in self.data("nvidia-desktop-old", set())["drivers"]}
+        self.assertEqual({x["state"] for x in st.values()}, {"unknown"})
+
+    def test_report_has_no_personal_data(self):
+        for fx in sorted(os.listdir(FIX)):
+            facts = hwc.load_fixture(os.path.join(FIX, fx))
+            d = hwv.collect(hardware_dir=HW_DIR, facts=facts, installed={"a"}, kernel="6.1")
+            text = d["report"]
+            for secret in (facts.sys_vendor, facts.product_name, *[x.slot for x in facts.pci]):
+                if secret:
+                    self.assertNotIn(secret, text, (fx, secret))
+            self.assertIn("kernel: 6.1", text)
+
+    def test_report_keeps_unusual_kernel_and_cpu_strings_out(self):
+        facts = hwc.load_fixture(os.path.join(FIX, "amd-gpu-desktop"))
+        facts.cpu_vendor = "JohnSmithCPU"
+        d = hwv.collect(hardware_dir=HW_DIR, facts=facts, installed={"a"}, kernel="6.1-john-smith's custom")
+        self.assertIn("kernel: other", d["report"])
+        self.assertIn("cpu vendor: other", d["report"])
+        self.assertNotIn("john", d["report"].lower())
+
+    def test_a_hostile_virtualization_string_cannot_forge_report_lines(self):
+        facts = hwc.load_fixture(os.path.join(FIX, "virtualbox-vmsvga"))
+        facts.virt = "x\nhostname: bob"
+        d = hwv.collect(hardware_dir=HW_DIR, facts=facts, installed={"a"}, kernel="6.1")
+        self.assertNotIn("hostname: bob", d["report"])
+        self.assertIn("virtualization: other", d["report"])
+        self.assertEqual({f["id"]: f for f in d["facts"]}["form"]["data"], "other")
+
+    def test_a_long_report_is_cut_with_a_marker(self):
+        self.assertTrue(m.Model._report_text("x" * (m.MAX_REPORT + 5)).endswith("[truncated]\n"))
+        self.assertEqual(m.Model._report_text("short"), "short")
+
+    def test_every_code_and_state_has_text_in_both_languages(self):
+        for lang in S:
+            for fact, codes in hwv.CODES.items():
+                self.assertIn("hw." + fact, S[lang])
+                for c in codes:
+                    self.assertIn("hw.%s.%s" % (fact, c), S[lang], (lang, fact, c))
+            for st in hwv.DRIVER_STATES:
+                self.assertIn("hw.state." + st, S[lang])
+        for p in hwc.load_profiles(HW_DIR).values():
+            self.assertTrue(p.name["en"] and p.name["ru"])
+
+    def test_real_run_on_this_machine_does_not_crash(self):
+        d = hwv.collect(hardware_dir=HW_DIR)
+        self.assertTrue(d["report"].startswith("Heiss OS hardware report"))
+
+
+class HardwarePage(Fixture):
+    def mod(self, lang="en"):
+        mod = m.Model(self.env, lang)
+        mod.open("hardware")
+        return mod
+
+    def test_page_lists_facts_drivers_and_report(self):
+        mod = self.mod()
+        self.assertTrue(mod.begin_hardware())
+        self.assertFalse(mod.begin_hardware())
+        mod.finish_hardware()
+        p = mod.screen()["hardware"]
+        self.assertTrue(mod.screen()["built"])
+        self.assertEqual(p["summary"], "")
+        self.assertEqual({i["id"]: i for i in p["items"]}["gpu"]["detail"], "Intel (8086:9a49).")
+        d = {x["id"]: x for x in p["drivers"]}
+        self.assertEqual((d["gpu-intel"]["status"], d["gpu-intel"]["stateLabel"]), ("warn", "Not installed"))
+        self.assertIn("--hardware=gpu-intel", d["gpu-intel"]["advice"])
+        self.assertIn("mesa", d["gpu-intel"]["missing"])
+        self.assertEqual((d["gpu-nvidia-legacy"]["status"], d["gpu-nvidia-legacy"]["advice"]), ("ok", ""))
+        self.assertEqual(d["gpu-nvidia-legacy"]["warning"], "careful <b>")   # plain text, QML draws it literally
+        self.assertTrue(p["report"].startswith("Heiss OS"))
+
+    def test_russian_names(self):
+        mod = self.mod("ru")
+        mod.begin_hardware()
+        mod.finish_hardware()
+        self.assertEqual(mod.screen()["hardware"]["drivers"][0]["title"], "Графика Intel")
+
+    def test_copy_puts_the_report_on_the_clipboard_once_there_is_one(self):
+        mod = self.mod()
+        got = []
+        mod.copy_report(got.append)
+        self.assertEqual((got, mod.screen()["hardware"]["copied"]), ([], ""))
+        mod.begin_hardware()
+        mod.finish_hardware()
+        mod.copy_report(got.append)
+        self.assertEqual(got, ["Heiss OS hardware report\nkernel: 1\n"])
+        self.assertEqual(mod.screen()["hardware"]["copied"], "Copied.")
+        mod.begin_hardware()
+        self.assertEqual(mod.screen()["hardware"]["copied"], "")
+
+    def test_failure_and_malformed_data_are_reported_and_free_the_button(self):
+        for bad in (None, {}, {"facts": [], "drivers": [{"id": "x"}], "report": ""}):
+            self.env.hardware_data = lambda bad=bad: bad
+            mod = self.mod()
+            mod.begin_hardware()
+            mod.finish_hardware()
+            self.assertEqual(mod.hw_state, "failed", bad)
+            self.assertTrue(mod.begin_hardware())
+
+    def test_unknown_state_is_shown_as_unknown_and_empty_list_says_so(self):
+        self.env.hardware_data = lambda: {"facts": [], "drivers": [{"id": "a", "name": {"en": "A"}, "description": {}, "warning": {},
+                                                                    "safe": True, "state": "weird", "missing": []}], "report": "r"}
+        mod = self.mod()
+        mod.begin_hardware()
+        mod.finish_hardware()
+        d = mod.screen()["hardware"]["drivers"][0]
+        self.assertEqual((d["state"], d["status"], d["title"]), ("unknown", "info", "A"))
+        self.env.hardware_data = lambda: {"facts": [], "drivers": [{"id": "a\x00b\nc", "name": {}, "description": {}, "warning": {},
+                                                                    "safe": True, "state": "installed", "missing": []}], "report": "r"}
+        mod = self.mod()
+        mod.begin_hardware()
+        mod.finish_hardware()
+        self.assertEqual(mod.screen()["hardware"]["drivers"][0]["id"], "abc")
+        self.env.hardware_data = lambda: {"facts": [], "drivers": [], "report": "r"}
+        mod = self.mod()
+        mod.begin_hardware()
+        mod.finish_hardware()
+        self.assertTrue(mod.screen()["hardware"]["driversNone"])
 
 
 class Advanced(Fixture):

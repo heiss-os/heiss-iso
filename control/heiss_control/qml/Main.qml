@@ -339,6 +339,68 @@ ApplicationWindow {
                 Text { textFormat: Text.PlainText; visible: s.page === "security"; text: s.security ? s.security.note : ""
                        color: pal.dim; font.pixelSize: 14; wrapMode: Text.WordWrap; Layout.fillWidth: true }
 
+                // hardware and drivers (read-only)
+                Facts { visible: s.page === "hardware"; facts: s.hardware; onRerun: control.runHardware() }
+                Text { textFormat: Text.PlainText; visible: s.page === "hardware"; text: s.hardware ? s.hardware.driversTitle : ""
+                       color: pal.accent; font.pixelSize: 18; font.bold: true; Accessible.role: Accessible.Heading }
+                Text { textFormat: Text.PlainText; visible: s.page === "hardware" && s.hardware.driversNone !== ""
+                       text: s.hardware ? s.hardware.driversNone : ""; color: pal.dim; font.pixelSize: 15; wrapMode: Text.WordWrap; Layout.fillWidth: true }
+                Repeater {
+                    model: s.page === "hardware" ? s.hardware.drivers : []
+                    delegate: Rectangle {
+                        id: dr
+                        required property var modelData
+                        Layout.fillWidth: true
+                        implicitHeight: drc.implicitHeight + 24
+                        radius: 10
+                        color: pal.panel
+                        Accessible.role: Accessible.StaticText
+                        Accessible.name: modelData.title + ", " + modelData.stateLabel + ". " + modelData.detail + " " + modelData.warning + " " + modelData.advice
+                        ColumnLayout {
+                            id: drc
+                            anchors.fill: parent
+                            anchors.margins: 12
+                            spacing: 4
+                            RowLayout {
+                                Layout.fillWidth: true
+                                Text { textFormat: Text.PlainText; text: dr.modelData.title; color: pal.text; font.pixelSize: 18; font.bold: true
+                                       Layout.fillWidth: true; wrapMode: Text.WordWrap }
+                                Text { textFormat: Text.PlainText; text: dr.modelData.stateLabel; font.pixelSize: 14; font.bold: true
+                                       color: dr.modelData.status === "warn" ? pal.error : (dr.modelData.status === "ok" ? pal.accent : pal.dim) }
+                            }
+                            Text { textFormat: Text.PlainText; text: dr.modelData.detail; color: pal.text; font.pixelSize: 15
+                                   wrapMode: Text.WordWrap; Layout.fillWidth: true }
+                            Text { textFormat: Text.PlainText; visible: dr.modelData.warning !== ""; text: dr.modelData.warning; color: pal.error
+                                   font.pixelSize: 14; wrapMode: Text.WordWrap; Layout.fillWidth: true }
+                            Text { textFormat: Text.PlainText; visible: dr.modelData.missing !== ""; text: dr.modelData.missing; color: pal.dim
+                                   font.pixelSize: 14; wrapMode: Text.WrapAnywhere; Layout.fillWidth: true }
+                            Text { textFormat: Text.PlainText; visible: dr.modelData.advice !== ""; text: dr.modelData.advice; color: pal.dim
+                                   font.pixelSize: 14; wrapMode: Text.WordWrap; Layout.fillWidth: true }
+                        }
+                    }
+                }
+                Text { textFormat: Text.PlainText; visible: s.page === "hardware" && s.hardware.report !== ""; text: s.hardware ? s.hardware.reportTitle : ""
+                       color: pal.accent; font.pixelSize: 18; font.bold: true; Accessible.role: Accessible.Heading }
+                Text { textFormat: Text.PlainText; visible: s.page === "hardware" && s.hardware.report !== ""; text: s.hardware ? s.hardware.reportWhat : ""
+                       color: pal.dim; font.pixelSize: 14; wrapMode: Text.WordWrap; Layout.fillWidth: true }
+                Text { textFormat: Text.PlainText; visible: s.page === "hardware" && s.hardware.report !== ""; text: s.hardware ? s.hardware.report : ""
+                       color: pal.dim; font.family: "JetBrains Mono"; font.pixelSize: 13; wrapMode: Text.WrapAnywhere; Layout.fillWidth: true }
+                Button {
+                    id: cb
+                    visible: s.page === "hardware" && s.hardware.report !== ""
+                    text: s.hardware ? s.hardware.copyLabel : ""
+                    focusPolicy: Qt.StrongFocus
+                    Accessible.name: text
+                    onClicked: control.copyReport()
+                    contentItem: Text { textFormat: Text.PlainText; text: cb.text; color: pal.onAccent; font.pixelSize: 16
+                                        horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                    background: Rectangle { radius: 8; color: pal.accent; border.width: cb.activeFocus ? 2 : 0; border.color: pal.text }
+                }
+                Text { textFormat: Text.PlainText; visible: s.page === "hardware" && s.hardware.copied !== ""; text: s.hardware ? s.hardware.copied : ""
+                       color: pal.accent; font.pixelSize: 15 }
+                Text { textFormat: Text.PlainText; visible: s.page === "hardware"; text: s.hardware ? s.hardware.note : ""
+                       color: pal.dim; font.pixelSize: 14; wrapMode: Text.WordWrap; Layout.fillWidth: true }
+
                 // updates and snapshots (read-only)
                 Facts { visible: s.page === "updates"; facts: s.updates; onRerun: control.runUpdates() }
                 Text { textFormat: Text.PlainText; visible: s.page === "updates"; text: s.updates ? s.updates.note : ""

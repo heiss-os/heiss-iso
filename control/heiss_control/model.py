@@ -15,6 +15,7 @@ from heiss_core import wizard as wz
 from heiss_core.errors import HeissError
 from heiss_core.system import PacmanSystem
 
+from . import hardware_view
 from . import privacy_view
 from . import runner
 from . import security
@@ -25,11 +26,12 @@ from .strings import t
 
 # (id, built). Pages that are not built show the "coming soon" text, so the sidebar is the final one from day one.
 PAGES = (("overview", True), ("profiles", True), ("appearance", True), ("security", True), ("updates", True),
-         ("hardware", False), ("network", True), ("power", False), ("backups", False), ("advanced", True),
+         ("hardware", True), ("network", True), ("power", False), ("backups", False), ("advanced", True),
          ("about", True))
 PAGE_IDS = tuple(p for p, _ in PAGES)
 LANGUAGES = ("en", "ru")
 MAX_MESSAGE = 300   # longest error text shown; messages can echo file content
+MAX_REPORT = 8000   # longest report text kept; longer ones get a marker
 MAX_LIST = 200   # longest list of package names drawn on the page
 
 
@@ -50,6 +52,7 @@ class Env:
     apply_theme: callable = field(default_factory=lambda: th.apply_theme)
     security_facts: callable = field(default_factory=lambda: security.collect)
     privacy_facts: callable = field(default_factory=lambda: privacy_view.collect)
+    hardware_data: callable = field(default_factory=lambda: hardware_view.collect)
     update_facts: callable = field(default_factory=lambda: updates_view.collect)
     online: callable = field(default_factory=lambda: lambda: PacmanSystem().network_connected())
     run_pending_item: callable = field(default_factory=lambda: runner.run_item)
@@ -78,6 +81,7 @@ class Model:
         self.sec_state, self.sec_facts, self.sec_message = "idle", [], ""   # idle | running | done | failed
         self.net_state, self.net_facts, self.net_message = "idle", [], ""   # idle | running | done | failed
         self.up_state, self.up_facts, self.up_message = "idle", [], ""   # idle | running | done | failed
+        self.hw_state, self.hw_data, self.hw_message, self.hw_copied = "idle", None, "", False   # idle | running | done | failed
         self.pend_state, self.pend_step, self.pend_message = "idle", "", ""   # idle | running | ok | failed | offline
 
     def tr(self, key):
@@ -358,6 +362,60 @@ class Model:
                     soon=[self.tr("nw.soon." + k) for k in ("dns", "vpn", "bluetooth", "hardened")])
         return page
 
+    # --- hardware and drivers: read-only detection, driver state, report without personal data ---
+    def begin_hardware(self):
+        if self.hw_state == "running":
+            return False
+        self.hw_state, self.hw_message, self.hw_copied = "running", "", False
+        return True
+
+    def finish_hardware(self):
+        """Detects the hardware; called from a worker thread, the glue refreshes the screen afterwards."""
+        try:
+            raw = self.env.hardware_data()
+            drivers = [{"id": "".join(c for c in str(d["id"]) if c.isalnum() or c == "-")[:41], "name": dict(d["name"]), "description": dict(d["description"]),
+                        "warning": dict(d["warning"]), "safe": bool(d["safe"]),
+                        "state": d["state"] if d["state"] in hardware_view.DRIVER_STATES else "unknown",
+                        "missing": [str(x)[:60] for x in d["missing"]][:20]} for d in raw["drivers"]]
+            self.hw_data = {"facts": self._clean_facts(raw["facts"]), "drivers": drivers, "report": self._report_text(raw["report"])}
+            self.hw_state = "done"
+        except Exception as e:  # noqa: BLE001
+            self.hw_data, self.hw_state, self.hw_message = None, "failed", self._err(e)
+
+    @staticmethod
+    def _report_text(text):
+        text = str(text)
+        return text if len(text) <= MAX_REPORT else text[:MAX_REPORT] + "\n[truncated]\n"
+
+    def copy_report(self, put):
+        """put(text) puts the report on the clipboard (the glue passes the Qt clipboard)."""
+        if self.hw_data:
+            put(self.hw_data["report"])
+            self.hw_copied = True
+
+    def _localized(self, d):
+        return self._clip(d.get(self.language) or d.get("en") or "")
+
+    def hardware_page(self):
+        data = self.hw_data or {"facts": [], "drivers": [], "report": ""}
+        page = self._facts_page("hw", data["facts"], self.hw_state, self.hw_message)
+        page["summary"] = ""
+        drivers = []
+        for d in data["drivers"]:
+            state = d["state"]
+            drivers.append({"id": d["id"], "title": self._localized(d["name"]) or d["id"], "detail": self._localized(d["description"]),
+                            "warning": self._localized(d["warning"]), "state": state,
+                            "stateLabel": self.tr("hw.state." + state),
+                            "status": "ok" if state in ("installed", "nothing") else ("warn" if state == "missing" and d["safe"] else "info"),
+                            "missing": self.tr("hw.missing") % " ".join(d["missing"]) if d["missing"] else "",
+                            "advice": (self.tr("hw.advice") % d["id"]) if state == "missing" else
+                                      (self.tr("hw.unknown_state") if state == "unknown" else "")})
+        page.update(what=self.tr("hw.what"), note=self.tr("hw.note"), driversTitle=self.tr("hw.drivers"),
+                    driversNone=self.tr("hw.drivers.none") if self.hw_state == "done" and not drivers else "",
+                    drivers=drivers, reportTitle=self.tr("hw.report"), reportWhat=self.tr("hw.report.what"),
+                    report=data["report"], copyLabel=self.tr("hw.copy"), copied=self.tr("hw.copied") if self.hw_copied else "")
+        return page
+
     # --- updates and snapshots: read-only facts ---
     def begin_updates(self):
         if self.up_state == "running":
@@ -445,6 +503,8 @@ class Model:
             out["appearance"] = self.appearance()
         elif self.page == "security":
             out["security"] = self.security_page()
+        elif self.page == "hardware":
+            out["hardware"] = self.hardware_page()
         elif self.page == "updates":
             out["updates"] = self.updates_page()
         elif self.page == "network":

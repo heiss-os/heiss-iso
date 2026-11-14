@@ -13,7 +13,8 @@ Split into small PRs. Status of each page:
 | Security Center (firewall, disk encryption, Secure Boot display, SSH, open network ports) | built, read-only: plain-language facts and advice, no fix buttons, no score |
 | Network and privacy (chosen level vs. what is in place: Wi-Fi MAC setting, screen lock, firewall; the not-yet-built items listed as coming soon) | built, read-only |
 | Updates and snapshots (updates waiting, last system update, restart needed, snapshots set up) | built, read-only |
-| Hardware and drivers (Phase 7), Power and display, Backups | later (sidebar entry exists, page says "Coming soon") |
+| Hardware and drivers (what was detected, driver state of each proposal, driver doctor report with a Copy button) | built, read-only |
+| Power and display, Backups | later (sidebar entry exists, page says "Coming soon") |
 
 ## Structure
 
@@ -44,6 +45,10 @@ The wizard's "Save answers, apply later" and an apply attempted offline put an `
 ## Updates and snapshots: what it reads
 
 `control/heiss_control/updates_view.py` (first time the page is opened, and on "Check again", on a worker thread): `pacman -Qu` (reads the local package database; no network, no root, so the count is as of the last refresh; exit 1 with the pacman lock held counts as unknown, other pacman errors cannot be told from "no updates"), the last `starting full system upgrade` line in the last 256 KiB of `/var/log/pacman.log` (older than 30 days is a warning; "unknown" if the log is longer than that and the line is not in the tail, or if the date is in the future), whether `/usr/lib/modules/<running kernel>` still exists (if not, the kernel was replaced and a restart is needed), and `findmnt -n -o FSTYPE /` plus `/etc/snapper/configs/root` for snapshots. Commands are literal lists with `PATH=/usr/bin:/bin`. Nothing is changed: no update button, no rollback, no snapshot listing (`snapper list` needs root) and no Arch news (needs network).
+
+## Hardware and drivers: what it reads
+
+`control/heiss_control/hardware_view.py` (first time the page is opened, and on "Check again", on a worker thread) runs the same read-only detection as `heiss hw detect` (`heiss_core.hardware`: `lspci -nn -mm`, `/sys/class/dmi`, `/sys/class/power_supply`, `/sys/class/bluetooth`, `/proc/cpuinfo`, `systemd-detect-virt --vm`) against `/usr/share/heiss/hardware`, and `pacman -Qq` to see whether the packages of each matching profile are installed (installed, not installed, nothing to install, or unknown when pacman gives no list). A safe-by-default proposal that is missing is a warning, other missing ones are information. Texts come from the hardware profile files shipped by `heiss-core` (names, descriptions and warnings in en and ru) and are drawn as plain text. The driver doctor report is plain text with the kernel release, form factor, CPU vendor, virtualization type, GPU `vendor:device` ids, Bluetooth yes/no and the state of each proposal; it has no hostname, user name, serial numbers, PCI slot addresses, MAC addresses or DMI vendor and product strings (a test checks the PCI slots and DMI strings of every fixture). "Copy the report" puts it on the clipboard; nothing is sent anywhere. The kernel release is included only if it is plain (`[0-9A-Za-z.+_-]`, up to 40 characters), the CPU vendor only as intel, amd or other, and a report longer than 8000 characters ends with a "[truncated]" line. `HEISS_HARDWARE` overrides the profile directory (a test hook, the same variable the wizard reads; the page never runs as root). Installing a driver is not done here: the page names the wizard or `heiss profile apply --hardware=ID`. Not built (rest of Phase 7): snapshot before driver changes, safe-graphics boot entry, install-time detection (a Calamares step is Tier A), the themed hardware settings.
 
 ## Advanced page: what the check trusts
 
