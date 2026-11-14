@@ -1053,6 +1053,18 @@ class HardwareFacts(unittest.TestCase):
                     self.assertNotIn(secret, text, (fx, secret))
             self.assertIn("kernel: 6.1", text)
 
+    def test_report_keeps_unusual_kernel_and_cpu_strings_out(self):
+        facts = hwc.load_fixture(os.path.join(FIX, "amd-gpu-desktop"))
+        facts.cpu_vendor = "JohnSmithCPU"
+        d = hwv.collect(hardware_dir=HW_DIR, facts=facts, installed={"a"}, kernel="6.1-john-smith's custom")
+        self.assertIn("kernel: other", d["report"])
+        self.assertIn("cpu vendor: other", d["report"])
+        self.assertNotIn("john", d["report"].lower())
+
+    def test_a_long_report_is_cut_with_a_marker(self):
+        self.assertTrue(m.Model._report_text("x" * (m.MAX_REPORT + 5)).endswith("[truncated]\n"))
+        self.assertEqual(m.Model._report_text("short"), "short")
+
     def test_every_code_and_state_has_text_in_both_languages(self):
         for lang in S:
             for fact, codes in hwv.CODES.items():

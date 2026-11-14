@@ -7,6 +7,7 @@ addresses, MAC addresses or DMI vendor and product strings; only PCI vendor:devi
 vendor, the virtualization type, the kernel release and the state of each driver proposal.
 """
 import os
+import re
 
 from heiss_core import hardware as hw
 from heiss_core.system import PacmanSystem
@@ -22,6 +23,7 @@ CODES = {
     "hybrid": ("yes",),
     "bluetooth": ("yes", "no"),
 }
+_KERNEL = re.compile(r"^[0-9A-Za-z.+_-]{1,40}$")
 DRIVER_STATES = ("installed", "missing", "nothing", "unknown")   # per proposal
 
 
@@ -62,8 +64,10 @@ def drivers_of(report, installed):
 
 
 def report_text(report, drivers, has_bluetooth, kernel):
+    # a custom kernel's local version string or an odd CPU vendor string could carry a name: only known shapes go in
+    kernel = kernel if _KERNEL.match(kernel or "") else "other"
     lines = ["Heiss OS hardware report (no personal data: no hostname, serial numbers, addresses or user names)",
-             "kernel: %s" % kernel, "form factor: %s" % report.form_factor, "cpu vendor: %s" % (report.cpu_vendor or "?"),
+             "kernel: %s" % kernel, "form factor: %s" % report.form_factor, "cpu vendor: %s" % (CPUS.get(report.cpu_vendor, "other")),
              "virtualization: %s" % report.virt, "bluetooth: %s" % ("yes" if has_bluetooth else "no")]
     for g in report.gpus:
         lines.append("gpu: %s:%s" % (g["vendor"], g["device"]))

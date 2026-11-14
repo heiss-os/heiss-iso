@@ -31,6 +31,7 @@ PAGES = (("overview", True), ("profiles", True), ("appearance", True), ("securit
 PAGE_IDS = tuple(p for p, _ in PAGES)
 LANGUAGES = ("en", "ru")
 MAX_MESSAGE = 300   # longest error text shown; messages can echo file content
+MAX_REPORT = 8000   # longest report text kept; longer ones get a marker
 MAX_LIST = 200   # longest list of package names drawn on the page
 
 
@@ -376,10 +377,15 @@ class Model:
                         "warning": dict(d["warning"]), "safe": bool(d["safe"]),
                         "state": d["state"] if d["state"] in hardware_view.DRIVER_STATES else "unknown",
                         "missing": [str(x)[:60] for x in d["missing"]][:20]} for d in raw["drivers"]]
-            self.hw_data = {"facts": self._clean_facts(raw["facts"]), "drivers": drivers, "report": str(raw["report"])[:4000]}
+            self.hw_data = {"facts": self._clean_facts(raw["facts"]), "drivers": drivers, "report": self._report_text(raw["report"])}
             self.hw_state = "done"
         except Exception as e:  # noqa: BLE001
             self.hw_data, self.hw_state, self.hw_message = None, "failed", self._err(e)
+
+    @staticmethod
+    def _report_text(text):
+        text = str(text)
+        return text if len(text) <= MAX_REPORT else text[:MAX_REPORT] + "\n[truncated]\n"
 
     def copy_report(self, put):
         """put(text) puts the report on the clipboard (the glue passes the Qt clipboard)."""
