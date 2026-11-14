@@ -69,6 +69,8 @@ def last_upgrade(sh):
     except ValueError:
         return _item("last", "info", "unknown")
     age = (sh.today() - day).days
+    if age < 0:   # clock skew or a forged line: do not call it recent
+        return _item("last", "info", "unknown")
     return _item("last", "warn" if age > OLD_DAYS else "ok", "old" if age > OLD_DAYS else "recent", day.isoformat())
 
 

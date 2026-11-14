@@ -917,6 +917,7 @@ class UpdateFacts(unittest.TestCase):
         self.assertEqual((f["last"]["status"], f["last"]["code"]), ("warn", "old"))
         self.assertEqual(self.facts(FakeUpdateSystem(log="[2026-11-10T10:00:00+0300] [ALPM] installed x\n"))["last"]["code"], "never")
         self.assertEqual(self.facts(FakeUpdateSystem(log=None))["last"]["code"], "unknown")
+        self.assertEqual(self.facts(FakeUpdateSystem(log=LOG, today=datetime.date(2026, 1, 1)))["last"]["code"], "unknown")
         self.assertEqual(self.facts(FakeUpdateSystem(log="[2026-13-45T1:1] [PACMAN] starting full system upgrade\n"))["last"]["code"], "unknown")
 
     def test_reboot_needed_when_the_running_kernel_modules_are_gone(self):
