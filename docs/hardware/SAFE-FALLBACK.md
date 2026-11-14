@@ -1,6 +1,6 @@
-# Safe fallback and snapshot before driver changes (Phase 7 design, nothing built yet)
+# Safe fallback and snapshot before driver changes (Phase 7 design)
 
-Status: proposal for the owner. No code, no Tier A file is touched by this document. Items marked NOT VERIFIED
+Status: the owner answered 1 A, 2 A, 3 A, 4 A (2026-11-15). Built: order step 1 (package `heiss-safe-graphics`, `packages/heiss-safe-graphics/41_heiss_safe`) and step 2 (NVIDIA warning text). Not built: the LTS kernel with the driver, the confirmation step, "Remove this driver". The text below is the original proposal. No Tier A file is touched by this document. Items marked NOT VERIFIED
 could not be checked on the build host (no UEFI, no real GPU, the pacman file database is not synced there).
 
 ## Problem
@@ -8,7 +8,7 @@ could not be checked on the build host (no UEFI, no real GPU, the pacman file da
 A bad GPU driver can leave the user with a black screen and no way back. Today:
 
 - The NVIDIA profile (`hardware/gpu-nvidia-open.toml`) tells the user: "If the screen stays black, choose the safe
-  graphics boot entry". **That entry does not exist.** The warning promises something we do not ship.
+  graphics boot entry". That entry did not exist when this was written; it is built by the package `heiss-safe-graphics` (see Status). The warning promises something we do not ship.
 - The helper takes a best-effort snapshot before install/remove/update, but only when `snapper` and
   `/etc/snapper/configs/root` exist (`helper/heiss_helper/actions.py`). The installer creates ext4 today
   (`docs/PLAN-STATE.md`, Phase 6 note: Btrfs and snapshots are a separate Tier A item), so on a fresh install

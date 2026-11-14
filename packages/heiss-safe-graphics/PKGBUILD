@@ -1,0 +1,17 @@
+# Maintainer: Heiss OS <https://github.com/heiss-os>
+# Built by scripts/heiss-packages-build.sh (the build script copies this directory, so the script is a local source).
+pkgname=heiss-safe-graphics
+pkgver=0.1.0
+pkgrel=1
+pkgdesc='Heiss OS: "safe graphics" GRUB menu entry (nomodeset, NVIDIA modules blacklisted) for recovery from a bad GPU driver'
+arch=('any')
+url='https://github.com/heiss-os/heiss-iso'
+license=('GPL-3.0-or-later')
+depends=('grub')
+source=('41_heiss_safe')
+sha256sums=('7073af8b0b92a092715f11e11ce7a2b692cc4e5f2edd57162d5e83087394b698')
+
+package() {
+  # /etc/grub.d is read by grub-mkconfig; the script is not a config file the user edits (no backup=).
+  install -Dm755 "$srcdir/41_heiss_safe" "$pkgdir/etc/grub.d/41_heiss_safe"
+}

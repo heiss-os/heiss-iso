@@ -5,7 +5,7 @@ description = { en = "NVIDIA driver with open kernel modules for GeForce RTX/GTX
 packages = ["nvidia-open", "nvidia-utils"]
 kernel_params = ["nvidia-drm.modeset=1"]
 post_actions = ["mkinitcpio"]
-warnings = { en = "Built for the standard kernel only. With the LTS kernel use the DKMS variant. If the screen stays black, choose the safe graphics boot entry. Generation support is decided by a PCI ID threshold (0x1e00) that has not been verified against the package.", ru = "Собран только для обычного ядра. Для ядра LTS нужен вариант DKMS. Если экран чёрный, выберите безопасный режим графики в меню загрузки. Поддержка поколения определяется порогом идентификатора PCI (0x1e00), который не проверен по пакету." }
+warnings = { en = "Built for the standard kernel (linux) only; the LTS kernel needs the package nvidia-open-lts. If the screen stays black after the change, restart and choose \"Heiss OS, safe graphics\" in the boot menu, then remove the driver. Generation support is decided by a PCI ID threshold (0x1e00) that has not been verified against the package.", ru = "Собран только для обычного ядра (linux); для ядра LTS нужен пакет nvidia-open-lts. Если после изменения экран чёрный, перезагрузите компьютер и выберите в меню загрузки пункт \"Heiss OS, safe graphics\", затем удалите драйвер. Поддержка поколения определяется порогом идентификатора PCI (0x1e00), который не проверен по пакету." }
 [match]
 virt = "none"
 pci = [{ vendor = "10de", class = "display", device_min = "1e00" }]
