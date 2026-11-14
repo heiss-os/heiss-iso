@@ -322,3 +322,12 @@ Format: date, what, why. Newest at the bottom.
 
 - **`docs/hardware/SAFE-FALLBACK.md` records the proposal; nothing is decided or built.** Why: the safe-graphics boot entry and a second kernel change what the installed system boots, and the choice between a package file and a Tier A route (`heiss-cleanup.sh`) is the owner's. Four numbered questions are in the document.
 - **Found: the NVIDIA profile warning refers to a safe graphics boot entry that does not exist, and says the LTS kernel needs DKMS although `nvidia-open-lts` is in the repositories.** To be corrected in a follow-up PR once the owner answers; the text is user-facing and the entry must exist first.
+
+## 2026-11-15 (Phase 7: safe-graphics boot entry)
+
+- **Owner's answers to `docs/hardware/SAFE-FALLBACK.md`: 1 A, 2 A, 3 A, 4 A.** The entry is a package file in `/etc/grub.d/`; `linux-lts` and `nvidia-open-lts` only together with the NVIDIA driver; NVIDIA stays never pre-ticked and needs a second confirmation, offered only when the entry is installed; work order as proposed.
+- **The entry ships as its own package `heiss-safe-graphics` (depends on `grub`), in the ISO package list, not in `heiss-core`.** Why: it changes the boot menu of the installed system, so it is kept separate, easy to review and easy to remove; no Tier A file is touched (not the GRUB theme, Calamares config or `heiss-cleanup.sh`). Calamares copies ISO packages into the target and runs `grub-mkconfig`, which picks the script up.
+- **The entry boots `nomodeset` with `modprobe.blacklist=nvidia,nvidia_modeset,nvidia_uvm,nvidia_drm`, keeps the user's own kernel parameters and drops `nvidia*`, `nomodeset` and `modprobe.blacklist=` words from `GRUB_CMDLINE_LINUX`.** Why: `nvidia-drm.modeset=1` from the NVIDIA profile would otherwise defeat the entry. Known risk, in the test list: the blacklist may not stop a module named in the initramfs `MODULES` (the NVIDIA profile adds them there).
+- **One entry per installed kernel in a fixed list (`linux`, `linux-lts`), only if both the kernel and its initramfs exist.** The only test hook is `HEISS_SAFE_BOOT` (a scratch `/boot`); `grub-mkconfig` never sets it.
+- **The NVIDIA warning now names the entry "Heiss OS, safe graphics" and `nvidia-open-lts`; the "DKMS" sentence is gone.** A test ties the text to the title in the script. It does not claim that the LTS kernel is installed with the driver; that is a later step.
+

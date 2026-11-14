@@ -1,0 +1,63 @@
+#! /bin/sh
+# Heiss OS: "safe graphics" boot entry for grub-mkconfig (installed system only).
+# Boots the standard kernel with nomodeset and the NVIDIA modules blacklisted, so a bad GPU driver
+# can still reach a login and be removed. Shipped as /etc/grub.d/41_heiss_safe by heiss-safe-graphics.
+# Not part of the GRUB theme and not wired through the installer. Modelled on /etc/grub.d/10_linux.
+set -e
+
+prefix="/usr"
+exec_prefix="/usr"
+datarootdir="/usr/share"
+: "${pkgdatadir:=/usr/share/grub}"
+# Only the tests change this; grub-mkconfig always runs the script with the default.
+: "${HEISS_SAFE_BOOT:=/boot}"
+
+. "$pkgdatadir/grub-mkconfig_lib"
+
+# Same choice of root= as 10_linux (UUID when known, else the device).
+if [ "x${GRUB_DEVICE_UUID}" = "x" ] || [ "x${GRUB_DISABLE_LINUX_UUID}" = "xtrue" ]; then
+  ROOT_DEVICE=${GRUB_DEVICE}
+else
+  ROOT_DEVICE=UUID=${GRUB_DEVICE_UUID}
+fi
+
+# Btrfs root in a subvolume (not used by the installer yet): keep rootflags, like 10_linux.
+if [ "x${GRUB_FS}" = "xbtrfs" ]; then
+  rootsubvol="$(make_system_path_relative_to_its_root /)"
+  rootsubvol="${rootsubvol#/}"
+  if [ "x${rootsubvol}" != x ]; then
+    GRUB_CMDLINE_LINUX="rootflags=subvol=${rootsubvol} ${GRUB_CMDLINE_LINUX}"
+  fi
+fi
+
+# Keep the user's own parameters, drop anything that asks for the NVIDIA driver or a graphics mode
+# (for example nvidia-drm.modeset=1 from the NVIDIA profile).
+SAFE_ARGS=""
+for word in ${GRUB_CMDLINE_LINUX}; do
+  case "$word" in
+    nvidia*|nomodeset|modprobe.blacklist=*) ;;
+    *) SAFE_ARGS="${SAFE_ARGS} ${word}" ;;
+  esac
+done
+SAFE_ARGS="${SAFE_ARGS# } nomodeset modprobe.blacklist=nvidia,nvidia_modeset,nvidia_uvm,nvidia_drm"
+
+for kname in linux linux-lts; do
+  kernel="${HEISS_SAFE_BOOT}/vmlinuz-${kname}"
+  [ -e "$kernel" ] || continue
+  initrd="initramfs-${kname}.img"
+  [ -e "${HEISS_SAFE_BOOT}/$initrd" ] || continue
+  rel_dirname="$(make_system_path_relative_to_its_root "${HEISS_SAFE_BOOT}")"
+  boot_device_id="$(grub_get_device_id "${GRUB_DEVICE}")"
+  title="Heiss OS, safe graphics (${kname})"
+  gettext_printf "Found safe graphics kernel: %s\n" "$kernel" >&2
+  cat <<ENTRY
+menuentry '$(echo "$title" | grub_quote)' --class heiss --class gnu-linux --class os \$menuentry_id_option 'heiss-safe-graphics-${kname}-${boot_device_id}' {
+	insmod gzio
+$(prepare_grub_to_access_device "${GRUB_DEVICE_BOOT:-$GRUB_DEVICE}" | grub_add_tab)
+	echo	'Loading Linux ${kname} (safe graphics) ...'
+	linux	${rel_dirname}/vmlinuz-${kname} root=${ROOT_DEVICE} rw ${SAFE_ARGS}
+	echo	'Loading initial ramdisk ...'
+	initrd	${rel_dirname}/${initrd}
+}
+ENTRY
+done
