@@ -9,6 +9,7 @@ REPO = os.path.dirname(os.path.dirname(HERE))
 sys.path.insert(0, os.path.join(REPO, "core"))
 sys.path.insert(0, os.path.dirname(HERE))
 from heiss_control import model as m  # noqa: E402
+from heiss_control import privacy_view as pvw  # noqa: E402
 from heiss_control import runner  # noqa: E402
 from heiss_control import security as sec  # noqa: E402
 from heiss_control import theme as th  # noqa: E402
@@ -31,6 +32,9 @@ class Fixture(unittest.TestCase):
                          apply_theme=lambda theme: (True, ""),
                          run_check=lambda: [{"name": "units", "status": "OK", "detail": "fine", "commands": []}],
                          open_settings=lambda: (True, ""),
+                         privacy_facts=lambda chosen: [{"id": "level", "status": "info", "code": chosen or "unset", "data": ""},
+                                                       {"id": "wifi_mac", "status": "warn", "code": "preserve", "data": ""},
+                                                       {"id": "lock", "status": "ok", "code": "on", "data": "3"}],
                          online=lambda: True, run_pending_item=lambda item, on_step: None,
                          security_facts=lambda: [{"id": "firewall", "status": "ok", "code": "active_enabled", "data": ""},
                                                  {"id": "listening", "status": "warn", "code": "some", "data": "22, 631"},
@@ -65,7 +69,7 @@ class Pages(Fixture):
         mod.open("hardware")
         s = mod.screen()
         self.assertFalse(s["built"])
-        for key in ("overview", "profiles", "appearance", "security", "advanced", "about"):
+        for key in ("overview", "profiles", "appearance", "security", "network", "advanced", "about"):
             self.assertNotIn(key, s)
 
     def test_every_language_has_every_key_of_english(self):
@@ -713,6 +717,155 @@ class Runner(unittest.TestCase):
         with self.assertRaises(HeissError):
             runner.run_item(self.item(), None, ["/nonexistent/heiss"])
         runner.run_item(self.item(), None, self.fake("printf '\\377\\376\\n'; exit 0"))
+
+
+class FakePrivacySystem:
+    def __init__(self, files=None, kde=None, answers=None):
+        self.files, self.kde, self.answers, self.calls = files or {}, kde or {}, answers or {}, []
+
+    def read_text(self, path):
+        return self.files.get(path)
+
+    def kde_value(self, key, default):
+        return self.kde.get(key, default) if self.kde is not None else None
+
+    def run(self, argv):
+        self.calls.append(argv)
+        return self.answers.get(tuple(argv), (127, ""))
+
+
+NM = "/etc/NetworkManager/conf.d/80-heiss-privacy.conf"
+
+
+def nm_file(wifi):
+    return "# Written by Heiss OS\n[device]\nwifi.scan-rand-mac-address=yes\n\n[connection]\nwifi.cloned-mac-address=%s\nethernet.cloned-mac-address=preserve\n" % wifi
+
+
+class PrivacyFacts(unittest.TestCase):
+    def facts(self, sh, chosen):
+        return {f["id"]: f for f in pvw.collect(chosen, sh)}
+
+    def test_every_level_matches_what_the_helper_writes(self):
+        from heiss_core import privacy as pv
+        for level in pv.LEVELS:
+            wifi = pv.dropins(level)[0]["content"]
+            kde = {k["key"]: k["value"] for k in pv.kde_settings(level)}
+            f = self.facts(FakePrivacySystem({NM: wifi}, kde), level)
+            self.assertEqual((f["wifi_mac"]["status"], f["lock"]["status"]), ("ok", "ok"), level)
+            self.assertEqual(f["level"]["code"], level)
+
+    def test_defaults_count_as_the_standard_level(self):
+        f = self.facts(FakePrivacySystem(), "standard")      # no drop-in, keys unset: KDE and NetworkManager defaults
+        self.assertEqual((f["wifi_mac"]["code"], f["wifi_mac"]["status"], f["lock"]["status"]), ("preserve", "ok", "ok"))
+
+    def test_a_difference_from_the_chosen_level_is_a_warning(self):
+        f = self.facts(FakePrivacySystem({NM: nm_file("preserve")}, {"Timeout": "30"}), "maximum")
+        self.assertEqual((f["wifi_mac"]["status"], f["lock"]["status"]), ("warn", "warn"))
+        self.assertEqual(f["lock"]["data"], "30")
+
+    def test_without_a_chosen_level_nothing_is_a_warning(self):
+        f = self.facts(FakePrivacySystem({NM: nm_file("random")}, {"Autolock": "false"}), None)
+        self.assertEqual((f["level"]["code"], f["wifi_mac"]["status"], f["lock"]["status"]), ("unset", "info", "info"))
+        self.assertEqual(self.facts(FakePrivacySystem(), "bogus")["level"]["code"], "unset")
+
+    def test_lock_off_is_a_warning_only_when_a_level_is_chosen(self):
+        self.assertEqual(self.facts(FakePrivacySystem(kde={"Autolock": "false"}), "standard")["lock"]["code"], "off")
+        self.assertEqual(self.facts(FakePrivacySystem(kde={"Autolock": "false"}), "standard")["lock"]["status"], "warn")
+
+    def test_odd_values_are_shown_not_trusted(self):
+        f = self.facts(FakePrivacySystem({NM: nm_file("<b>x</b>")}, {"Timeout": "abc"}), "standard")
+        self.assertEqual((f["wifi_mac"]["code"], f["wifi_mac"]["data"]), ("other", "<b>x</b>"))
+        self.assertEqual((f["lock"]["code"], f["lock"]["status"]), ("unknown", "info"))
+
+    def test_unreadable_lock_settings_are_unknown(self):
+        sh = FakePrivacySystem()
+        sh.kde = None
+        self.assertEqual(self.facts(sh, "standard")["lock"]["code"], "unknown")
+
+    def test_one_broken_fact_does_not_hide_the_others(self):
+        class Bad(FakePrivacySystem):
+            def read_text(self, path):
+                raise RuntimeError("boom")
+        f = self.facts(Bad(), "standard")
+        self.assertEqual(f["wifi_mac"], {"id": "wifi_mac", "status": "info", "code": "unknown", "data": ""})
+        self.assertIn("lock", f)
+
+    def test_real_system_reads_with_fixed_argument_lists(self):
+        sh = FakePrivacySystem()
+        pvw.firewall(sh, None)
+        self.assertEqual(sh.calls[0], ["systemctl", "is-active", "firewalld"])
+        self.assertIsNone(pvw.RealSystem().read_text("/nonexistent/file"))
+        self.assertIsNone(pvw.RealSystem().kde_value("Autolock", "true") if not __import__("shutil").which("kreadconfig6") else None)
+
+
+class NetworkPage(Fixture):
+    def mod(self, lang="en"):
+        mod = m.Model(self.env, lang)
+        mod.open("network")
+        return mod
+
+    def test_the_chosen_level_reaches_the_facts_and_the_page_is_plain_language(self):
+        self.write("profile.toml", 'schema_version = 1\nprofile = "base"\n[privacy]\nlevel = "enhanced"\n')
+        mod = self.mod()
+        self.assertTrue(mod.begin_network())
+        self.assertFalse(mod.begin_network())
+        mod.finish_network()
+        p = mod.screen()["network"]
+        by = {i["id"]: i for i in p["items"]}
+        self.assertEqual(by["level"]["detail"], "Enhanced.")
+        self.assertEqual(by["lock"]["detail"], "The screen locks automatically after 3 min.")
+        self.assertTrue(by["wifi_mac"]["advice"])
+        self.assertEqual(by["lock"]["advice"], "")
+        self.assertEqual(len(p["soon"]), 4)
+        self.assertEqual(p["soonTitle"], "Coming soon")
+        self.assertIn("heiss profile apply --privacy", p["note"])
+
+    def test_no_answers_means_unset(self):
+        mod = self.mod()
+        mod.begin_network()
+        mod.finish_network()
+        by = {i["id"]: i for i in mod.screen()["network"]["items"]}
+        self.assertIn("No level has been chosen", by["level"]["detail"])
+
+    def test_russian(self):
+        mod = self.mod("ru")
+        mod.begin_network()
+        mod.finish_network()
+        p = mod.screen()["network"]
+        self.assertEqual({i["id"]: i for i in p["items"]}["wifi_mac"]["title"], "MAC-адрес Wi-Fi")
+        self.assertIn("DNS", p["soon"][0])
+
+    def test_a_failing_source_is_reported_and_frees_the_button(self):
+        def boom(chosen):
+            raise RuntimeError("no luck")
+        self.env.privacy_facts = boom
+        mod = self.mod()
+        mod.begin_network()
+        mod.finish_network()
+        p = mod.screen()["network"]
+        self.assertEqual((p["state"], p["items"]), ("failed", []))
+        self.assertTrue(mod.begin_network())
+
+    def test_malformed_results_and_broken_answers_do_not_crash(self):
+        self.write("profile.toml", "= = =")
+        for bad in (None, 5, [None], [{"id": 1}], [{"status": "ok"}]):
+            self.env.privacy_facts = lambda chosen, bad=bad: bad
+            mod = self.mod()
+            mod.begin_network()
+            mod.finish_network()
+            self.assertEqual(mod.net_state, "failed", bad)
+
+    def test_every_code_the_checks_can_return_has_text_in_both_languages(self):
+        from heiss_control.strings import S
+        for lang in S:
+            for fact, codes in pvw.CODES.items():
+                self.assertIn("nw." + fact, S[lang])
+                for code in codes:
+                    self.assertIn("nw.%s.%s" % (fact, code), S[lang], (lang, fact, code))
+            for fact in ("wifi_mac", "lock", "firewall"):
+                self.assertIn("nw.%s.advice" % fact, S[lang])
+            for k in ("dns", "vpn", "bluetooth", "hardened"):
+                self.assertIn("nw.soon." + k, S[lang])
 
 
 class Advanced(Fixture):
