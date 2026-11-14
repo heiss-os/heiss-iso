@@ -300,3 +300,11 @@ Format: date, what, why. Newest at the bottom.
 - **Unset KDE keys count as KDE's defaults (Autolock true, Timeout 5, LockGrace 5), which equal the Standard level.** Why: `kreadconfig6 --default`; the values are the ones recorded in the privacy-level decision above (checked there against the kcfg of the Arch `kscreenlocker` package; not re-read for this PR because the package is not installed on the build host). If they were wrong, every fresh install would show a false "Look at this" on the screen lock: the VM test list has a step for it.
 - **Only the Wi-Fi MAC setting is compared, not the Ethernet MAC or `wifi.scan-rand-mac-address`.** Why: the page and its texts say "Wi-Fi MAC address"; someone who edits only the Ethernet line still sees OK. Extending the comparison is cheap and can follow.
 - The fact-card QML is a shared component for the Security Center and this page. heiss-control pkgrel 7 -> 8.
+
+## 2026-11-14 (Control Center: Updates and snapshots page)
+
+- **The page is read-only: it shows facts and the command to run, and has no update, rollback or snapshot button.** Why: updating and rollback are privileged helper work (and rollback needs the Btrfs decision, which is a separate Tier A item); the installed system is ext4 today, so a snapshot page that did more would pretend.
+- **Updates waiting come from `pacman -Qu`, not `checkupdates`.** Why: `checkupdates` (pacman-contrib, not in the ISO) syncs a temporary database over the network; `pacman -Qu` reads the local one, so the page never goes online by itself. The cost is that the count is only as fresh as the last refresh, and the page says so.
+- **Snapshots are not counted.** Why: `snapper list` and `/.snapshots` need root. The page shows only whether the file system is Btrfs and whether the snapper root config exists.
+- **"Restart needed" is the running kernel's module directory missing.** Why: cheap, needs no privileges; it does not detect a microcode, glibc or systemd update that also wants a restart.
+- heiss-control pkgrel 8 -> 9.

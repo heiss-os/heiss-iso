@@ -339,6 +339,11 @@ ApplicationWindow {
                 Text { textFormat: Text.PlainText; visible: s.page === "security"; text: s.security ? s.security.note : ""
                        color: pal.dim; font.pixelSize: 14; wrapMode: Text.WordWrap; Layout.fillWidth: true }
 
+                // updates and snapshots (read-only)
+                Facts { visible: s.page === "updates"; facts: s.updates; onRerun: control.runUpdates() }
+                Text { textFormat: Text.PlainText; visible: s.page === "updates"; text: s.updates ? s.updates.note : ""
+                       color: pal.dim; font.pixelSize: 14; wrapMode: Text.WordWrap; Layout.fillWidth: true }
+
                 // network and privacy (read-only)
                 Facts { visible: s.page === "network"; facts: s.network; onRerun: control.runNetwork() }
                 Text { textFormat: Text.PlainText; visible: s.page === "network"; text: s.network ? s.network.soonTitle : ""

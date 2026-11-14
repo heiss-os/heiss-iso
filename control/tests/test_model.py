@@ -14,6 +14,7 @@ from heiss_control import runner  # noqa: E402
 from heiss_control import security as sec  # noqa: E402
 from heiss_control import theme as th  # noqa: E402
 from heiss_control import tools  # noqa: E402
+from heiss_control import updates_view as upv  # noqa: E402
 from heiss_control.strings import S  # noqa: E402
 
 OS_RELEASE = 'NAME="Heiss OS"\nPRETTY_NAME="Heiss OS"\nBUILD_ID=rolling\nHOME_URL="https://example.org/h"\n' \
@@ -35,6 +36,8 @@ class Fixture(unittest.TestCase):
                          privacy_facts=lambda chosen: [{"id": "level", "status": "info", "code": chosen or "unset", "data": ""},
                                                        {"id": "wifi_mac", "status": "warn", "code": "preserve", "data": ""},
                                                        {"id": "lock", "status": "ok", "code": "on", "data": "3"}],
+                         update_facts=lambda: [{"id": "pending", "status": "warn", "code": "some", "data": "3"},
+                                               {"id": "reboot", "status": "ok", "code": "no", "data": ""}],
                          online=lambda: True, run_pending_item=lambda item, on_step: None,
                          security_facts=lambda: [{"id": "firewall", "status": "ok", "code": "active_enabled", "data": ""},
                                                  {"id": "listening", "status": "warn", "code": "some", "data": "22, 631"},
@@ -69,7 +72,7 @@ class Pages(Fixture):
         mod.open("hardware")
         s = mod.screen()
         self.assertFalse(s["built"])
-        for key in ("overview", "profiles", "appearance", "security", "network", "advanced", "about"):
+        for key in ("overview", "profiles", "appearance", "security", "updates", "network", "advanced", "about"):
             self.assertNotIn(key, s)
 
     def test_every_language_has_every_key_of_english(self):
@@ -866,6 +869,124 @@ class NetworkPage(Fixture):
                 self.assertIn("nw.%s.advice" % fact, S[lang])
             for k in ("dns", "vpn", "bluetooth", "hardened"):
                 self.assertIn("nw.soon." + k, S[lang])
+
+
+class FakeUpdateSystem:
+    def __init__(self, answers=None, log=None, today=None, release="6.1.0-arch1", paths=()):
+        import datetime
+        self.answers, self.log, self.paths, self.release = answers or {}, log, set(paths), release
+        self.day = today or datetime.date(2026, 11, 14)
+
+    def run(self, argv):
+        return self.answers.get(tuple(argv), (127, ""))
+
+    def read_tail(self, path):
+        return self.log
+
+    def today(self):
+        return self.day
+
+    def kernel_release(self):
+        return self.release
+
+    def exists(self, path):
+        return path in self.paths
+
+
+LOG = "[2026-10-01T10:00:00+0300] [PACMAN] starting full system upgrade\n[2026-11-10T10:00:00+0300] [PACMAN] starting full system upgrade\n"
+
+
+class UpdateFacts(unittest.TestCase):
+    def facts(self, sh):
+        return {f["id"]: f for f in upv.collect(sh)}
+
+    def test_pending_counts_lines_and_no_updates_is_exit_one(self):
+        f = self.facts(FakeUpdateSystem({("pacman", "-Qu"): (0, "a 1 -> 2\nb 1 -> 2\n")}))
+        self.assertEqual((f["pending"]["status"], f["pending"]["code"], f["pending"]["data"]), ("warn", "some", "2"))
+        f = self.facts(FakeUpdateSystem({("pacman", "-Qu"): (1, "")}))
+        self.assertEqual(f["pending"]["code"], "none")
+        f = self.facts(FakeUpdateSystem({("pacman", "-Qu"): (2, "")}))
+        self.assertEqual(f["pending"]["code"], "unknown")
+        self.assertEqual(self.facts(FakeUpdateSystem())["pending"]["code"], "unknown")
+
+    def test_last_upgrade_uses_the_newest_entry_and_ages(self):
+        f = self.facts(FakeUpdateSystem(log=LOG))
+        self.assertEqual((f["last"]["code"], f["last"]["data"]), ("recent", "2026-11-10"))
+        import datetime
+        f = self.facts(FakeUpdateSystem(log=LOG, today=datetime.date(2026, 12, 20)))
+        self.assertEqual((f["last"]["status"], f["last"]["code"]), ("warn", "old"))
+        self.assertEqual(self.facts(FakeUpdateSystem(log="[2026-11-10T10:00:00+0300] [ALPM] installed x\n"))["last"]["code"], "never")
+        self.assertEqual(self.facts(FakeUpdateSystem(log=None))["last"]["code"], "unknown")
+        self.assertEqual(self.facts(FakeUpdateSystem(log="[2026-13-45T1:1] [PACMAN] starting full system upgrade\n"))["last"]["code"], "unknown")
+
+    def test_reboot_needed_when_the_running_kernel_modules_are_gone(self):
+        self.assertEqual(self.facts(FakeUpdateSystem(paths=["/usr/lib/modules/6.1.0-arch1"]))["reboot"]["code"], "no")
+        self.assertEqual(self.facts(FakeUpdateSystem())["reboot"]["code"], "yes")
+        self.assertEqual(self.facts(FakeUpdateSystem(release="../x"))["reboot"]["code"], "unknown")
+
+    def test_snapshots_by_file_system(self):
+        q = ("findmnt", "-n", "-o", "FSTYPE", "/")
+        f = self.facts(FakeUpdateSystem({q: (0, "ext4\n")}))["snapshots"]
+        self.assertEqual((f["code"], f["data"]), ("not_btrfs", "ext4"))
+        self.assertEqual(self.facts(FakeUpdateSystem({q: (0, "btrfs\n")}))["snapshots"]["code"], "btrfs_no_snapper")
+        self.assertEqual(self.facts(FakeUpdateSystem({q: (0, "btrfs\n")}, paths=[upv.SNAPPER_ROOT]))["snapshots"]["code"], "ready")
+        self.assertEqual(self.facts(FakeUpdateSystem({q: (0, "ext4 <b>x\n")}))["snapshots"]["code"], "unknown")
+        self.assertEqual(self.facts(FakeUpdateSystem())["snapshots"]["code"], "unknown")
+
+    def test_one_broken_check_does_not_hide_the_others(self):
+        class Bad(FakeUpdateSystem):
+            def read_tail(self, path):
+                raise RuntimeError("x")
+        f = self.facts(Bad())
+        self.assertEqual((f["last"]["code"], len(f)), ("unknown", 4))
+
+    def test_real_system_commands_are_fixed_lists_and_missing_file_is_none(self):
+        self.assertIsNone(upv.RealSystem().read_tail("/nonexistent/file"))
+        self.assertEqual(len(upv.collect()), 4)
+
+
+class UpdatesPage(Fixture):
+    def mod(self, lang="en"):
+        mod = m.Model(self.env, lang)
+        mod.open("updates")
+        return mod
+
+    def test_page_is_built_plain_language_with_advice_only_for_warnings(self):
+        mod = self.mod()
+        self.assertTrue(mod.begin_updates())
+        self.assertFalse(mod.begin_updates())
+        mod.finish_updates()
+        p = mod.screen()["updates"]
+        by = {i["id"]: i for i in p["items"]}
+        self.assertEqual(by["pending"]["detail"], "3 updates are waiting (as of the last refresh of the package list).")
+        self.assertTrue(by["pending"]["advice"])
+        self.assertEqual(by["reboot"]["advice"], "")
+        self.assertIn("sudo pacman -Syu", p["note"])
+        self.assertTrue(mod.screen()["built"])
+
+    def test_russian_and_failure(self):
+        mod = self.mod("ru")
+        mod.begin_updates()
+        mod.finish_updates()
+        self.assertEqual({i["id"]: i for i in mod.screen()["updates"]["items"]}["pending"]["title"], "Ожидающие обновления")
+
+        def boom():
+            raise RuntimeError("no luck")
+        self.env.update_facts = boom
+        mod = self.mod()
+        mod.begin_updates()
+        mod.finish_updates()
+        self.assertEqual((mod.screen()["updates"]["state"], mod.screen()["updates"]["items"]), ("failed", []))
+        self.assertTrue(mod.begin_updates())
+
+    def test_every_code_has_text_in_both_languages(self):
+        for lang in S:
+            for fact, codes in upv.CODES.items():
+                self.assertIn("up." + fact, S[lang])
+                for code in codes:
+                    self.assertIn("up.%s.%s" % (fact, code), S[lang], (lang, fact, code))
+            for fact in ("pending", "last", "reboot"):
+                self.assertIn("up.%s.advice" % fact, S[lang])
 
 
 class Advanced(Fixture):

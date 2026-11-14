@@ -2,7 +2,7 @@
 
 Read this file at the start of every session. Source plan: `heiss-master-prompt.md` (kept outside the repo, in `~/share/`).
 
-Last updated: 2026-11-13
+Last updated: 2026-11-14
 
 ## Done
 
@@ -226,6 +226,10 @@ Owner's rule (2026-11-11): no ISO build and no VM check until the whole master p
 - [ ] Overview, pending actions: put one entry in the pending queue ("Save answers, apply later" in the wizard), open the Control Center / expect the pending-actions card to show 1 and "1 waiting".
 - [ ] Overview on an installed system after Apply: profile and privacy level match what the wizard applied; `plasmashell --version` is parsed on the real Plasma.
 
+- [ ] Control Center, Updates and snapshots: open "Updates and snapshots" / expect four cards (updates waiting, last system update, restart, snapshots); compare with `pacman -Qu | wc -l`, the last `starting full system upgrade` line of `/var/log/pacman.log` and `findmnt -n -o FSTYPE /`; on the ext4 install expect "no snapshots" as information, not a warning; in Russian all texts are Russian.
+- [ ] Control Center, Updates and snapshots, restart: `sudo pacman -Syu` with a new kernel, click "Check again" before rebooting / expect the restart card "Look at this"; after a reboot expect OK (never run: the check is `/usr/lib/modules/$(uname -r)` missing).
+- [ ] Control Center, Updates and snapshots, waiting: with updates waiting expect the count and advice; after `sudo pacman -Syu` and "Check again" expect "none"; the page must make no network request (compare with `ss`/a firewall log while opening it).
+
 ### Tooling (not a product phase)
 - [ ] In a new Claude Code session run `/agents`: `reviewer`, `security-reviewer`, `qa-verifier` and `docs-keeper` are listed; invoke each on a small diff and expect a findings list and a `Verdict:` line, and `git status` stays clean afterwards (they must not change files).
 - [ ] After the first merged PR that follows the new rules: the final report carries the line `агенты: reviewer ok, security ok, qa ok, docs ok` (`n/a` for an agent that PR did not need) and the PR text has an "automated review" block that lists each agent's result and which findings were fixed.
@@ -281,3 +285,7 @@ PR "fix/wizard-apply-isolated": `welcome/heiss_welcome/applier.py` starts `pytho
 ## Phase 6, step 7 (2026-11-13): Network and privacy page (read-only)
 
 PR "feat/control-center-privacy": `control/heiss_control/privacy_view.py`, the page (chosen level vs. Wi-Fi MAC drop-in, screen-lock keys and firewall, coming-soon list), shared fact-card QML component, 111 control tests, heiss-control pkgrel 8. Verified by a real run of `privacy_view.collect()` on the build host (no drop-in, `kreadconfig6` missing so the lock is "could not be read", firewall off). Not verified: the window and worker thread (no `pyside6`), `kreadconfig6` on a real Plasma, an installed system with a level applied. Not done: changing the level (profile-change PR), DNS over TLS, VPN, Bluetooth, linux-hardened (listed as coming soon), the live NetworkManager value. Next: Updates and snapshots, or the profile change through the helper, after the owner's reply.
+
+## Phase 6, step 8 (2026-11-14): Updates and snapshots page (read-only)
+
+PR "feat/control-center-updates": `control/heiss_control/updates_view.py` (updates waiting, last system update, restart needed, snapshots set up), the page, shared fact-card component, strings en/ru, tests, heiss-control pkgrel 9. Verified by a real run of `updates_view.collect()` on the build host (no updates, last upgrade date matched the pacman log, no restart needed, ext4 so no snapshots). Not verified: the window and worker thread (no `pyside6`, no `qmllint` here), Btrfs and snapper states (build host is ext4, only fakes), a pending-update count, the restart check after a real kernel update; see the three new Phase 6 lines in the FINAL VM TEST LIST. Not done: update and rollback buttons, snapshot list, Arch news, firmware (fwupd). Next: Phase 7 (hardware and drivers) after this PR is merged.
