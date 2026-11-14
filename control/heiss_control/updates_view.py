@@ -13,6 +13,7 @@ import re
 from . import security
 
 PACMAN_LOG = "/var/log/pacman.log"
+PACMAN_LOCK = "/var/lib/pacman/db.lck"
 SNAPPER_ROOT = "/etc/snapper/configs/root"
 MAX_LOG = 262144
 OLD_DAYS = 30
@@ -31,8 +32,9 @@ class RealSystem(security.RealSystem):
         try:
             with open(path, "rb") as f:
                 f.seek(0, os.SEEK_END)
-                f.seek(max(0, f.tell() - MAX_LOG))
-                return f.read().decode("utf-8", errors="replace")
+                start = max(0, f.tell() - MAX_LOG)
+                f.seek(start)
+                return f.read().decode("utf-8", errors="replace"), start > 0   # (text, the start was cut off)
         except OSError:
             return None
 
@@ -54,16 +56,19 @@ def pending(sh):
     lines = [ln for ln in out.splitlines() if ln.strip()]
     if rc == 0 and lines:
         return _item("pending", "warn", "some", str(len(lines)))
+    if rc == 1 and sh.exists(PACMAN_LOCK):   # pacman also exits 1 on errors; a held lock is the common one
+        return _item("pending", "info", "unknown")
     return _item("pending", "ok", "none") if rc in (0, 1) else _item("pending", "info", "unknown")
 
 
 def last_upgrade(sh):
-    text = sh.read_tail(PACMAN_LOG)
-    if text is None:
+    tail = sh.read_tail(PACMAN_LOG)
+    if tail is None:
         return _item("last", "info", "unknown")
+    text, cut = tail
     dates = _UPGRADE.findall(text)
     if not dates:
-        return _item("last", "info", "never")
+        return _item("last", "info", "unknown" if cut else "never")   # a cut log may hide the line
     try:
         day = datetime.date.fromisoformat(dates[-1])
     except ValueError:

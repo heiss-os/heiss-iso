@@ -872,16 +872,16 @@ class NetworkPage(Fixture):
 
 
 class FakeUpdateSystem:
-    def __init__(self, answers=None, log=None, today=None, release="6.1.0-arch1", paths=()):
+    def __init__(self, answers=None, log=None, today=None, release="6.1.0-arch1", paths=(), cut=False):
         import datetime
-        self.answers, self.log, self.paths, self.release = answers or {}, log, set(paths), release
+        self.answers, self.log, self.paths, self.release, self.cut = answers or {}, log, set(paths), release, cut
         self.day = today or datetime.date(2026, 11, 14)
 
     def run(self, argv):
         return self.answers.get(tuple(argv), (127, ""))
 
     def read_tail(self, path):
-        return self.log
+        return self.log if self.log is None else (self.log, self.cut)
 
     def today(self):
         return self.day
@@ -908,6 +908,8 @@ class UpdateFacts(unittest.TestCase):
         f = self.facts(FakeUpdateSystem({("pacman", "-Qu"): (2, "")}))
         self.assertEqual(f["pending"]["code"], "unknown")
         self.assertEqual(self.facts(FakeUpdateSystem())["pending"]["code"], "unknown")
+        locked = FakeUpdateSystem({("pacman", "-Qu"): (1, "")}, paths=[upv.PACMAN_LOCK])
+        self.assertEqual(self.facts(locked)["pending"]["code"], "unknown")
 
     def test_last_upgrade_uses_the_newest_entry_and_ages(self):
         f = self.facts(FakeUpdateSystem(log=LOG))
@@ -916,6 +918,7 @@ class UpdateFacts(unittest.TestCase):
         f = self.facts(FakeUpdateSystem(log=LOG, today=datetime.date(2026, 12, 20)))
         self.assertEqual((f["last"]["status"], f["last"]["code"]), ("warn", "old"))
         self.assertEqual(self.facts(FakeUpdateSystem(log="[2026-11-10T10:00:00+0300] [ALPM] installed x\n"))["last"]["code"], "never")
+        self.assertEqual(self.facts(FakeUpdateSystem(log="[x] y\n", cut=True))["last"]["code"], "unknown")
         self.assertEqual(self.facts(FakeUpdateSystem(log=None))["last"]["code"], "unknown")
         self.assertEqual(self.facts(FakeUpdateSystem(log=LOG, today=datetime.date(2026, 1, 1)))["last"]["code"], "unknown")
         self.assertEqual(self.facts(FakeUpdateSystem(log="[2026-13-45T1:1] [PACMAN] starting full system upgrade\n"))["last"]["code"], "unknown")
@@ -943,6 +946,17 @@ class UpdateFacts(unittest.TestCase):
 
     def test_real_system_commands_are_fixed_lists_and_missing_file_is_none(self):
         self.assertIsNone(upv.RealSystem().read_tail("/nonexistent/file"))
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            big = os.path.join(d, "log")
+            with open(big, "w") as f:
+                f.write("[2026-11-10T10:00:00+0300] [PACMAN] starting full system upgrade\n" + "x" * (upv.MAX_LOG + 10))
+            text, cut = upv.RealSystem().read_tail(big)
+            self.assertTrue(cut)
+            self.assertEqual(len(text.encode()), upv.MAX_LOG)
+            small = os.path.join(d, "small")
+            open(small, "w").write("abc")
+            self.assertEqual(upv.RealSystem().read_tail(small), ("abc", False))
         self.assertEqual(len(upv.collect()), 4)
 
 
