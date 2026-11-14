@@ -317,3 +317,8 @@ Format: date, what, why. Newest at the bottom.
 - **The driver doctor report is plain text with an explicit list of what it leaves out** (hostname, user, serials, PCI slots, MAC addresses, DMI vendor and product). Why: it is meant to be pasted into a bug report. DMI strings are left out although they are not personal in themselves, because they identify a machine model closely enough to be unnecessary for a first diagnosis. A test covers the PCI slots and DMI strings of every fixture. The report is English only.
 - **When `pacman -Qq` gives no list, every proposal reads "unknown", not "not installed".** Why: an empty answer would otherwise claim a missing driver.
 - **The clipboard copy is the only thing the page writes, and only on a click.** heiss-control pkgrel 9 -> 10.
+
+## 2026-11-14 (Phase 7: safe fallback design, proposal only)
+
+- **`docs/hardware/SAFE-FALLBACK.md` records the proposal; nothing is decided or built.** Why: the safe-graphics boot entry and a second kernel change what the installed system boots, and the choice between a package file and a Tier A route (`heiss-cleanup.sh`) is the owner's. Four numbered questions are in the document.
+- **Found: the NVIDIA profile warning refers to a safe graphics boot entry that does not exist, and says the LTS kernel needs DKMS although `nvidia-open-lts` is in the repositories.** To be corrected in a follow-up PR once the owner answers; the text is user-facing and the entry must exist first.
