@@ -50,6 +50,20 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual(rc, 124)
         self.assertLess(took, 5)
 
+    def test_a_grandchild_in_another_session_cannot_keep_the_runner_waiting(self):
+        # setsid puts the sleeper out of the command's process group: the group kill cannot reach it and it holds the pipe
+        rc, took = self.run_cmd("sh", "-c", "setsid sleep 60 & exit 0", timeout=30)
+        self.assertEqual(rc, 0)
+        self.assertLess(took, 5)       # returned when the command exited, not at the 30 s limit
+        rc, took = self.run_cmd("sh", "-c", "setsid sleep 60 & sleep 60", timeout=1)
+        self.assertEqual(rc, 124)
+        self.assertLess(took, 5)
+
+    def test_binary_and_split_output_is_decoded_and_split_into_lines(self):
+        rc, _ = self.run_cmd("sh", "-c", "printf 'a\\xffb\\nlast without newline'")
+        self.assertEqual(rc, 0)
+        self.assertEqual(self.lines, ["a\ufffdb", "last without newline"])
+
     def test_a_command_that_ignores_sigterm_is_killed(self):
         rc, took = self.run_cmd("sh", "-c", "trap '' TERM; while true; do sleep 0.2; done", timeout=1)
         self.assertEqual(rc, 124)
