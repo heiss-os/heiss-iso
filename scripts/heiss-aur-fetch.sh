@@ -18,12 +18,21 @@ url=$1 dir=$2 commit=$3 want_sha=$4
 
 [[ $commit =~ ^[0-9a-f]{40}$ ]] || { echo "COMMIT must be 40 lowercase hex digits" >&2; exit 2; }
 [[ $want_sha =~ ^[0-9a-f]{64}$ ]] || { echo "PKGBUILD_SHA256 must be 64 lowercase hex digits" >&2; exit 2; }
-case "$dir" in
-    ""|"/"|"$HOME"|"$HOME/") echo "refusing to use '$dir' as the target directory" >&2; exit 2 ;;
+# the directory is deleted first: it must be an absolute, clean path at least three levels deep
+# (for example /home/user/aur/calamares), and never the home directory or a parent of it
+[[ $dir == /* && $dir != *//* && $dir != */ ]] || { echo "refusing the target directory '$dir': need a clean absolute path" >&2; exit 2; }
+case "/$dir/" in
+    */./*|*/../*) echo "refusing the target directory '$dir': no . or .. components" >&2; exit 2 ;;
+esac
+slashes=${dir//[^\/]/}
+[ "${#slashes}" -ge 3 ] || { echo "refusing the target directory '$dir': too shallow" >&2; exit 2; }
+home=${HOME%/}
+case "$home/" in
+    "$dir"/*) echo "refusing the target directory '$dir': it is the home directory or contains it" >&2; exit 2 ;;
 esac
 
 rm -rf -- "$dir"
-git clone --quiet -- "$url" "$dir"
+git clone --quiet --no-checkout -- "$url" "$dir"   # nothing from the remote head is checked out
 git -C "$dir" -c advice.detachedHead=false checkout --quiet --detach "$commit" ||
     { echo "commit $commit is not in $url (rewritten history?): do not build, review the repository again" >&2; exit 1; }
 

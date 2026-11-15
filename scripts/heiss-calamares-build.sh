@@ -35,7 +35,7 @@ if [ "${HEISS_PATCH_LAYOUT:-1}" = "1" ]; then
     grep -n 'heiss-layout.patch' PKGBUILD
 fi
 
-echo "==> Сборка (10-30 минут). Пароль sudo понадобится для установки зависимостей."
+echo "==> Сборка (10-30 минут). Понадобятся пароль sudo и подтверждение pacman для установки зависимостей."
 # dependencies come from the signed official repositories; pacman asks before installing them.
 # HEISS_NONINTERACTIVE=1 passes --noconfirm (for an unattended build in a throwaway VM).
 makepkg_opts=()

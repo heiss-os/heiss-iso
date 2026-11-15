@@ -75,10 +75,18 @@ class Fetch(unittest.TestCase):
         self.assertEqual(sh(FETCH, "one").returncode, 2)
 
     def test_dangerous_target_directories_are_refused(self):
-        for bad in ("", "/", os.path.expanduser("~")):
+        home = os.path.expanduser("~")
+        for bad in ("", "/", home, home + "/", home + "//aur/x", ".", "..", "x/y/z", "/home", "/tmp", "/tmp/a",
+                    "/tmp/../etc/x/y", "/tmp/./a/b", os.path.dirname(home), self.d + "/"):
             r = self.run_fetch(self.c1, sha(self.v1), dest=bad)
             self.assertEqual(r.returncode, 2, bad)
-        self.assertTrue(os.path.isdir(os.path.expanduser("~")))
+        self.assertTrue(os.path.isdir(home))
+        self.assertTrue(os.path.isdir(self.remote))
+
+    def test_nothing_from_the_remote_head_is_left_in_a_failed_checkout(self):
+        r = self.run_fetch("0" * 40, sha(self.v1))
+        self.assertEqual(r.returncode, 1)
+        self.assertFalse(os.path.exists(os.path.join(self.dest, "PKGBUILD")))   # --no-checkout: the head was never written
 
     def test_an_existing_target_is_replaced_not_reused(self):
         os.makedirs(self.dest)
