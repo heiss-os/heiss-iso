@@ -9,10 +9,8 @@ USES = re.compile(r"^\s*-?\s*uses:\s*(\S+)(.*)$")
 SHA = re.compile(r"^[^@\s]+@[0-9a-f]{40}$")
 
 
-# guards.yml is a Tier A protected file (docs/design/protected-paths.txt): pinning it needs the owner's
-# `design-approved` label and a regenerated protected.sha256. It holds no secrets (contents: read). Remove it
-# from this set in the PR that pins it.
-PENDING_OWNER_APPROVAL = {"guards.yml"}
+# Workflow files that may stay unpinned for now (none: guards.yml, Tier A, was pinned with the owner's design-approved).
+PENDING_OWNER_APPROVAL = set()
 
 
 class Pins(unittest.TestCase):
