@@ -13,30 +13,66 @@ boot_dir="/boot"
 
 . "$pkgdatadir/grub-mkconfig_lib"
 
+# Everything that comes from the machine (kernel parameters, the device, a Btrfs subvolume name, the boot
+# directory) is written into grub.cfg as a GRUB script word. A quote, $, ;, {, }, #, a glob character or
+# a space would change what GRUB parses. grub_word writes the value with a backslash before every
+# character outside a plain set. A value with a control character or a non-ASCII byte is refused (empty
+# output, return 1): a rescue entry must not guess. A root device, a subvolume name or a boot directory
+# with a space is refused as well (see grub_word).
+NL="$(printf '\nx')"
+NL="${NL%x}"
+# grub_word VALUE [one-parameter]: with a second argument a space is refused too, because GRUB joins the
+# words of `linux` with spaces and the kernel would see an escaped space as two parameters.
+grub_word() {
+  case "$1" in
+    *"$NL"*) return 1 ;;
+  esac
+  if [ -n "$2" ]; then
+    [ -n "$1" ] || return 1
+    case "$1" in
+      *" "*) return 1 ;;
+    esac
+  fi
+  # grep exits 1 when the value is clean; 0 (a bad byte) or 2 and above (grep missing or failing) refuse
+  if printf '%s' "$1" | LC_ALL=C grep -q '[^ -~]'; then rc=0; else rc=$?; fi
+  [ "$rc" -eq 1 ] || return 1
+  printf '%s' "$1" | LC_ALL=C sed 's#[^A-Za-z0-9_.,:=@%+/-]#\\&#g'
+}
+
 # Same choice of root= as 10_linux (UUID when known, else the device).
 if [ "x${GRUB_DEVICE_UUID}" = "x" ] || [ "x${GRUB_DISABLE_LINUX_UUID}" = "xtrue" ]; then
   ROOT_DEVICE=${GRUB_DEVICE}
 else
   ROOT_DEVICE=UUID=${GRUB_DEVICE_UUID}
 fi
+ROOT_DEVICE="$(grub_word "${ROOT_DEVICE}" one)" || { echo "heiss-safe-graphics: unusable root device, no entry written" >&2; exit 0; }
 
+ROOTFLAGS=""
 # Btrfs root in a subvolume (not used by the installer yet): keep rootflags, like 10_linux.
 if [ "x${GRUB_FS}" = "xbtrfs" ]; then
   rootsubvol="$(make_system_path_relative_to_its_root /)"
   rootsubvol="${rootsubvol#/}"
   if [ "x${rootsubvol}" != x ]; then
-    GRUB_CMDLINE_LINUX="rootflags=subvol=${rootsubvol} ${GRUB_CMDLINE_LINUX}"
+    if ! ROOTFLAGS="$(grub_word "rootflags=subvol=${rootsubvol}" one)"; then
+      echo "heiss-safe-graphics: Btrfs subvolume name not usable, no entry written" >&2
+      exit 0
+    fi
   fi
 fi
 
 # Keep the user's own parameters, drop anything that asks for the NVIDIA driver or a graphics mode
 # (for example nvidia-drm.modeset=1 from the NVIDIA profile).
-SAFE_ARGS=""
+SAFE_ARGS="${ROOTFLAGS}"
 set -f   # no pathname expansion of the words below
 for word in ${GRUB_CMDLINE_LINUX}; do
   case "$word" in
     nvidia*|nomodeset|modprobe.blacklist=*) ;;
-    *) SAFE_ARGS="${SAFE_ARGS} ${word}" ;;
+    *)
+      if esc="$(grub_word "$word")"; then
+        SAFE_ARGS="${SAFE_ARGS} ${esc}"
+      else
+        echo "heiss-safe-graphics: kernel parameter with a control or non-ASCII character left out" >&2
+      fi ;;
   esac
 done
 set +f
@@ -47,8 +83,8 @@ for kname in linux linux-lts; do
   [ -e "$kernel" ] || continue
   initrd="initramfs-${kname}.img"
   [ -e "${boot_dir}/$initrd" ] || continue
-  rel_dirname="$(make_system_path_relative_to_its_root "${boot_dir}")"
-  boot_device_id="$(grub_get_device_id "${GRUB_DEVICE}")"
+  rel_dirname="$(grub_word "$(make_system_path_relative_to_its_root "${boot_dir}")" one)" || continue
+  boot_device_id="$(grub_get_device_id "${GRUB_DEVICE}" | grub_quote)"
   title="Heiss OS, safe graphics (${kname})"
   gettext_printf "Found safe graphics kernel: %s\n" "$kernel" >&2
   cat <<ENTRY
