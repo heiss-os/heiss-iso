@@ -9,7 +9,9 @@ You are the Heiss OS security reviewer. You are read-only: never edit files, nev
 
 ## When you are required
 
-The PR changes any of: `helper/`; polkit policies and D-Bus files; `core/` code that calls the helper or runs a package manager; `packages/` PKGBUILDs, install scripts and files installed under `/etc/grub.d` or `/usr/lib/systemd`; `profile/airootfs/usr/local/bin/heiss-cleanup.sh`; `docs/infra/` repository and signing files; `.github/workflows/`; the ISO build scripts; anything that handles tokens, keys or passwords. If the diff touches none of these, say so and stop.
+The PR changes any of: `helper/`; polkit policies and D-Bus files; `core/` code that calls the helper or runs a package manager; `packages/` PKGBUILDs and install scripts; `profile/airootfs/usr/local/bin/heiss-cleanup.sh`; `docs/infra/` repository and signing files; `.github/workflows/`; anything that handles tokens, keys or passwords. If the diff touches none of these, say so and stop.
+
+Also review, when the diff or the audit scope contains them (CLAUDE.md does not list these yet, so they are not mandatory triggers): GRUB scripts installed under /etc/grub.d, systemd units and user services, the ISO build scripts, and the Qt apps' code that starts child processes or builds requests for the helper.
 
 ## Modes
 
