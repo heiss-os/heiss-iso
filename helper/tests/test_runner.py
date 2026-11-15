@@ -64,6 +64,37 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual(rc, 0)
         self.assertEqual(self.lines, ["a\ufffdb", "last without newline"])
 
+    def test_a_command_that_closes_its_output_but_keeps_working_is_waited_for(self):
+        rc, took = self.run_cmd("sh", "-c", "echo start; exec >&- 2>&-; sleep 0.7; exit 3", timeout=20)
+        self.assertEqual(rc, 3)           # its own exit code, not a signal from the runner
+        self.assertGreaterEqual(took, 0.6)
+        self.assertEqual(self.lines, ["start"])
+
+    def test_a_command_that_closes_its_output_and_never_exits_is_ended_at_the_limit(self):
+        rc, took = self.run_cmd("sh", "-c", "exec >&- 2>&-; sleep 60", timeout=1)
+        self.assertEqual(rc, 124)
+        self.assertLess(took, 5)
+
+    def test_a_chatty_grandchild_does_not_keep_the_runner_after_the_command_exited(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        pidfile = os.path.join(tmp.name, "pid")
+
+        def reap():
+            try:
+                with open(pidfile) as f:
+                    os.killpg(int(f.read()), 9)    # the grandchild leads its own session and group
+            except (OSError, ValueError):
+                pass
+        self.addCleanup(reap)
+        script = "setsid sh -c 'echo $$ > %s; while true; do echo spam; sleep 0.05; done' & exit 0" % pidfile
+        rc, took = self.run_cmd("sh", "-c", script, timeout=30)
+        self.assertEqual(rc, 0)
+        self.assertLess(took, 5)
+
+    def test_no_time_limit_is_accepted(self):
+        self.assertEqual(self.r.run(["true"], self.lines.append, timeout=None), 0)
+
     def test_a_command_that_ignores_sigterm_is_killed(self):
         rc, took = self.run_cmd("sh", "-c", "trap '' TERM; while true; do sleep 0.2; done", timeout=1)
         self.assertEqual(rc, 124)

@@ -10,6 +10,7 @@ ENV = {"LC_ALL": "C", "PATH": "/usr/bin:/bin"}
 KILL_GRACE_S = 10   # SIGTERM first (pacman then releases its database lock), SIGKILL when it did not stop
 POLL_S = 0.5        # how often the reader looks at the clock and at the command while it is silent
 CHUNK = 65536
+DRAIN_S = 0.5      # after the command has exited, how long to keep reading what is left in the pipe
 
 
 def _stop(p, grace):
@@ -41,8 +42,8 @@ class Runner:
         p = subprocess.Popen(argv, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                              env=ENV, start_new_session=True)
         fd = p.stdout.fileno()
-        deadline = time.monotonic() + timeout
-        expired, lines, pending = False, 0, b""
+        deadline = float("inf") if timeout is None else time.monotonic() + timeout
+        expired, finished, lines, pending = False, False, 0, b""
 
         def deliver(data, final=False):
             nonlocal lines, pending
@@ -56,6 +57,15 @@ class Runner:
                 if lines <= MAX_OUTPUT_LINES:
                     emit(part.decode("utf-8", "replace").rstrip("\r"))
 
+        def drain(seconds):
+            """Take what is readable now, for at most `seconds` (a grandchild that keeps writing must not hold us)."""
+            end = time.monotonic() + seconds
+            while time.monotonic() < end and select.select([fd], [], [], 0)[0]:
+                chunk = os.read(fd, CHUNK)
+                if not chunk:
+                    return
+                deliver(chunk)
+
         try:
             while True:
                 left = deadline - time.monotonic()
@@ -66,25 +76,21 @@ class Runner:
                 if ready:
                     chunk = os.read(fd, CHUNK)
                     if not chunk:
-                        break                      # end of output
+                        break                      # end of output (the command may still be working)
                     deliver(chunk)
-                elif p.poll() is not None:
-                    # the command is gone but something else holds the pipe open: take what is there and stop
-                    while select.select([fd], [], [], 0)[0]:
-                        chunk = os.read(fd, CHUNK)
-                        if not chunk:
-                            break
-                        deliver(chunk)
+                if p.poll() is not None:
+                    drain(DRAIN_S)                 # the command is gone; something else may still hold the pipe open
                     break
             deliver(b"", final=True)
+            finished = True
         finally:
-            if expired or p.poll() is None:        # timed out, or the reader failed (emit raised): do not leave it running
+            if expired or not finished:            # timed out, or the reader failed (emit raised): do not leave it running
                 _stop(p, self.grace)
             p.stdout.close()
         if expired:
             return 124
-        try:
-            return p.wait(timeout=self.grace)
-        except subprocess.TimeoutExpired:          # closed its output but does not exit
+        try:                                       # output closed: the command may work on until the limit
+            return p.wait(timeout=max(deadline - time.monotonic(), 0))
+        except subprocess.TimeoutExpired:
             _stop(p, self.grace)
             return 124
