@@ -52,10 +52,10 @@ class RunnerTests(unittest.TestCase):
 
     def test_a_grandchild_in_another_session_cannot_keep_the_runner_waiting(self):
         # setsid puts the sleeper out of the command's process group: the group kill cannot reach it and it holds the pipe
-        rc, took = self.run_cmd("sh", "-c", "setsid sleep 60 & exit 0", timeout=30)
+        rc, took = self.run_cmd("sh", "-c", "setsid sleep 8 & exit 0", timeout=30)
         self.assertEqual(rc, 0)
         self.assertLess(took, 5)       # returned when the command exited, not at the 30 s limit
-        rc, took = self.run_cmd("sh", "-c", "setsid sleep 60 & sleep 60", timeout=1)
+        rc, took = self.run_cmd("sh", "-c", "setsid sleep 8 & sleep 60", timeout=1)
         self.assertEqual(rc, 124)
         self.assertLess(took, 5)
 
