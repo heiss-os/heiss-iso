@@ -2,7 +2,9 @@ import contextlib
 import io
 import os
 import sys
+import tempfile
 import unittest
+from unittest import mock
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
@@ -145,6 +147,74 @@ class Sync(unittest.TestCase):
         ts.sync(env, wait=True, sleep=slept.append)
         self.assertEqual(slept.count(1), 60)      # gave plasmashell 60 s
         self.assertEqual(slept[-1], 2)            # then waited for the settings to settle
+
+
+class RealLock(unittest.TestCase):
+    """RealEnv.lock against a scratch directory: never /tmp, never a symlink, never someone else's file."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.run_dir = os.path.join(self.tmp.name, "run")
+        self.home = os.path.join(self.tmp.name, "home")
+        os.makedirs(self.run_dir, mode=0o700)
+        os.makedirs(self.home)
+        self.env = ts.RealEnv()
+        self.env.home = self.home
+        self.env.append_log = lambda line: self.logged.append(line)
+        self.logged = []
+
+    def patched(self, **kw):
+        base = {"XDG_RUNTIME_DIR": self.run_dir, "XDG_STATE_HOME": os.path.join(self.home, "state")}
+        base.update(kw)
+        return mock.patch.dict(os.environ, base, clear=False)
+
+    def test_lock_file_is_in_the_runtime_dir_mode_0600(self):
+        with self.patched(), self.env.lock() as got:
+            self.assertTrue(got)
+        st = os.stat(os.path.join(self.run_dir, "heiss-theme-sync.lock"))
+        self.assertEqual(st.st_mode & 0o777, 0o600)
+
+    def test_second_lock_while_held_is_refused(self):
+        with self.patched(), self.env.lock() as first:
+            with self.env.lock() as second:
+                self.assertEqual((first, second), (True, False))
+
+    def test_world_writable_runtime_dir_is_not_used_and_tmp_is_never_used(self):
+        os.chmod(self.run_dir, 0o777)
+        with self.patched(), self.env.lock() as got:
+            self.assertTrue(got)
+        self.assertEqual(os.listdir(self.run_dir), [])
+        self.assertTrue(os.path.exists(os.path.join(self.home, "state", "heiss", "heiss-theme-sync.lock")))
+        self.assertEqual(oct(os.stat(os.path.join(self.home, "state", "heiss")).st_mode & 0o777), "0o700")
+
+    def test_unset_or_relative_runtime_dir_falls_back_to_the_state_dir(self):
+        for value in ("", "relative/dir"):
+            with self.patched(XDG_RUNTIME_DIR=value), self.env.lock() as got:
+                self.assertTrue(got, value)
+        self.assertTrue(os.path.exists(os.path.join(self.home, "state", "heiss", "heiss-theme-sync.lock")))
+
+    def test_a_planted_symlink_is_not_followed(self):
+        target = os.path.join(self.tmp.name, "victim")
+        os.symlink(target, os.path.join(self.run_dir, "heiss-theme-sync.lock"))
+        with self.patched(), self.env.lock() as got:
+            self.assertTrue(got)          # runs without a lock instead
+        self.assertFalse(os.path.exists(target))
+        self.assertTrue(any("without a lock" in l for l in self.logged))
+
+    def test_a_file_of_another_user_is_not_used(self):
+        with self.patched(), mock.patch("os.geteuid", return_value=os.geteuid() + 1):
+            with self.env.lock() as got:
+                self.assertTrue(got)
+        self.assertTrue(any("without a lock" in l for l in self.logged))
+
+    def test_no_usable_directory_runs_without_a_lock(self):
+        blocker = os.path.join(self.tmp.name, "file")
+        open(blocker, "w").close()
+        self.env.home = blocker
+        with self.patched(XDG_RUNTIME_DIR="", XDG_STATE_HOME=""), self.env.lock() as got:
+            self.assertTrue(got)
+        self.assertTrue(self.logged)
 
 
 class Targets(unittest.TestCase):

@@ -12,6 +12,7 @@ import contextlib
 import fcntl
 import os
 import re
+import stat
 import subprocess
 import time
 from dataclasses import dataclass
@@ -103,10 +104,47 @@ class RealEnv:
         except OSError:
             pass   # stderr/journald still has the line
 
+    def _private_dir(self, path):
+        """True when `path` is a real directory owned by this user that no one else can write to."""
+        try:
+            st = os.lstat(path)
+        except OSError:
+            return False
+        return stat.S_ISDIR(st.st_mode) and st.st_uid == os.geteuid() and not st.st_mode & 0o022
+
+    def lock_dir(self):
+        """A directory only this user controls: $XDG_RUNTIME_DIR, else the state directory. Never /tmp:
+        another local user could plant the lock file (a symlink, or a file held locked forever) there."""
+        run_dir = os.environ.get("XDG_RUNTIME_DIR", "")
+        if os.path.isabs(run_dir) and self._private_dir(run_dir):
+            return run_dir
+        base = os.environ.get("XDG_STATE_HOME") or os.path.join(self.home, ".local", "state")
+        path = os.path.join(base, "heiss")
+        try:
+            os.makedirs(path, mode=0o700, exist_ok=True)
+        except OSError:
+            return None
+        return path if self._private_dir(path) else None
+
     @contextlib.contextmanager
     def lock(self):
-        path = os.path.join(os.environ.get("XDG_RUNTIME_DIR", "/tmp"), "heiss-theme-sync.lock")
-        fd = os.open(path, os.O_CREAT | os.O_RDWR, 0o600)
+        d = self.lock_dir()
+        fd = None
+        if d:
+            try:
+                fd = os.open(os.path.join(d, "heiss-theme-sync.lock"),
+                             os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW | os.O_CLOEXEC, 0o600)
+                st = os.fstat(fd)
+                if not stat.S_ISREG(st.st_mode) or st.st_uid != os.geteuid():
+                    os.close(fd)
+                    fd = None
+            except OSError:
+                fd = None
+        if fd is None:
+            # no safe place for a lock: run without one (two syncs at once are harmless, a planted lock is not)
+            self.append_log("no private directory for the lock file; running without a lock")
+            yield True
+            return
         try:
             try:
                 fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
