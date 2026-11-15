@@ -114,7 +114,7 @@ class ViewModel:
     def hardware_ids(self):
         """Hardware profiles the user left ticked (what Apply installs). Detection failed: none."""
         r = self.report()
-        return sorted(p.id for p in r.proposals if self._hw_selected(p)) if r else []
+        return sorted(p.id for p in r.proposals if p.id not in r.unavailable and self._hw_selected(p)) if r else []
 
     def _hw_selected(self, p):
         return self.w.extras.get("hardware_toggles", {}).get(p.id, p.safe_by_default)
@@ -138,6 +138,9 @@ class ViewModel:
         if not r.proposals:
             facts.append({"text": t(lang, "hw.none"), "badge": ""})
         for p in r.proposals:
+            if p.id in r.unavailable:   # not offered: say why instead of a tick box that Apply would refuse
+                facts.append({"text": "%s: %s" % (p.name.get(lang, p.id), t(lang, "hw.not_offered")), "badge": ""})
+                continue
             caution = p.recovery.get(lang) or p.warnings.get(lang)   # the short recovery step; the full text is in the Control Center
             hint = p.description.get(lang, "") + ("  %s: %s" % (t(lang, "hw.warning"), caution) if caution else "")
             opts.append({"path": "hardware", "value": p.id, "hint": hint, "selected": self._hw_selected(p),
@@ -282,7 +285,7 @@ class ViewModel:
 
     def toggle_hardware(self, proposal_id):
         r = self.report()
-        known = {p.id: p for p in r.proposals} if r else {}
+        known = {p.id: p for p in r.proposals if p.id not in r.unavailable} if r else {}
         if proposal_id not in known:
             return self._run(lambda: self.w.set("extra.nosuch", 0))   # rejected like any unknown option
         cur = dict(self.w.extras.get("hardware_toggles", {}))

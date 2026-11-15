@@ -190,6 +190,35 @@ class HardwareAndPrivacy(unittest.TestCase):
             self.assertNotIn("0x1e00", hint)           # the technical detail stays in the Control Center
             self.assertNotIn("nvidia-open-lts", hint)
 
+    def detector_caps(self, name, caps):
+        from heiss_core import hardware as hw
+        return lambda: hw.detect(hw.load_fixture(os.path.join(self.FIX, name)),
+                                 hw.load_profiles(os.path.join(REPO, "hardware")), caps)
+
+    def test_nvidia_is_not_offered_without_the_safe_graphics_entry(self):
+        with tempfile.TemporaryDirectory() as d:
+            vm = self.vm(d, self.detector_caps("nvidia-desktop-modern", set()))
+            scr = vm.screen()
+            opts = {o["value"] for q in scr["questions"] for o in q["options"]}
+            self.assertNotIn("gpu-nvidia-open", opts)
+            texts = [f["text"] for f in scr["facts"]]
+            self.assertTrue([t for t in texts if "NVIDIA graphics" in t and "safe graphics boot entry" in t], texts)
+            # a stale tick cannot sneak the driver into Apply, and toggling it is rejected
+            vm.w.set("extra.hardware_toggles", {"gpu-nvidia-open": True})
+            self.assertNotIn("gpu-nvidia-open", vm.hardware_ids())
+            vm.toggle_hardware("gpu-nvidia-open")
+            self.assertNotIn("gpu-nvidia-open", vm.hardware_ids())
+            vm.w.set("language", "ru")
+            texts = [f["text"] for f in vm.screen()["facts"]]
+            self.assertTrue([t for t in texts if "Графика NVIDIA" in t and "safe graphics" in t], texts)
+
+    def test_nvidia_is_offered_when_the_entry_is_installed(self):
+        with tempfile.TemporaryDirectory() as d:
+            vm = self.vm(d, self.detector_caps("nvidia-desktop-modern", {"safe-graphics-entry"}))
+            opts = {o["value"] for q in vm.screen()["questions"] for o in q["options"]}
+            self.assertIn("gpu-nvidia-open", opts)
+            self.assertNotIn("gpu-nvidia-open", vm.hardware_ids())     # never ticked by default
+
     def test_intro_has_no_second_colon_in_either_language(self):
         from heiss_welcome.strings import S
         for lang in S:

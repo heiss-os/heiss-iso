@@ -5,6 +5,7 @@ description = { en = "NVIDIA driver with open kernel modules for GeForce RTX/GTX
 packages = ["nvidia-open", "nvidia-utils"]
 kernel_params = ["nvidia-drm.modeset=1"]
 post_actions = ["mkinitcpio"]
+requires = ["safe-graphics-entry"]
 warnings = { en = "If the screen stays black after the installation, restart and choose \"Heiss OS, safe graphics\" in the boot menu, then remove the driver. Built for the standard kernel (linux) only; the LTS kernel needs the package nvidia-open-lts. Which graphics cards are supported is decided by a PCI ID threshold (0x1e00) that has not been verified against the package.", ru = "Если после установки экран станет чёрным, перезагрузитесь и выберите в меню загрузки пункт «Heiss OS, safe graphics», затем удалите драйвер. Драйвер собран только для обычного ядра (linux); для ядра LTS нужен пакет nvidia-open-lts. Какие видеокарты поддерживаются, определяется порогом идентификатора PCI (0x1e00), который не проверен по пакету." }
 recovery = { en = "If the screen stays black after the installation, restart and choose \"Heiss OS, safe graphics\" in the boot menu, then remove the driver.", ru = "Если после установки экран станет чёрным, перезагрузитесь и выберите в меню загрузки пункт «Heiss OS, safe graphics», затем удалите драйвер." }
 [match]

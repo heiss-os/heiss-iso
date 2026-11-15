@@ -20,7 +20,11 @@ PARAM_RE = re.compile(r"^[a-z0-9_.-]+(=[A-Za-z0-9_.,:-]+)?$")
 CHASSIS_LAPTOP = {8, 9, 10, 11, 14, 30, 31, 32}  # SMBIOS: portable, laptop, notebook, hand held, sub notebook, tablet, convertible, detachable
 FORM_FACTORS = ("laptop", "desktop", "vm")
 ALLOWED = {"schema_version", "id", "name", "description", "safe_by_default", "match", "packages",
-           "services", "kernel_params", "dropins", "post_actions", "warnings", "recovery"}
+           "services", "kernel_params", "dropins", "post_actions", "warnings", "recovery", "requires"}
+# Things this machine must have before a profile is offered. "safe-graphics-entry": the GRUB entry of the package
+# heiss-safe-graphics, so a bad driver can be backed out of (docs/hardware/SAFE-FALLBACK.md, answer 3 A).
+REQUIRES = {"safe-graphics-entry"}
+SAFE_ENTRY_PATH = "/etc/grub.d/41_heiss_safe"
 # Readable vendor names, shared by every screen that shows hardware (wizard, Control Center, reports).
 # CPU: the raw `vendor_id` of /proc/cpuinfo. PCI: the vendor ids that matter on a desktop or in a VM.
 CPU_VENDORS = {"GenuineIntel": "Intel", "AuthenticAMD": "AMD", "HygonGenuine": "Hygon", "CentaurHauls": "Centaur"}
@@ -143,6 +147,7 @@ class HwProfile:
     post_actions: tuple = ()
     warnings: dict = field(default_factory=dict)
     recovery: dict = field(default_factory=dict)   # optional short plain-language recovery step (wizard); warnings holds the full text
+    requires: tuple = ()                            # subset of REQUIRES; unmet means "not offered" (see capabilities)
 
 
 def cpu_vendor_name(raw):
@@ -201,6 +206,9 @@ def parse_profile(doc, where="hardware profile"):
     params = doc.get("kernel_params", [])
     if not isinstance(params, list) or not all(isinstance(p, str) and PARAM_RE.fullmatch(p) for p in params):
         raise ValidationError("%s: invalid kernel_params" % where)
+    requires = doc.get("requires", [])
+    if not isinstance(requires, list) or set(requires) - REQUIRES or len(set(requires)) != len(requires):
+        raise ValidationError("%s: requires must be a list without duplicates from %s" % (where, sorted(REQUIRES)))
     warnings = doc.get("warnings", {})
     if warnings:
         _text({"w": warnings}, "w", where)
@@ -212,7 +220,7 @@ def parse_profile(doc, where="hardware profile"):
         safe_by_default=bool(doc.get("safe_by_default", False)), match=match,
         packages=_strs(doc, "packages", PKG_RE, where), services=_strs(doc, "services", UNIT_RE, where),
         kernel_params=tuple(params), dropins=_dropins(doc, where), post_actions=tuple(actions),
-        warnings=dict(warnings), recovery=dict(recovery))
+        warnings=dict(warnings), recovery=dict(recovery), requires=tuple(requires))
 
 
 def load_profiles(path):
@@ -262,6 +270,20 @@ def matches(profile, facts):
     return all(any(_pci_ok(c, d) for d in facts.pci) for c in m.get("pci", []))
 
 
+def capabilities(safe_entry_path=None):
+    """What this machine has that a profile may `require`. Read-only; the grub.d script is a plain file."""
+    caps = set()
+    path = safe_entry_path or SAFE_ENTRY_PATH
+    if os.path.isfile(path) and not os.path.islink(path) and os.access(path, os.X_OK):
+        caps.add("safe-graphics-entry")
+    return caps
+
+
+def unmet(profile, caps):
+    """The requirements of `profile` that `caps` does not cover; empty when `caps` is None (not checked)."""
+    return [] if caps is None else sorted(set(profile.requires) - set(caps))
+
+
 @dataclass
 class Report:
     form_factor: str
@@ -270,24 +292,28 @@ class Report:
     gpus: list
     proposals: list      # matching HwProfile objects, sorted by id
     hybrid_graphics: bool
+    unavailable: dict = field(default_factory=dict)   # profile id -> unmet requirements (only when capabilities were given)
 
     def to_dict(self):
         return {
             "form_factor": self.form_factor, "cpu_vendor": self.cpu_vendor, "virt": self.virt,
-            "gpus": self.gpus, "hybrid_graphics": self.hybrid_graphics,
+            "gpus": self.gpus, "hybrid_graphics": self.hybrid_graphics, "unavailable": self.unavailable,
             "proposals": [{"id": p.id, "safe_by_default": p.safe_by_default, "packages": list(p.packages),
                            "services": list(p.services), "kernel_params": list(p.kernel_params),
-                           "post_actions": list(p.post_actions), "warnings": p.warnings} for p in self.proposals],
+                           "post_actions": list(p.post_actions), "warnings": p.warnings,
+                           "requires": list(p.requires)} for p in self.proposals],
         }
 
 
-def detect(facts, profiles):
+def detect(facts, profiles, caps=None):
+    """caps: what the machine has (see capabilities()); None means "not checked" and nothing is marked unavailable."""
     gpus = [{"slot": d.slot, "vendor": d.vendor, "device": d.device}
             for d in facts.pci if d.cls in CLASSES["display"]]
     vendors = {g["vendor"] for g in gpus}
     hybrid = facts.virt == "none" and len(gpus) > 1 and len(vendors) > 1
     props = sorted((p for p in profiles.values() if matches(p, facts)), key=lambda p: p.id)
-    return Report(facts.form_factor, facts.cpu_vendor, facts.virt, gpus, props, hybrid)
+    missing = {p.id: unmet(p, caps) for p in props if unmet(p, caps)}
+    return Report(facts.form_factor, facts.cpu_vendor, facts.virt, gpus, props, hybrid, missing)
 
 
 def render_text(report, lang="en"):
@@ -298,6 +324,8 @@ def render_text(report, lang="en"):
         lines.append("hybrid graphics: yes")
     for p in report.proposals:
         tag = "safe by default" if p.safe_by_default else "needs confirmation"
+        if p.id in report.unavailable:
+            tag = "NOT OFFERED: needs %s" % " and ".join(report.unavailable[p.id])
         lines.append("")
         lines.append("[%s] %s (%s)" % (p.id, p.name[lang], tag))
         lines.append("  " + p.description[lang])

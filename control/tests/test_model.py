@@ -1090,6 +1090,26 @@ class HardwareFacts(unittest.TestCase):
         self.assertTrue(d["report"].startswith("Heiss OS hardware report"))
 
 
+class HardwareNeeds(unittest.TestCase):
+    """A driver proposal that needs the safe graphics boot entry says so in the data and in the copied report."""
+
+    def collect(self, caps):
+        facts = hwc.load_fixture(os.path.join(FIX, "nvidia-desktop-modern"))
+        return hwv.collect(hardware_dir=HW_DIR, facts=facts, installed={"a"}, kernel="6.1", caps=caps)
+
+    def test_missing_entry_is_reported(self):
+        d = self.collect(set())
+        nv = next(x for x in d["drivers"] if x["id"] == "gpu-nvidia-open")
+        self.assertEqual(nv["needs"], ["safe-graphics-entry"])
+        self.assertIn("driver proposal gpu-nvidia-open: missing (missing: nvidia-open nvidia-utils) "
+                      "(not offered: needs safe-graphics-entry)", d["report"])
+
+    def test_present_entry_changes_nothing(self):
+        d = self.collect({"safe-graphics-entry"})
+        self.assertTrue(all(x["needs"] == [] for x in d["drivers"]))
+        self.assertNotIn("not offered", d["report"])
+
+
 class HardwareWording(unittest.TestCase):
     """Vendor names, uncut warnings and the colours the page may use."""
 

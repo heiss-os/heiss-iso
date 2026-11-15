@@ -16,7 +16,7 @@ HARDWARE = os.environ.get("HEISS_HARDWARE", "/usr/share/heiss/hardware")
 
 def live_detector(hardware_dir=HARDWARE):
     """Read-only detection of this machine (lspci, /sys, systemd-detect-virt) against the hardware profiles."""
-    return lambda: hw.detect(hw.collect_live(), hw.load_profiles(hardware_dir))
+    return lambda: hw.detect(hw.collect_live(), hw.load_profiles(hardware_dir), hw.capabilities())
 
 
 def build(config_dir, profiles_dir=PROFILES, detector=None, applier=None, theme_applier=None):

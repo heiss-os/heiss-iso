@@ -1,7 +1,9 @@
 import io
 import os
 import sys
+import tempfile
 import unittest
+from unittest import mock
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
@@ -98,6 +100,62 @@ class Fixtures(unittest.TestCase):
         for p in hw.load_profiles(HARDWARE).values():
             if p.safe_by_default:
                 self.assertFalse({"nvidia-open", "nvidia-utils"} & set(p.packages), p.id)
+
+
+class Requires(unittest.TestCase):
+    def test_requires_is_validated(self):
+        self.assertEqual(hw.parse_profile(good(requires=["safe-graphics-entry"])).requires, ("safe-graphics-entry",))
+        self.assertEqual(hw.parse_profile(good()).requires, ())
+        for bad in (["nosuch"], "safe-graphics-entry", ["safe-graphics-entry", "safe-graphics-entry"], [1]):
+            with self.assertRaises(ValidationError, msg=str(bad)):
+                hw.parse_profile(good(requires=bad))
+
+    def test_every_profile_that_installs_the_nvidia_driver_requires_the_safe_entry(self):
+        for p in hw.load_profiles(HARDWARE).values():
+            if any(x.startswith("nvidia") for x in p.packages):
+                self.assertIn("safe-graphics-entry", p.requires, p.id)
+
+    def test_capabilities_reads_the_grub_script(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "41_heiss_safe")
+            self.assertEqual(hw.capabilities(path), set())
+            open(path, "w").close()
+            os.chmod(path, 0o644)
+            self.assertEqual(hw.capabilities(path), set())          # not executable: grub-mkconfig would skip it
+            os.chmod(path, 0o755)
+            self.assertEqual(hw.capabilities(path), {"safe-graphics-entry"})
+            link = os.path.join(d, "link")
+            os.symlink(path, link)
+            self.assertEqual(hw.capabilities(link), set())          # a link is not the packaged file
+
+    def test_detect_marks_the_proposal_unavailable_only_when_capabilities_were_given(self):
+        facts = hw.load_fixture(os.path.join(FIX, "nvidia-desktop-modern"))
+        profiles = hw.load_profiles(HARDWARE)
+        self.assertEqual(hw.detect(facts, profiles).unavailable, {})                     # not checked
+        r = hw.detect(facts, profiles, set())
+        self.assertEqual(r.unavailable, {"gpu-nvidia-open": ["safe-graphics-entry"]})
+        self.assertIn("gpu-nvidia-open", {p.id for p in r.proposals})                    # still reported, never silently hidden
+        self.assertEqual(hw.detect(facts, profiles, {"safe-graphics-entry"}).unavailable, {})
+        self.assertIn("NOT OFFERED: needs safe-graphics-entry", hw.render_text(r))
+        self.assertEqual(r.to_dict()["unavailable"], {"gpu-nvidia-open": ["safe-graphics-entry"]})
+
+    def test_apply_refuses_a_profile_whose_requirement_is_missing(self):
+        env = {"HEISS_HARDWARE": HARDWARE, "HEISS_STATE": "/nonexistent/state.json"}
+        argv = ["--profiles", os.path.join(REPO, "profiles"), "profile", "apply", "--dry-run", "--profile", "base",
+                "--hardware", "gpu-nvidia-open"]
+        with mock.patch.dict(os.environ, env), mock.patch("heiss_core.hardware.capabilities", return_value=set()):
+            out = io.StringIO()
+            with mock.patch("sys.stderr", io.StringIO()) as err:
+                rc = cli.main(argv, system=__import__("fakes").FakeSystem(), out=out)
+            self.assertEqual(rc, 1)
+            self.assertIn("safe-graphics-entry", err.getvalue() + out.getvalue())
+            self.assertIn("not applied", err.getvalue() + out.getvalue())
+        with mock.patch.dict(os.environ, env), mock.patch("heiss_core.hardware.capabilities",
+                                                           return_value={"safe-graphics-entry"}):
+            out = io.StringIO()
+            rc = cli.main(argv, system=__import__("fakes").FakeSystem(), out=out)
+            self.assertEqual(rc, 0, out.getvalue())
+            self.assertIn("nvidia-open", out.getvalue())
 
 
 class VendorNames(unittest.TestCase):
