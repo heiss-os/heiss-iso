@@ -144,26 +144,34 @@ class Script(unittest.TestCase):
             self.assertNotIn("\u00e9", line)
             self.assertNotIn("\x01", line)
 
-    def test_btrfs_subvolume_name_is_escaped_or_left_out(self):
-        r, _ = run_script(GRUB_FS="btrfs", STUB_ROOT_REL="/@my 'root'$x;")
+    def test_btrfs_subvolume_name_is_escaped_and_never_split_into_two_parameters(self):
+        r, _ = run_script(GRUB_FS="btrfs", STUB_ROOT_REL="/@my'root$x;")
         (line,) = linux_lines(r.stdout)
-        self.assertIn("rootflags=subvol=@my 'root'$x;", unescape(line))
+        self.assertIn("rootflags=subvol=@my'root$x;", unescape(line).split())
         self.assertEqual(re.sub(r"\\.", "", line).count("'"), 0)
-        r, _ = run_script(GRUB_FS="btrfs", STUB_ROOT_REL="/@a\nb")
-        self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertNotIn("rootflags", r.stdout)
-        self.assertIn("rootflags left out", r.stderr)
+        for bad in ("/@a b", "/@a init=/bin/sh b", "/@a\nb"):
+            r, _ = run_script(GRUB_FS="btrfs", STUB_ROOT_REL=bad)
+            self.assertEqual((r.returncode, r.stdout), (0, ""), bad)
+            self.assertIn("no entry written", r.stderr)
 
     def test_unusual_device_is_escaped_and_the_rest_of_the_entry_is_intact(self):
-        r, _ = run_script(GRUB_DEVICE_UUID="", GRUB_DEVICE="/dev/x y';z")
+        r, _ = run_script(GRUB_DEVICE_UUID="", GRUB_DEVICE="/dev/x';z")
         (line,) = linux_lines(r.stdout)
-        self.assertIn("root=/dev/x y';z", unescape(line))
+        self.assertIn("root=/dev/x';z", unescape(line).split())
         self.assertEqual(re.sub(r"\\.", "", line).count("'"), 0)
 
     def test_unusable_device_writes_no_entry(self):
-        r, _ = run_script(GRUB_DEVICE_UUID="", GRUB_DEVICE="/dev/x\ny")
-        self.assertEqual((r.returncode, r.stdout), (0, ""))
-        self.assertIn("unusable root device", r.stderr)
+        for bad in ("/dev/x\ny", "/dev/x init=/bin/sh", "/dev/caf\u00e9"):
+            r, _ = run_script(GRUB_DEVICE_UUID="", GRUB_DEVICE=bad)
+            self.assertEqual((r.returncode, r.stdout), (0, ""), bad)
+            self.assertIn("unusable root device", r.stderr)
+
+    def test_boot_directory_with_a_space_writes_no_entry(self):
+        r, _ = run_script(STUB_ROOT_REL="/")
+        self.assertTrue(r.stdout)    # sanity: the normal case writes an entry
+        lib = STUB_LIB.replace('echo "$1"; fi; }', 'echo "$1 x"; fi; }')
+        r, _ = run_script(lib=lib)
+        self.assertEqual(r.stdout, "")
 
     def test_the_menu_entry_id_is_quoted(self):
         lib = STUB_LIB.replace('echo "devid"', "echo \"de'vid\"")
