@@ -14,17 +14,25 @@ DRAIN_S = 0.5      # after the command has exited, how long to keep reading what
 
 
 def _stop(p, grace):
-    """End the command and everything it started in its process group. Never waits more than 2 x grace."""
-    for sig in (signal.SIGTERM, signal.SIGKILL):
-        try:
-            os.killpg(p.pid, sig)
-        except ProcessLookupError:
-            break
-        try:
-            p.wait(timeout=grace)
-            break
-        except subprocess.TimeoutExpired:
-            continue
+    """End the command and everything it started in its process group: SIGTERM, wait for the leader (up to `grace`),
+    then SIGKILL to the whole group, also when the leader already exited (a member may ignore SIGTERM).
+    Never waits more than 2 x grace."""
+    try:
+        os.killpg(p.pid, signal.SIGTERM)
+    except ProcessLookupError:
+        return
+    try:
+        p.wait(timeout=grace)
+    except subprocess.TimeoutExpired:
+        pass
+    try:
+        os.killpg(p.pid, signal.SIGKILL)
+    except ProcessLookupError:
+        return
+    try:
+        p.wait(timeout=grace)
+    except subprocess.TimeoutExpired:
+        pass
 
 
 class Runner:
@@ -34,7 +42,7 @@ class Runner:
         """Return the exit code, or 124 when `timeout` seconds passed. argv is a list built by this package, never
         from a client.
 
-        The limit is checked by the loop that reads the output, with select(), so it also ends a command that
+        The limit is checked by the loop that reads the output, with poll(), so it also ends a command that
         prints nothing and never exits (which would hold the helper's single job slot until a restart), and a
         grandchild that left the process group and keeps the pipe open cannot keep the reader waiting past the
         limit or past the exit of the command itself."""
@@ -42,6 +50,8 @@ class Runner:
         p = subprocess.Popen(argv, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                              env=ENV, start_new_session=True)
         fd = p.stdout.fileno()
+        poller = select.poll()          # poll, not select: select() fails for descriptors >= 1024 in a long-running service
+        poller.register(fd, select.POLLIN)
         deadline = float("inf") if timeout is None else time.monotonic() + timeout
         expired, finished, lines, pending = False, False, 0, b""
 
@@ -60,7 +70,7 @@ class Runner:
         def drain(seconds):
             """Take what is readable now, for at most `seconds` (a grandchild that keeps writing must not hold us)."""
             end = time.monotonic() + seconds
-            while time.monotonic() < end and select.select([fd], [], [], 0)[0]:
+            while time.monotonic() < end and poller.poll(0):
                 chunk = os.read(fd, CHUNK)
                 if not chunk:
                     return
@@ -72,7 +82,7 @@ class Runner:
                 if left <= 0:
                     expired = True
                     break
-                ready, _, _ = select.select([fd], [], [], min(left, POLL_S))
+                ready = poller.poll(min(left, POLL_S) * 1000)
                 if ready:
                     chunk = os.read(fd, CHUNK)
                     if not chunk:
@@ -84,9 +94,11 @@ class Runner:
             deliver(b"", final=True)
             finished = True
         finally:
-            if expired or not finished:            # timed out, or the reader failed (emit raised): do not leave it running
-                _stop(p, self.grace)
-            p.stdout.close()
+            try:
+                if expired or not finished:        # timed out, or the reader failed (emit raised): do not leave it running
+                    _stop(p, self.grace)
+            finally:
+                p.stdout.close()
         if expired:
             return 124
         try:                                       # output closed: the command may work on until the limit

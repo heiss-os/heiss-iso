@@ -95,6 +95,28 @@ class RunnerTests(unittest.TestCase):
     def test_no_time_limit_is_accepted(self):
         self.assertEqual(self.r.run(["true"], self.lines.append, timeout=None), 0)
 
+    def test_a_group_member_that_ignores_sigterm_is_killed_even_when_the_leader_dies_on_it(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        pidfile = os.path.join(tmp.name, "pid")
+        # the shell dies on SIGTERM, its child ignores it and holds on
+        script = "sh -c 'trap \"\" TERM; echo $$ > %s; sleep 60' & wait" % pidfile
+        rc, took = self.run_cmd("sh", "-c", script, timeout=1)
+        self.assertEqual(rc, 124)
+        with open(pidfile) as f:
+            pid = int(f.read())
+        time.sleep(0.5)
+        self.assertFalse(alive(pid), "the SIGTERM-ignoring member must have been killed with the group")
+
+    def test_a_descriptor_above_1024_does_not_break_the_reader(self):
+        spare = [os.open("/dev/null", os.O_RDONLY) for _ in range(1100)]
+        try:
+            rc, _ = self.run_cmd("sh", "-c", "echo hi")
+        finally:
+            for f in spare:
+                os.close(f)
+        self.assertEqual((rc, self.lines), (0, ["hi"]))
+
     def test_a_command_that_ignores_sigterm_is_killed(self):
         rc, took = self.run_cmd("sh", "-c", "trap '' TERM; while true; do sleep 0.2; done", timeout=1)
         self.assertEqual(rc, 124)
