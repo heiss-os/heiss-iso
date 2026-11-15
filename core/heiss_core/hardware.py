@@ -207,7 +207,8 @@ def parse_profile(doc, where="hardware profile"):
     if not isinstance(params, list) or not all(isinstance(p, str) and PARAM_RE.fullmatch(p) for p in params):
         raise ValidationError("%s: invalid kernel_params" % where)
     requires = doc.get("requires", [])
-    if not isinstance(requires, list) or set(requires) - REQUIRES or len(set(requires)) != len(requires):
+    if (not isinstance(requires, list) or not all(isinstance(x, str) for x in requires)
+            or set(requires) - REQUIRES or len(set(requires)) != len(requires)):
         raise ValidationError("%s: requires must be a list without duplicates from %s" % (where, sorted(REQUIRES)))
     warnings = doc.get("warnings", {})
     if warnings:

@@ -106,7 +106,8 @@ class Requires(unittest.TestCase):
     def test_requires_is_validated(self):
         self.assertEqual(hw.parse_profile(good(requires=["safe-graphics-entry"])).requires, ("safe-graphics-entry",))
         self.assertEqual(hw.parse_profile(good()).requires, ())
-        for bad in (["nosuch"], "safe-graphics-entry", ["safe-graphics-entry", "safe-graphics-entry"], [1]):
+        for bad in (["nosuch"], "safe-graphics-entry", ["safe-graphics-entry", "safe-graphics-entry"], [1], [[1]], [{}],
+                    [None], {"safe-graphics-entry": 1}, 5):
             with self.assertRaises(ValidationError, msg=str(bad)):
                 hw.parse_profile(good(requires=bad))
 
