@@ -18,7 +18,7 @@ PARSERS = {"STEP_RE"}
 
 class Anchors(unittest.TestCase):
     def test_no_validator_uses_match_instead_of_fullmatch(self):
-        files = [f for d in DIRS for f in glob.glob(os.path.join(REPO, d, "*.py"))]
+        files = [f for d in DIRS for f in glob.glob(os.path.join(REPO, d, "**", "*.py"), recursive=True)]
         self.assertTrue(files)
         names_seen = 0
         for path in files:
