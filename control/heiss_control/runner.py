@@ -3,7 +3,7 @@
 The command does the real work through the privileged helper (D-Bus and polkit: the system asks for the
 password); this window only starts it and shows the step lines. The queue item was validated when it was saved
 and again when it was read; the ids are checked once more here and passed in the `--option=value` form, so an id
-can never be read as an option. No shell. The child runs isolated (`-I`), in `/`, without interpreter, loader, GIO and HEISS_* override variables. The same command as the wizard's apply (`heiss_welcome.applier`),
+can never be read as an option. No shell. The child runs isolated (`-I`), in `/`, with an allowlisted environment and a fixed PATH. The same command as the wizard's apply (`heiss_welcome.applier`),
 duplicated on purpose so the Control Center does not depend on the wizard package.
 """
 import os
@@ -17,17 +17,23 @@ from heiss_core.errors import HeissError
 STEP_RE = re.compile(r"^\[(\d+)/(\d+)\] (.*)$")   # printed by `heiss profile apply` before every helper call
 
 
-# interpreter, loader, locale, GIO module and test-override variables: none of them is needed to reach the bus and
-# the polkit agent, and HEISS_* would let the client-side plan read other manifests than the installed ones
-DROP_PREFIXES = ("PYTHON", "LD_", "GCONV", "LOCPATH", "NLSPATH", "GIO_", "GI_", "G_", "GSETTINGS_", "HEISS_")
-# the child imports gi (helper client): GI_TYPELIB_PATH names libraries to load; the system bus address must stay the real one
-DROP_NAMES = ("DBUS_SYSTEM_BUS_ADDRESS",)
+# The child ends up calling the privileged helper, and polkit keeps the authorisation per calling process (see
+# DECISIONS.md). So it gets an ALLOWLIST: only what a session program needs (home, locale, the session bus and the
+# display for the polkit agent) and a fixed PATH; nothing that changes which code Python or the loader runs
+# (PYTHON*, LD_*, GI_*, GIO_*, ...), nothing from HEISS_*, and no variable that will be invented later.
+# The same list in heiss_welcome.applier, duplicated on purpose (tests keep the two equal).
+ALLOW_NAMES = ("HOME", "USER", "LOGNAME", "LANG", "LANGUAGE", "TZ", "TERM",
+               "XDG_RUNTIME_DIR", "XDG_SESSION_ID", "XDG_SESSION_TYPE", "XDG_CURRENT_DESKTOP",
+               "XDG_CONFIG_HOME", "XDG_CACHE_HOME", "XDG_DATA_HOME", "XDG_STATE_HOME",
+               "DBUS_SESSION_BUS_ADDRESS", "DISPLAY", "WAYLAND_DISPLAY", "XAUTHORITY")
+ALLOW_PREFIXES = ("LC_",)
+FIXED_PATH = "/usr/bin:/bin"   # not the user's PATH: the child runs pacman, systemctl and flatpak by name
 
 
 def clean_env(environ):
-    """The environment of the child: the user's session (it needs the bus and the display for the polkit agent)
-    without anything that changes which code Python or the loader runs."""
-    return {k: v for k, v in environ.items() if not k.startswith(DROP_PREFIXES) and k not in DROP_NAMES}
+    env = {k: v for k, v in environ.items() if k in ALLOW_NAMES or k.startswith(ALLOW_PREFIXES)}
+    env["PATH"] = FIXED_PATH
+    return env
 
 
 def argv_for(item, base=None):
