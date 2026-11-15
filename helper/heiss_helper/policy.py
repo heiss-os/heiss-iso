@@ -108,7 +108,7 @@ def check_services(enable, disable, trusted):
 
 
 def check_dropin(path, trusted):
-    if not isinstance(path, str) or path not in trusted.dropins:
+    if not isinstance(path, str) or path not in trusted.dropins or not mf.dropin_path_ok(path):
         raise invalid("drop-in not declared by any manifest")
     return path, trusted.dropins[path]
 
@@ -133,8 +133,8 @@ def check_snapshot_description(desc):
 
 
 def write_dropin(path, content, root="/"):
-    """Atomically write a drop-in below `root`; refuses symlinks and anything outside /etc."""
-    if os.path.normpath(path) != path or not path.startswith("/etc/"):
+    """Atomically write a drop-in below `root`; refuses symlinks and any directory not on the allowlist."""
+    if not mf.dropin_path_ok(path):
         raise invalid("bad drop-in path")
     full = os.path.join(root, path.lstrip("/"))
     # no symlink on any component below root
