@@ -2,3 +2,4 @@ out/
 work/
 __pycache__/
 *.pyc
+gui-render/

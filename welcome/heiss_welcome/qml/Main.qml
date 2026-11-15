@@ -20,9 +20,29 @@ ApplicationWindow {
         readonly property color text: win.dark ? "#ECEAE5" : "#26282B"
         readonly property color dim: win.dark ? "#A9A7A1" : "#6B6963"
         readonly property color accent: win.dark ? "#C9B28A" : "#8C7448"
-        readonly property color onAccent: win.dark ? "#26282B" : "#F5F3EF"
+        readonly property color textOnAccent: win.dark ? "#26282B" : "#F5F3EF"
     }
     font.family: "Inter"
+
+    // Heiss-styled progress bar (the stock one is blue on white): sand fill on a button-coloured track
+    component Bar: ProgressBar {
+        id: pb
+        implicitHeight: 8
+        background: Rectangle { radius: 4; color: pal.button }
+        contentItem: Item {
+            id: track
+            Rectangle { visible: !pb.indeterminate; width: pb.visualPosition * track.width; height: track.height; radius: 4; color: pal.accent }
+            Rectangle {
+                id: block
+                visible: pb.indeterminate; width: track.width * 0.3; height: track.height; radius: 4; color: pal.accent
+                SequentialAnimation on x {
+                    running: pb.indeterminate && pb.visible; loops: Animation.Infinite
+                    NumberAnimation { from: 0; to: track.width * 0.7; duration: 900; easing.type: Easing.InOutQuad }
+                    NumberAnimation { from: track.width * 0.7; to: 0; duration: 900; easing.type: Easing.InOutQuad }
+                }
+            }
+        }
+    }
     // closing mid-apply would orphan the command that is changing the system
     onClosing: function(close) { close.accepted = !s.isRunning }
 
@@ -33,7 +53,7 @@ ApplicationWindow {
         property bool primary: false
         Accessible.name: text
         focusPolicy: Qt.StrongFocus
-        contentItem: Text { textFormat: Text.PlainText; text: b.text; color: b.primary ? pal.onAccent : pal.text; horizontalAlignment: Text.AlignHCenter
+        contentItem: Text { textFormat: Text.PlainText; text: b.text; color: b.primary ? pal.textOnAccent : pal.text; horizontalAlignment: Text.AlignHCenter
                             verticalAlignment: Text.AlignVCenter; font.pixelSize: 16 }
         background: Rectangle { radius: 8; color: b.primary ? pal.accent : pal.button
                                 border.width: b.activeFocus ? 2 : 0; border.color: pal.text }
@@ -42,10 +62,12 @@ ApplicationWindow {
     ColumnLayout {
         anchors.centerIn: parent
         width: Math.min(parent.width - 64, 760)
+        // never taller than the window: the list of choices below scrolls, the buttons stay on screen
+        height: Math.min(implicitHeight, parent.height - 48)
         spacing: 20
 
         Text { textFormat: Text.PlainText; text: s.progressText; color: pal.dim; font.pixelSize: 14 }
-        ProgressBar { Layout.fillWidth: true; value: s.progress; Accessible.name: s.progressText }
+        Bar { Layout.fillWidth: true; value: s.progress; Accessible.name: s.progressText }
         Text { textFormat: Text.PlainText; text: s.title; color: pal.text; font.pixelSize: 32; font.bold: true; wrapMode: Text.WordWrap
                Layout.fillWidth: true; Accessible.role: Accessible.Heading }
         Text { textFormat: Text.PlainText; text: s.whatLabel + ": " + s.what; color: pal.dim; font.pixelSize: 16; wrapMode: Text.WordWrap
@@ -66,8 +88,11 @@ ApplicationWindow {
 
         ScrollView {
             Layout.fillWidth: true
-            Layout.preferredHeight: Math.min(contentHeight, win.height - 380)
+            Layout.preferredHeight: contentHeight
+            Layout.fillHeight: true
+            Layout.minimumHeight: Math.min(96, contentHeight)
             clip: true
+            contentWidth: availableWidth
             ColumnLayout {
                 width: parent.width
                 spacing: 12
@@ -112,7 +137,7 @@ ApplicationWindow {
 
         Text { textFormat: Text.PlainText; visible: s.isApplying; text: s.job.step; color: pal.accent; font.pixelSize: 16; font.bold: true
                wrapMode: Text.WordWrap; Layout.fillWidth: true }
-        ProgressBar { visible: s.isRunning; indeterminate: true; Layout.fillWidth: true; Accessible.name: s.job.step }
+        Bar { visible: s.isRunning; indeterminate: true; Layout.fillWidth: true; Accessible.name: s.job.step }
         Text { textFormat: Text.PlainText; visible: s.isApplying; text: s.job.log.join("\n"); color: pal.dim; font.family: "JetBrains Mono"
                font.pixelSize: 12; wrapMode: Text.WrapAnywhere; Layout.fillWidth: true; elide: Text.ElideNone }
 
