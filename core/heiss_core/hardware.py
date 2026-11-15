@@ -165,7 +165,7 @@ def gpu_vendor_names(gpus, other="other"):
 
 
 def _hex(v, where):
-    if not isinstance(v, str) or not HEX4.match(v):
+    if not isinstance(v, str) or not HEX4.fullmatch(v):
         raise ValidationError("%s: %r must be 4 lowercase hex digits" % (where, v))
     return v
 
@@ -176,14 +176,14 @@ def parse_profile(doc, where="hardware profile"):
     if doc.get("schema_version") != 1:
         raise ValidationError("%s: schema_version must be 1" % where)
     pid = doc.get("id", "")
-    if not re.match(r"^[a-z][a-z0-9-]{0,40}$", str(pid)):
+    if not re.fullmatch(r"[a-z][a-z0-9-]{0,40}", str(pid)):
         raise ValidationError("%s: invalid id %r" % (where, pid))
     match = doc.get("match")
     if not isinstance(match, dict) or not match or set(match) - MATCH_KEYS:
         raise ValidationError("%s: match needs at least one of %s" % (where, sorted(MATCH_KEYS)))
     if "form_factor" in match and match["form_factor"] not in FORM_FACTORS:
         raise ValidationError("%s: form_factor must be one of %s" % (where, FORM_FACTORS))
-    if "virt" in match and not re.match(r"^[a-z0-9-]+$", str(match["virt"])):
+    if "virt" in match and not re.fullmatch(r"[a-z0-9-]+", str(match["virt"])):
         raise ValidationError("%s: bad virt" % where)
     for c in match.get("pci", []):
         if not isinstance(c, dict) or set(c) - PCI_KEYS:
@@ -199,7 +199,7 @@ def parse_profile(doc, where="hardware profile"):
     if not isinstance(actions, list) or set(actions) - POST_ACTIONS:
         raise ValidationError("%s: post_actions must be a subset of %s" % (where, sorted(POST_ACTIONS)))
     params = doc.get("kernel_params", [])
-    if not isinstance(params, list) or not all(isinstance(p, str) and PARAM_RE.match(p) for p in params):
+    if not isinstance(params, list) or not all(isinstance(p, str) and PARAM_RE.fullmatch(p) for p in params):
         raise ValidationError("%s: invalid kernel_params" % where)
     warnings = doc.get("warnings", {})
     if warnings:
