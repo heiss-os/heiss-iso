@@ -675,10 +675,11 @@ class Runner(unittest.TestCase):
                "GCONV_PATH": "/tmp", "GIO_EXTRA_MODULES": "/tmp", "HEISS_PROFILES": "/tmp/m", "LOCPATH": "/tmp",
                "GI_TYPELIB_PATH": "/tmp/t", "G_SLICE": "x", "GSETTINGS_BACKEND": "memory", "DBUS_SYSTEM_BUS_ADDRESS": "unix:path=/x",
                "DBUS_SESSION_BUS_ADDRESS": "unix:path=/run/user/1000/bus", "WAYLAND_DISPLAY": "wayland-0"}
+        env.update({"SSH_AUTH_SOCK": "/s", "BASH_ENV": "/x", "FUTURE_LOADER_PATH": "/x", "PATH": "/home/u/evil:/usr/bin"})
         runner.run_item(self.item(), None, None, popen, env)
         self.assertEqual(seen["argv"][1:4], ["-I", "-m", "heiss_core"])
         self.assertEqual(seen["kw"]["cwd"], "/")
-        self.assertEqual(seen["kw"]["env"], {"PATH": "/usr/bin", "HOME": "/home/u", "XDG_RUNTIME_DIR": "/run/user/1000",
+        self.assertEqual(seen["kw"]["env"], {"PATH": "/usr/bin:/bin", "HOME": "/home/u", "XDG_RUNTIME_DIR": "/run/user/1000",
                                            "DBUS_SESSION_BUS_ADDRESS": "unix:path=/run/user/1000/bus",
                                            "WAYLAND_DISPLAY": "wayland-0"})
         self.assertNotIn("shell", seen["kw"])

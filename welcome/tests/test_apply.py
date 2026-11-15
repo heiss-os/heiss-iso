@@ -370,14 +370,19 @@ class Isolation(unittest.TestCase):
     def test_default_command_is_isolated_python(self):
         self.assertEqual(CliApplier().argv, [sys.executable, "-I", "-m", "heiss_core"])
 
-    def test_clean_env_keeps_the_session_variables_polkit_needs(self):
+    def test_clean_env_is_an_allowlist_with_a_fixed_path(self):
         from heiss_welcome.applier import clean_env
-        env = {"PATH": "/usr/bin", "HOME": "/home/u", "XDG_RUNTIME_DIR": "/run/user/1000",
-               "DBUS_SESSION_BUS_ADDRESS": "unix:path=/run/user/1000/bus", "WAYLAND_DISPLAY": "wayland-0", "DISPLAY": ":0",
-               "XAUTHORITY": "/home/u/.Xauthority", "LANG": "en_US.UTF-8", "PYTHONHOME": "/x", "GI_TYPELIB_PATH": "/x",
-               "DBUS_SYSTEM_BUS_ADDRESS": "unix:path=/x"}
-        self.assertEqual(clean_env(env), {k: v for k, v in env.items() if k not in ("PYTHONHOME", "GI_TYPELIB_PATH",
-                                                                                   "DBUS_SYSTEM_BUS_ADDRESS")})
+        keep = {"HOME": "/home/u", "XDG_RUNTIME_DIR": "/run/user/1000", "DBUS_SESSION_BUS_ADDRESS": "unix:path=/run/user/1000/bus",
+                "WAYLAND_DISPLAY": "wayland-0", "DISPLAY": ":0", "XAUTHORITY": "/home/u/.Xauthority", "LANG": "en_US.UTF-8",
+                "LC_ALL": "C", "USER": "u", "TERM": "xterm"}
+        drop = {"PATH": "/home/u/evil:/usr/bin", "PYTHONHOME": "/x", "GI_TYPELIB_PATH": "/x", "DBUS_SYSTEM_BUS_ADDRESS": "unix:path=/x",
+                "LD_PRELOAD": "/x.so", "HEISS_PROFILES": "/x", "SSH_AUTH_SOCK": "/s", "EDITOR": "vim", "BASH_ENV": "/x",
+                "ENV": "/x", "IFS": "x", "GIT_CONFIG_COUNT": "1", "FUTURE_LOADER_PATH": "/x", "LOCPATH": "/x"}
+        self.assertEqual(clean_env(dict(keep, **drop)), dict(keep, PATH="/usr/bin:/bin"))
+
+    def test_path_is_fixed_even_when_the_user_has_none(self):
+        from heiss_welcome.applier import clean_env
+        self.assertEqual(clean_env({})["PATH"], "/usr/bin:/bin")
 
 
 class Cli(unittest.TestCase):

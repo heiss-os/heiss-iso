@@ -2,7 +2,7 @@
 
 The command does the real work through the privileged helper (D-Bus + polkit); the wizard only starts it
 and shows its output. A child process keeps GLib and D-Bus out of the Qt process and the window responsive.
-The child runs isolated (python -I, cwd "/", without interpreter, loader, GLib/GI, GIO, HEISS_* and system-bus-address variables).
+The child runs isolated (python -I, cwd "/", an allowlisted environment and a fixed PATH).
 Qt-free, so it is tested with a fake command. There is no cancel: the helper job keeps running on the system
 bus even if the client dies (a Phase 3 follow-up).
 """
@@ -14,15 +14,31 @@ import sys
 
 from heiss_core.errors import HeissError
 
-# interpreter, loader, locale, GIO module and test-override variables are not passed to the child: it ends up calling
-# the privileged helper, and polkit keeps the authorisation per calling process (see DECISIONS.md)
-DROP_PREFIXES = ("PYTHON", "LD_", "GCONV", "LOCPATH", "NLSPATH", "GIO_", "GI_", "G_", "GSETTINGS_", "HEISS_")
-# the child imports gi (helper client): GI_TYPELIB_PATH names libraries to load; the system bus address must stay the real one
-DROP_NAMES = ("DBUS_SYSTEM_BUS_ADDRESS",)
+# The child ends up calling the privileged helper, and polkit keeps the authorisation per calling process (see
+# DECISIONS.md). So it gets an ALLOWLIST: only what a session program needs (home, locale, the session bus and the
+# display for the polkit agent) and a fixed PATH; nothing that changes which code Python or the loader runs
+# (PYTHON*, LD_*, GI_*, GIO_*, ...), nothing from HEISS_*, and no variable that will be invented later.
+# The same list in heiss_control.runner, duplicated on purpose (tests keep the two equal).
+ALLOW_NAMES = ("HOME", "USER", "LOGNAME", "LANG", "LANGUAGE", "TZ", "TERM",
+               "XDG_RUNTIME_DIR", "XDG_SESSION_ID", "XDG_SESSION_TYPE", "XDG_CURRENT_DESKTOP",
+               "XDG_CONFIG_HOME", "XDG_CACHE_HOME", "XDG_DATA_HOME", "XDG_STATE_HOME",
+               "DBUS_SESSION_BUS_ADDRESS", "DISPLAY", "WAYLAND_DISPLAY", "XAUTHORITY")
+ALLOW_PREFIXES = ("LC_",)
+FIXED_PATH = "/usr/bin:/bin"   # not the user's PATH: the child runs pacman, systemctl and flatpak by name
+
+
+LOCALE_VALUE = re.compile(r"[A-Za-z0-9_.@:-]{1,100}")   # glibc reads a locale name containing "/" as a file path
 
 
 def clean_env(environ):
-    return {k: v for k, v in environ.items() if not k.startswith(DROP_PREFIXES) and k not in DROP_NAMES}
+    env = {}
+    for k, v in environ.items():
+        if k in ALLOW_NAMES or k.startswith(ALLOW_PREFIXES):
+            if (k in ("LANG", "LANGUAGE") or k.startswith("LC_")) and not LOCALE_VALUE.fullmatch(v):
+                continue
+            env[k] = v
+    env["PATH"] = FIXED_PATH
+    return env
 
 
 STEP_RE = re.compile(r"^\[(\d+)/(\d+)\] (.*)$")   # printed by `heiss profile apply` before every helper call
