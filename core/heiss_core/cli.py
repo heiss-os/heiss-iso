@@ -47,7 +47,9 @@ def _hardware_catalog():
 
 
 def _matching_hardware(catalog):
-    """Ids of the hardware profiles that fit this machine; None when detection is impossible (no filter then)."""
+    """Ids of the hardware profiles that fit this machine; None when detection is impossible (no filter then).
+    Detection runs without capabilities on purpose: this only filters what an earlier apply keeps (sticky_hardware),
+    it never offers anything; the `requires` check of a new choice is in _chosen_hardware."""
     if not catalog:
         return None
     try:
@@ -61,6 +63,12 @@ def _chosen_hardware(args, catalog):
     unknown = [i for i in ids if i not in catalog]
     if unknown:
         raise HeissError("unknown hardware profile(s): %s" % ", ".join(unknown))
+    caps = hw.capabilities()
+    for i in sorted(set(ids)):
+        need = hw.unmet(catalog[i], caps)
+        if need:
+            raise HeissError("hardware profile %s needs %s, which is not installed on this system "
+                             "(package heiss-safe-graphics); it is not applied" % (i, " and ".join(need)))
     return [catalog[i] for i in sorted(set(ids))]
 
 
@@ -155,7 +163,7 @@ def main(argv=None, system=None, out=sys.stdout, helper=None, confirm=None, them
         if args.cmd == "hw":
             profiles = hw.load_profiles(args.hardware or os.environ.get("HEISS_HARDWARE", DEFAULT_HARDWARE))
             facts = hw.load_fixture(args.fixture) if args.fixture else hw.collect_live()
-            report = hw.detect(facts, profiles)
+            report = hw.detect(facts, profiles, hw.capabilities())
             out.write(json.dumps(report.to_dict(), indent=2, ensure_ascii=False) + "\n" if args.json
                       else hw.render_text(report, args.lang))
             return 0

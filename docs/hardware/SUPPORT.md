@@ -9,7 +9,7 @@ PYTHONPATH=core python3 -m heiss_core hw detect --hardware hardware --fixture co
 
 ## Profile format
 
-One TOML file per profile (`schema_version`, `id`, `name`/`description`/`warnings` in en and ru, optional `recovery` (en and ru: a short plain recovery step that the wizard shows instead of the full `warnings`, which the Control Center shows whole; the full text must start with it), `safe_by_default`, `packages`, `services`, `kernel_params`, `dropins`, `post_actions`, and a `[match]` table). All match keys must hold: `cpu_vendor`, `virt` (`none` or the exact `systemd-detect-virt` name), `form_factor` (`laptop`, `desktop`, `vm`), and `pci`, a list of conditions, each satisfied by some device (`vendor`, `class` = display or network, `devices`, `device_min`, `device_max`). Rollback is the removal of what the profile installed, tracked by the state file.
+One TOML file per profile (`schema_version`, `id`, `name`/`description`/`warnings` in en and ru, optional `recovery` (en and ru: a short plain recovery step that the wizard shows instead of the full `warnings`, which the Control Center shows whole; the full text must start with it), optional `requires` (a list of capabilities of this system; the only one now is `safe-graphics-entry`, the executable file `/etc/grub.d/41_heiss_safe` from the package `heiss-safe-graphics`; a profile whose `requires` is not met is still shown by `heiss hw detect` as NOT OFFERED, is left out of the wizard and is refused by `heiss profile apply --hardware`; a guard for the user, not a security boundary, see docs/SECURITY-MODEL.md; every profile whose packages start with `nvidia` must declare it), `safe_by_default`, `packages`, `services`, `kernel_params`, `dropins`, `post_actions`, and a `[match]` table). All match keys must hold: `cpu_vendor`, `virt` (`none` or the exact `systemd-detect-virt` name), `form_factor` (`laptop`, `desktop`, `vm`), and `pci`, a list of conditions, each satisfied by some device (`vendor`, `class` = display or network, `devices`, `device_min`, `device_max`). Rollback is the removal of what the profile installed, tracked by the state file.
 
 `safe_by_default = true` only marks a proposal as pre-selected; nothing is applied without confirmation.
 
@@ -19,9 +19,9 @@ One TOML file per profile (`schema_version`, `id`, `name`/`description`/`warning
 |---|---|---|
 | cpu-microcode-intel / -amd | CPU vendor, not in a VM | intel-ucode / amd-ucode |
 | gpu-intel, gpu-amd | PCI vendor 8086 / 1002, display class | Mesa, Vulkan (+ intel-media-driver) |
-| gpu-nvidia-open | NVIDIA display, device ID >= 0x1e00 | nvidia-open, nvidia-utils, early KMS drop-in; needs confirmation |
+| gpu-nvidia-open | NVIDIA display, device ID >= 0x1e00 | nvidia-open, nvidia-utils, early KMS drop-in; needs confirmation; needs the safe-graphics boot entry |
 | gpu-nvidia-legacy | NVIDIA display, device ID <= 0x1dff | nothing new; stays on the open nouveau stack; message; never AUR |
-| hybrid-nvidia-intel / -amd | laptop with both GPUs | nvidia-prime |
+| hybrid-nvidia-intel / -amd | laptop with both GPUs | nvidia-prime; needs the safe-graphics boot entry |
 | wifi-broadcom | PCI vendor 14e4 network | linux-firmware-broadcom; warning that older chips need an out-of-tree driver that is NOT installed |
 | laptop-power | laptop | power-profiles-daemon |
 | vm-virtualbox / -vmware / -qemu / -hyperv | matching hypervisor | guest tools for that hypervisor only |

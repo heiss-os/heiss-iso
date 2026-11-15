@@ -65,9 +65,11 @@ def driver_state(profile, installed):
 
 
 def drivers_of(report, installed):
+    unavailable = getattr(report, "unavailable", {})
     return [{"id": p.id, "name": dict(p.name), "description": dict(p.description), "warning": dict(p.warnings),
              "safe": p.safe_by_default, "state": driver_state(p, installed),
-             "missing": [x for x in p.packages if installed and x not in installed]} for p in report.proposals]
+             "missing": [x for x in p.packages if installed and x not in installed],
+             "needs": list(unavailable.get(p.id, []))} for p in report.proposals]
 
 
 def report_text(report, drivers, has_bluetooth, kernel):
@@ -84,17 +86,22 @@ def report_text(report, drivers, has_bluetooth, kernel):
         line = "driver proposal %s: %s" % (d["id"], d["state"])
         if d["missing"]:
             line += " (missing: %s)" % " ".join(d["missing"])
+        if d.get("needs"):
+            line += " (not offered: needs %s)" % " ".join(d["needs"])
         lines.append(line)
     if not drivers:
         lines.append("no hardware profile matches")
     return "\n".join(lines) + "\n"
 
 
-def collect(hardware_dir=None, facts=None, installed=None, kernel=None):
+_LIVE = object()
+
+
+def collect(hardware_dir=None, facts=None, installed=None, kernel=None, caps=_LIVE):
     """Returns {"facts", "drivers", "report"}. Raises when detection fails (the model shows the error)."""
     profiles = hw.load_profiles(hardware_dir or HARDWARE_DIR)
     facts = facts or hw.collect_live()
-    report = hw.detect(facts, profiles)
+    report = hw.detect(facts, profiles, hw.capabilities() if caps is _LIVE else caps)
     if installed is None:
         installed = PacmanSystem().installed_packages()
     drivers = drivers_of(report, installed)
