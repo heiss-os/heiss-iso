@@ -26,7 +26,7 @@ Files: `helper/heiss_helper/{policy,actions,dispatch,runner,audit}.py` (logic, t
 | RemovePackages(as) | org.heiss.packages.remove | `pacman -R --noconfirm -- names` (no `-s`, no `-c`: never cascades) | name in manifests AND recorded as installed by Heiss AND not in the essentials manifest |
 | AdoptPackages(as) | org.heiss.packages.adopt | records already installed, explicitly installed packages as Heiss-owned | name in manifests; installed; explicit; not owned yet |
 | SetServices(as, as) | org.heiss.services.manage | `systemctl enable/disable -- units` (never `--now`) | unit in manifests; no overlap |
-| WriteDropin(s) | org.heiss.config.write | writes ONE file | path must equal a drop-in declared in a manifest; the CONTENT is taken from the manifest, never from the client |
+| WriteDropin(s) | org.heiss.config.write | writes ONE file | path must equal a drop-in declared in a manifest AND lie in one of three exact directories (`DROPIN_DIRS`: `mkinitcpio.conf.d`, `NetworkManager/conf.d`, `systemd/zram-generator.conf.d`) as a plain `*.conf` file, rechecked in `write_dropin`; the CONTENT is taken from the manifest, never from the client |
 | WritePrivacy(s) | org.heiss.config.write | writes ONE fixed file (`/etc/NetworkManager/conf.d/80-heiss-privacy.conf`) | the argument is only a level name (`standard`, `enhanced`, `maximum`); path and content are constants in `heiss_core/privacy.py`, never from the client; no service is restarted |
 | RunPostAction(s) | org.heiss.postaction.run | fixed argv (`mkinitcpio -P`, `grub-mkconfig -o /boot/grub/grub.cfg`, ...) | id must be one of four known ids |
 | UpdateSystem() | org.heiss.system.update | `pacman -Syu --noconfirm` | none needed; always a full upgrade, never `-Sy` alone |
