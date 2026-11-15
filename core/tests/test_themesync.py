@@ -202,11 +202,35 @@ class RealLock(unittest.TestCase):
         self.assertFalse(os.path.exists(target))
         self.assertTrue(any("without a lock" in l for l in self.logged))
 
-    def test_a_file_of_another_user_is_not_used(self):
-        with self.patched(), mock.patch("os.geteuid", return_value=os.geteuid() + 1):
-            with self.env.lock() as got:
-                self.assertTrue(got)
+    def test_a_lock_file_of_another_user_is_not_used(self):
+        real = os.fstat
+
+        def foreign(fd):
+            st = real(fd)
+            return os.stat_result((st.st_mode,) + tuple(st)[1:4] + (st.st_uid + 1,) + tuple(st)[5:])
+        with self.patched(), mock.patch("heiss_core.themesync.os.fstat", foreign), self.env.lock() as got:
+            self.assertTrue(got)
         self.assertTrue(any("without a lock" in l for l in self.logged))
+
+    def test_a_loose_state_dir_of_ours_is_tightened_and_a_symlinked_one_refused(self):
+        state = os.path.join(self.home, "state")
+        os.makedirs(os.path.join(state, "heiss"), mode=0o775)
+        os.chmod(os.path.join(state, "heiss"), 0o775)
+        with self.patched(XDG_RUNTIME_DIR=""), self.env.lock() as got:
+            self.assertTrue(got)
+        self.assertEqual(os.stat(os.path.join(state, "heiss")).st_mode & 0o777, 0o700)
+        self.assertEqual(self.logged, [])
+        os.rename(os.path.join(state, "heiss"), os.path.join(state, "real"))
+        os.symlink(os.path.join(state, "real"), os.path.join(state, "heiss"))
+        with self.patched(XDG_RUNTIME_DIR=""), self.env.lock() as got:
+            self.assertTrue(got)
+        self.assertTrue(any("without a lock" in l for l in self.logged))
+
+    def test_relative_state_home_is_ignored(self):
+        with self.patched(XDG_RUNTIME_DIR="", XDG_STATE_HOME="rel/state"), self.env.lock() as got:
+            self.assertTrue(got)
+        self.assertTrue(os.path.exists(os.path.join(self.home, ".local", "state", "heiss", "heiss-theme-sync.lock")))
+        self.assertFalse(os.path.exists("rel/state"))
 
     def test_no_usable_directory_runs_without_a_lock(self):
         blocker = os.path.join(self.tmp.name, "file")

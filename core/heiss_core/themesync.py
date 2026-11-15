@@ -96,7 +96,7 @@ class RealEnv:
         base = os.environ.get("XDG_STATE_HOME") or os.path.join(self.home, ".local", "state")
         path = os.path.join(base, "heiss", "theme-sync.log")
         try:
-            os.makedirs(os.path.dirname(path), exist_ok=True)
+            os.makedirs(os.path.dirname(path), mode=0o700, exist_ok=True)
             if os.path.exists(path) and os.path.getsize(path) > 200 * 1024:
                 os.replace(path, path + ".1")
             with open(path, "a", encoding="utf-8") as f:
@@ -118,10 +118,15 @@ class RealEnv:
         run_dir = os.environ.get("XDG_RUNTIME_DIR", "")
         if os.path.isabs(run_dir) and self._private_dir(run_dir):
             return run_dir
-        base = os.environ.get("XDG_STATE_HOME") or os.path.join(self.home, ".local", "state")
+        base = os.environ.get("XDG_STATE_HOME", "")
+        if not os.path.isabs(base):
+            base = os.path.join(self.home, ".local", "state")
         path = os.path.join(base, "heiss")
         try:
             os.makedirs(path, mode=0o700, exist_ok=True)
+            st = os.lstat(path)
+            if stat.S_ISDIR(st.st_mode) and st.st_uid == os.geteuid() and st.st_mode & 0o022:
+                os.chmod(path, 0o700)     # made earlier under a loose umask: tighten our own directory
         except OSError:
             return None
         return path if self._private_dir(path) else None
