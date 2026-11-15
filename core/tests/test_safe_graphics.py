@@ -166,6 +166,23 @@ class Script(unittest.TestCase):
             self.assertEqual((r.returncode, r.stdout), (0, ""), bad)
             self.assertIn("unusable root device", r.stderr)
 
+    def test_empty_root_device_writes_no_entry(self):
+        r, _ = run_script(GRUB_DEVICE_UUID="", GRUB_DEVICE="")
+        self.assertEqual((r.returncode, r.stdout), (0, ""))
+        self.assertIn("unusable root device", r.stderr)
+
+    def test_without_grep_a_value_is_refused_not_passed_on(self):
+        with tempfile.TemporaryDirectory() as bindir:
+            for tool in ("sh", "sed", "cat", "printf", "mkdir"):
+                src = subprocess.run(["sh", "-c", "command -v " + tool], capture_output=True, text=True).stdout.strip()
+                if src:
+                    os.symlink(src, os.path.join(bindir, tool))
+            r, _ = run_script(GRUB_CMDLINE_LINUX="keep caf\u00e9", PATH=bindir)
+        self.assertNotIn("\u00e9", r.stdout)
+        # nothing can be checked, so nothing is written (fails closed)
+        self.assertEqual((r.returncode, r.stdout), (0, ""))
+        self.assertIn("no entry written", r.stderr)
+
     def test_boot_directory_with_a_space_writes_no_entry(self):
         r, _ = run_script(STUB_ROOT_REL="/")
         self.assertTrue(r.stdout)    # sanity: the normal case writes an entry
