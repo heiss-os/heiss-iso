@@ -47,7 +47,9 @@ def _hardware_catalog():
 
 
 def _matching_hardware(catalog):
-    """Ids of the hardware profiles that fit this machine; None when detection is impossible (no filter then)."""
+    """Ids of the hardware profiles that fit this machine; None when detection is impossible (no filter then).
+    Detection runs without capabilities on purpose: this only filters what an earlier apply keeps (sticky_hardware),
+    it never offers anything; the `requires` check of a new choice is in _chosen_hardware."""
     if not catalog:
         return None
     try:

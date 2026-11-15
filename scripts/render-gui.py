@@ -137,6 +137,13 @@ def welcome_pages(out, lang, theme, shots):
             set_size(win, 1024, 600)
             shot(win, bridge, "%02d-%s-small-window" % (seen, sid))
             set_size(win, 1280, 800)
+            # the same machine without the safe graphics boot entry: the NVIDIA tick box is replaced by one line
+            keep = (vm.detector, vm._report, vm._detected)
+            vm.detector, vm._detected = (lambda: hw.detect(facts, profiles, set())), False
+            bridge._set(vm.screen())
+            shot(win, bridge, "%02d-%s-not-offered" % (seen, sid))
+            vm.detector, vm._report, vm._detected = keep
+            bridge._set(vm.screen())
         seen += 1
         if sid == wz.SUMMARY:
             break

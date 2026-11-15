@@ -77,6 +77,8 @@ There is no method that takes a command, a file path to read, or file content.
 
 The wizard's "apply later" queue (`~/.config/heiss/pending.json`) is user-writable and is **not a trust boundary**: it can only name a profile and add-ons by id, every package, service and drop-in still comes from the root-owned manifests through the helper's allowlist, and polkit asks for the password. The Control Center applies an item only on an explicit click (with a warning), never offline, and starts `python -I -m heiss_core profile apply` in `/` with an allowlisted environment (home, locale, the session bus and display for the polkit agent, a fixed `PATH=/usr/bin:/bin`; the list is in `docs/WELCOME.md` and is the same in the wizard's and the Control Center's apply code), because polkit's `auth_admin_keep` keeps the authorisation per calling process. The polkit message does not name the profile; the window does.
 
+Not a helper rule: the hardware-profile key `requires` (for example `safe-graphics-entry` on the NVIDIA profiles) is checked by the unprivileged `heiss` CLI and the wizard so that a risky driver is not offered without a way back. The helper does not check it and does not need to: it installs only packages that a root-owned manifest declares. Treat `requires` as a guard for the user, not as a security boundary.
+
 How the automated security review is done and what it cannot find: [docs/security/REVIEW-METHOD.md](security/REVIEW-METHOD.md).
 
 ## 6. Not verified (honest list)
