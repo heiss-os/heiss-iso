@@ -359,6 +359,9 @@ def main():
     ap.add_argument("--lang", default="en,ru")
     ap.add_argument("--theme", default="dark,light")
     a = ap.parse_args()
+    for opt, allowed in (("lang", ("en", "ru")), ("theme", ("dark", "light"))):
+        if not set(getattr(a, opt).split(",")) <= set(allowed):
+            ap.error("--%s must be a comma-separated list of %s" % (opt, ", ".join(allowed)))
     if os.geteuid() == 0:
         sys.exit("refusing to run as root: this tool never needs it")
     try:
@@ -367,9 +370,12 @@ def main():
     except ImportError:
         sys.exit("PySide6 is required: sudo pacman -S pyside6")
     out = a.out or tempfile.mkdtemp(prefix="heiss-gui-")
-    os.makedirs(out, mode=0o700, exist_ok=True)
     if os.path.islink(out):
         sys.exit("output directory must not be a symlink")
+    try:
+        os.makedirs(out, mode=0o700, exist_ok=True)
+    except OSError as e:
+        sys.exit("cannot create the output directory: %s" % e)
     if os.listdir(out):
         sys.exit("output directory %s is not empty" % out)
     for var, sub in (("XDG_CACHE_HOME", "cache"), ("XDG_CONFIG_HOME", "config"), ("XDG_DATA_HOME", "data"),
