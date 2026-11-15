@@ -72,27 +72,39 @@ ApplicationWindow {
                Layout.fillWidth: true; Accessible.role: Accessible.Heading }
         Text { textFormat: Text.PlainText; text: s.whatLabel + ": " + s.what; color: pal.dim; font.pixelSize: 16; wrapMode: Text.WordWrap
                Layout.fillWidth: true }
-        Repeater {
-            model: s.facts
-            delegate: RowLayout {
-                required property var modelData
-                Layout.fillWidth: true
-                spacing: 12
-                Text { textFormat: Text.PlainText; text: parent.modelData.text; color: pal.text; font.pixelSize: 16; wrapMode: Text.WordWrap
-                       Layout.fillWidth: true }
-                Text { textFormat: Text.PlainText; visible: parent.modelData.badge !== ""; text: parent.modelData.badge; color: pal.accent
-                       font.pixelSize: 14; font.bold: true }
+        ColumnLayout {
+            Layout.fillWidth: true
+            spacing: 6   // short info lines sit close together so more of the list below fits on a small screen
+            Repeater {
+                model: s.facts
+                delegate: RowLayout {
+                    required property var modelData
+                    Layout.fillWidth: true
+                    spacing: 12
+                    Text { textFormat: Text.PlainText; text: parent.modelData.text; color: pal.text; font.pixelSize: 16; wrapMode: Text.WordWrap
+                           Layout.fillWidth: true }
+                    Text { textFormat: Text.PlainText; visible: parent.modelData.badge !== ""; text: parent.modelData.badge; color: pal.accent
+                           font.pixelSize: 14; font.bold: true }
+                }
             }
         }
         Repeater { model: s.lines; Text { textFormat: Text.PlainText; text: modelData; color: pal.text; font.pixelSize: 18 } }
 
-        ScrollView {
+        Item {
+            id: listArea
             Layout.fillWidth: true
-            Layout.preferredHeight: contentHeight
+            Layout.preferredHeight: sv.contentHeight
             Layout.fillHeight: true
-            Layout.minimumHeight: Math.min(96, contentHeight)
+            Layout.minimumHeight: Math.min(96, sv.contentHeight)
+            readonly property bool overflows: sv.contentHeight > sv.height + 1
+            readonly property bool moreBelow: overflows && sv.ScrollBar.vertical.position + sv.ScrollBar.vertical.size < 0.995
+        ScrollView {
+            id: sv
+            anchors { left: parent.left; top: parent.top; bottom: parent.bottom; right: parent.right
+                      rightMargin: listArea.overflows ? 14 : 0 }
             clip: true
             contentWidth: availableWidth
+            ScrollBar.vertical.policy: ScrollBar.AlwaysOff   // drawn below: the stock bar shows on hover only
             ColumnLayout {
                 width: parent.width
                 spacing: 12
@@ -120,10 +132,31 @@ ApplicationWindow {
                                     else wizard.toggleAddon(modelData.value)
                                 }
                                 contentItem: ColumnLayout {
-                                    Text { textFormat: Text.PlainText; text: (opt.modelData.selected ? "● " : "○ ") + opt.modelData.label
-                                           color: pal.text; font.pixelSize: 18 }
+                                    RowLayout {
+                                        spacing: 10
+                                        // a square box with a tick for "several can be ticked", a round dot for "choose one"
+                                        Rectangle {
+                                            readonly property bool multi: q.modelData.kind === "multi"
+                                            implicitWidth: 20; implicitHeight: 20
+                                            radius: multi ? 4 : 10
+                                            color: multi && opt.modelData.selected ? pal.accent : "transparent"
+                                            border.width: 2; border.color: opt.modelData.selected ? pal.accent : pal.dim
+                                            Rectangle {   // round: the inner dot
+                                                visible: !parent.multi && opt.modelData.selected
+                                                anchors.centerIn: parent; width: 8; height: 8; radius: 4; color: pal.accent
+                                            }
+                                            Item {   // square: the tick, two bars
+                                                visible: parent.multi && opt.modelData.selected
+                                                anchors.fill: parent
+                                                Rectangle { x: 3; y: 9; width: 7; height: 2.5; radius: 1; rotation: 45; color: pal.textOnAccent }
+                                                Rectangle { x: 6; y: 8; width: 11; height: 2.5; radius: 1; rotation: -50; color: pal.textOnAccent }
+                                            }
+                                        }
+                                        Text { textFormat: Text.PlainText; text: opt.modelData.label; color: pal.text; font.pixelSize: 18
+                                               Layout.fillWidth: true; wrapMode: Text.WordWrap }
+                                    }
                                     Text { textFormat: Text.PlainText; visible: opt.modelData.hint !== ""; text: opt.modelData.hint; color: pal.dim
-                                           font.pixelSize: 14; wrapMode: Text.WordWrap; Layout.fillWidth: true }
+                                           font.pixelSize: 14; wrapMode: Text.WordWrap; Layout.fillWidth: true; Layout.leftMargin: 30 }
                                 }
                                 background: Rectangle { radius: 8; color: opt.modelData.selected ? pal.button : pal.panel
                                                         border.width: opt.activeFocus ? 2 : (opt.modelData.selected ? 1 : 0)
@@ -131,6 +164,29 @@ ApplicationWindow {
                             }
                         }
                     }
+                }
+            }
+        }
+            // scroll bar: only when the list is longer than the window
+            Rectangle {
+                id: track
+                visible: listArea.overflows
+                anchors { right: parent.right; top: parent.top; bottom: parent.bottom }
+                width: 6; radius: 3; color: pal.button
+                Rectangle {
+                    width: parent.width; radius: 3; color: pal.accent
+                    y: sv.ScrollBar.vertical.position * track.height
+                    height: Math.max(24, sv.ScrollBar.vertical.size * track.height)
+                }
+            }
+            // fade at the bottom edge while more of the list is hidden below
+            Rectangle {
+                anchors { left: parent.left; right: track.left; bottom: parent.bottom }
+                height: 36
+                visible: listArea.moreBelow
+                gradient: Gradient {
+                    GradientStop { position: 0.0; color: "transparent" }
+                    GradientStop { position: 1.0; color: pal.window }
                 }
             }
         }

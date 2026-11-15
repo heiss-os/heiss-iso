@@ -9,7 +9,7 @@ PYTHONPATH=core python3 -m heiss_core hw detect --hardware hardware --fixture co
 
 ## Profile format
 
-One TOML file per profile (`schema_version`, `id`, `name`/`description`/`warnings` in en and ru, `safe_by_default`, `packages`, `services`, `kernel_params`, `dropins`, `post_actions`, and a `[match]` table). All match keys must hold: `cpu_vendor`, `virt` (`none` or the exact `systemd-detect-virt` name), `form_factor` (`laptop`, `desktop`, `vm`), and `pci`, a list of conditions, each satisfied by some device (`vendor`, `class` = display or network, `devices`, `device_min`, `device_max`). Rollback is the removal of what the profile installed, tracked by the state file.
+One TOML file per profile (`schema_version`, `id`, `name`/`description`/`warnings` in en and ru, optional `recovery` (en and ru: a short plain recovery step that the wizard shows instead of the full `warnings`, which the Control Center shows whole; the full text must start with it), `safe_by_default`, `packages`, `services`, `kernel_params`, `dropins`, `post_actions`, and a `[match]` table). All match keys must hold: `cpu_vendor`, `virt` (`none` or the exact `systemd-detect-virt` name), `form_factor` (`laptop`, `desktop`, `vm`), and `pci`, a list of conditions, each satisfied by some device (`vendor`, `class` = display or network, `devices`, `device_min`, `device_max`). Rollback is the removal of what the profile installed, tracked by the state file.
 
 `safe_by_default = true` only marks a proposal as pre-selected; nothing is applied without confirmation.
 

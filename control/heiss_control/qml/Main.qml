@@ -26,6 +26,8 @@ ApplicationWindow {
         readonly property color accent: win.dark ? "#C9B28A" : "#8C7448"
         readonly property color textOnAccent: win.dark ? "#26282B" : "#F5F3EF"
         readonly property color error: win.dark ? "#E06C64" : "#B3382F"
+        // token neutral_text (readable amber): a caution that is not an error. Checked against the tokens by control/tests.
+        readonly property color cautionText: win.dark ? "#E2B050" : "#7D5924"
     }
     font.family: "Inter"
 
@@ -133,6 +135,9 @@ ApplicationWindow {
                     placeholderText: s.searchLabel
                     placeholderTextColor: pal.dim
                     color: pal.text
+                    // set here: a Text/TextField does not take the window font; without Inter it must not fall to a monospace face
+                    font.family: Qt.fontFamilies().indexOf("Inter") >= 0 ? "Inter" : "sans-serif"
+                    font.pixelSize: 15
                     Accessible.name: s.searchLabel
                     onTextChanged: control.search(text)
                     Keys.onEscapePressed: text = ""
@@ -395,7 +400,7 @@ ApplicationWindow {
                             }
                             Text { textFormat: Text.PlainText; text: dr.modelData.detail; color: pal.text; font.pixelSize: 15
                                    wrapMode: Text.WordWrap; Layout.fillWidth: true }
-                            Text { textFormat: Text.PlainText; visible: dr.modelData.warning !== ""; text: dr.modelData.warning; color: pal.error
+                            Text { textFormat: Text.PlainText; visible: dr.modelData.warning !== ""; text: dr.modelData.warning; color: pal.cautionText
                                    font.pixelSize: 14; wrapMode: Text.WordWrap; Layout.fillWidth: true }
                             Text { textFormat: Text.PlainText; visible: dr.modelData.missing !== ""; text: dr.modelData.missing; color: pal.dim
                                    font.pixelSize: 14; wrapMode: Text.WrapAnywhere; Layout.fillWidth: true }

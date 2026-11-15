@@ -168,6 +168,33 @@ class HardwareAndPrivacy(unittest.TestCase):
             self.assertTrue(opts)
             self.assertTrue(all(o["path"] == "hardware" for o in opts))
 
+    def test_facts_use_vendor_names_and_one_graphics_line(self):
+        with tempfile.TemporaryDirectory() as d:
+            vm = self.vm(d, self.detector("nvidia-hybrid-laptop"))
+            texts = [f["text"] for f in vm.screen()["facts"]]
+            self.assertIn("Processor: Intel", texts)
+            self.assertEqual([t for t in texts if t.startswith("Graphics")], ["Graphics: Intel and NVIDIA"])
+            self.assertFalse([t for t in texts if "GenuineIntel" in t or "8086" in t or "10de" in t])
+            self.assertIn("Hybrid graphics (two different vendors)", texts)
+            vm.w.set("language", "ru")
+            texts = [f["text"] for f in vm.screen()["facts"]]
+            self.assertIn("Процессор: Intel", texts)
+            self.assertIn("Графика: Intel и NVIDIA", texts)
+
+    def test_nvidia_hint_is_the_short_recovery_step(self):
+        with tempfile.TemporaryDirectory() as d:
+            vm = self.vm(d, self.detector("nvidia-desktop-modern"))
+            opts = {o["value"]: o for q in vm.screen()["questions"] for o in q["options"]}
+            hint = opts["gpu-nvidia-open"]["hint"]
+            self.assertIn("Heiss OS, safe graphics", hint)
+            self.assertNotIn("0x1e00", hint)           # the technical detail stays in the Control Center
+            self.assertNotIn("nvidia-open-lts", hint)
+
+    def test_intro_has_no_second_colon_in_either_language(self):
+        from heiss_welcome.strings import S
+        for lang in S:
+            self.assertNotIn(":", S[lang]["hardware.what"], lang)   # the screen already prints "What this will change:" before it
+
     def test_safe_proposals_start_ticked_and_toggle_into_extras(self):
         with tempfile.TemporaryDirectory() as d:
             vm = self.vm(d, self.detector(self.fixture()))

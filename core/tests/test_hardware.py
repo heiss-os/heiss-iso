@@ -100,6 +100,48 @@ class Fixtures(unittest.TestCase):
                 self.assertFalse({"nvidia-open", "nvidia-utils"} & set(p.packages), p.id)
 
 
+class VendorNames(unittest.TestCase):
+    def test_cpu_vendor_names(self):
+        self.assertEqual(hw.cpu_vendor_name("GenuineIntel"), "Intel")
+        self.assertEqual(hw.cpu_vendor_name("AuthenticAMD"), "AMD")
+        self.assertEqual(hw.cpu_vendor_name("HygonGenuine"), "Hygon")
+        self.assertEqual(hw.cpu_vendor_name("JohnSmithCPU"), "")   # an unknown raw string is never echoed
+        self.assertEqual(hw.cpu_vendor_name(""), "")
+
+    def test_every_fixture_cpu_has_a_name(self):
+        for fx in sorted(os.listdir(FIX)):
+            f = hw.load_fixture(os.path.join(FIX, fx))
+            self.assertTrue(hw.cpu_vendor_name(f.cpu_vendor), (fx, f.cpu_vendor))
+
+    def test_graphics_vendors_once_each_in_detection_order(self):
+        r = hw.detect(hw.load_fixture(os.path.join(FIX, "nvidia-hybrid-laptop")), hw.load_profiles(HARDWARE))
+        self.assertEqual(hw.gpu_vendor_names(r.gpus), ["Intel", "NVIDIA"])
+        self.assertEqual(hw.gpu_vendor_names([{"vendor": "8086"}, {"vendor": "8086"}]), ["Intel"])
+        self.assertEqual(hw.gpu_vendor_names([{"vendor": "abcd"}], other="x"), ["x"])
+        self.assertEqual(hw.pci_vendor_name("10de"), "NVIDIA")
+        self.assertEqual(hw.pci_vendor_name("abcd"), "")
+
+
+class RecoveryText(unittest.TestCase):
+    def test_recovery_is_optional_and_needs_both_languages(self):
+        base = {"schema_version": 1, "id": "x", "name": {"en": "a", "ru": "а"}, "description": {"en": "a", "ru": "а"},
+                "match": {"virt": "none"}}
+        self.assertEqual(hw.parse_profile(base).recovery, {})
+        with self.assertRaises(ValidationError):
+            hw.parse_profile(dict(base, recovery={"en": "only english"}))
+        ok = hw.parse_profile(dict(base, recovery={"en": "a", "ru": "б"}))
+        self.assertEqual(ok.recovery["ru"], "б")
+
+    def test_a_recovery_step_is_the_first_part_of_the_full_warning(self):
+        n = 0
+        for p in hw.load_profiles(HARDWARE).values():
+            if p.recovery:
+                n += 1
+                for lang in ("en", "ru"):
+                    self.assertTrue(p.warnings[lang].startswith(p.recovery[lang]), (p.id, lang))
+        self.assertGreaterEqual(n, 1)
+
+
 class FormFactor(unittest.TestCase):
     def test_rules(self):
         self.assertEqual(hw.Facts(chassis_type=3).form_factor, "desktop")
