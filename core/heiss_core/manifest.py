@@ -19,6 +19,25 @@ KINDS = ("profile", "addon")
 TIERS = ("essential", "important", "extended")
 # post-actions are ids resolved by the helper, never shell strings
 POST_ACTIONS = {"update-desktop-database", "update-mime-database", "mkinitcpio", "grub-mkconfig"}
+# Drop-in directories the helper may write, one entry per directory (never a glob over /etc/**/*.d/:
+# that would admit sudoers.d, pam.d, profile.d, cron.d, ld.so.conf.d, ...). Add a directory only with a
+# DECISIONS entry. The file name is a plain `*.conf`.
+DROPIN_DIRS = (
+    "/etc/mkinitcpio.conf.d/",
+    "/etc/NetworkManager/conf.d/",
+    "/etc/systemd/zram-generator.conf.d/",
+)
+DROPIN_FILE_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,80}\.conf$")
+
+
+def dropin_path_ok(path):
+    """True for a normalized `<allowed directory>/<name>.conf` path (no other directory, no subdirectory)."""
+    if not isinstance(path, str) or os.path.normpath(path) != path:
+        return False
+    d, _, name = path.rpartition("/")
+    return d + "/" in DROPIN_DIRS and bool(DROPIN_FILE_RE.fullmatch(name))
+
+
 ALLOWED_KEYS = {
     "schema_version", "id", "kind", "tier", "name", "description", "requires", "conflicts",
     "packages", "flatpaks", "services", "dropins", "kde_settings", "post_actions", "size",
@@ -70,9 +89,9 @@ def _dropins(doc, where):
         path = d.get("path", "")
         if set(d) != {"path", "content"} or not isinstance(d["content"], str):
             raise ValidationError("%s: dropin needs exactly 'path' and 'content'" % where)
-        norm = os.path.normpath(path)
-        if norm != path or not path.startswith("/etc/") or ".d/" not in path or ".." in path:
-            raise ValidationError("%s: dropin path %r must be a normalized /etc/**/*.d/ file" % (where, path))
+        if not dropin_path_ok(path):
+            raise ValidationError("%s: dropin path %r must be a *.conf file in one of: %s"
+                                  % (where, path, " ".join(DROPIN_DIRS)))
         out.append({"path": path, "content": d["content"]})
     return tuple(out)
 

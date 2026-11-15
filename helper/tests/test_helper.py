@@ -108,23 +108,32 @@ class Validation(Env):
             with self.assertRaises(HelperError, msg=str(bad)):
                 actions.build_dropin(self.ctx, bad)
 
+    def test_check_dropin_refuses_a_trusted_path_outside_the_allowlist(self):
+        t = policy.Trusted()
+        t.dropins["/etc/sudoers.d/x.conf"] = "x ALL=(ALL) NOPASSWD: ALL\n"
+        with self.assertRaises(HelperError):
+            policy.check_dropin("/etc/sudoers.d/x.conf", t)
+
     def test_write_dropin_refuses_symlinks_and_outside_etc(self):
-        os.makedirs(os.path.join(self.root, "etc/x.d"))
-        os.symlink("/tmp", os.path.join(self.root, "etc/evil.d"))
+        os.makedirs(os.path.join(self.root, "etc/NetworkManager"))
+        os.symlink("/tmp", os.path.join(self.root, "etc/NetworkManager/conf.d"))
         with self.assertRaises(HelperError):
-            policy.write_dropin("/etc/evil.d/a.conf", "x", self.root)
-        os.symlink("/etc/passwd", os.path.join(self.root, "etc/x.d/link.conf"))
+            policy.write_dropin("/etc/NetworkManager/conf.d/a.conf", "x", self.root)
+        os.makedirs(os.path.join(self.root, "etc/mkinitcpio.conf.d"))
+        os.symlink("/etc/passwd", os.path.join(self.root, "etc/mkinitcpio.conf.d/link.conf"))
         with self.assertRaises(HelperError):
-            policy.write_dropin("/etc/x.d/link.conf", "x", self.root)
-        for bad in ("/usr/lib/a.conf", "/etc/../usr/a.conf", "/etc//a.conf", "etc/a.conf"):
+            policy.write_dropin("/etc/mkinitcpio.conf.d/link.conf", "x", self.root)
+        for bad in ("/usr/lib/a.conf", "/etc/../usr/a.conf", "/etc//a.conf", "etc/a.conf", "/etc/sudoers.d/a.conf",
+                    "/etc/pam.d/a.conf", "/etc/profile.d/a.conf", "/etc/a.d/b.conf",
+                    "/etc/mkinitcpio.conf.d/sub/a.conf", "/etc/mkinitcpio.conf.d/a"):
             with self.assertRaises(HelperError, msg=bad):
                 policy.write_dropin(bad, "x", self.root)
 
     def test_write_dropin_atomic_leaves_no_temp_files(self):
-        policy.write_dropin("/etc/a.d/b.conf", "hello", self.root)
-        files = os.listdir(os.path.join(self.root, "etc/a.d"))
+        policy.write_dropin("/etc/mkinitcpio.conf.d/b.conf", "hello", self.root)
+        files = os.listdir(os.path.join(self.root, "etc/mkinitcpio.conf.d"))
         self.assertEqual(files, ["b.conf"])
-        self.assertEqual(oct(os.stat(os.path.join(self.root, "etc/a.d/b.conf")).st_mode & 0o777), "0o644")
+        self.assertEqual(oct(os.stat(os.path.join(self.root, "etc/mkinitcpio.conf.d/b.conf")).st_mode & 0o777), "0o644")
 
     def test_post_actions_fixed_argv(self):
         self.assertEqual(actions.build_post_action(self.ctx, "mkinitcpio")[0].argv, ["mkinitcpio", "-P"])

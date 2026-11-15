@@ -37,9 +37,24 @@ class Manifests(unittest.TestCase):
                     good(services=["x.sh"]), good(post_actions=["rm -rf /"]),
                     good(dropins=[{"path": "/usr/lib/x.conf", "content": ""}]),
                     good(dropins=[{"path": "/etc/a.d/../../b.conf", "content": ""}]),
+                    good(dropins=[{"path": "/etc/sudoers.d/heiss", "content": ""}]),
+                    good(dropins=[{"path": "/etc/pam.d/sudo.conf", "content": ""}]),
+                    good(dropins=[{"path": "/etc/profile.d/x.conf", "content": ""}]),
+                    good(dropins=[{"path": "/etc/cron.d/x.conf", "content": ""}]),
+                    good(dropins=[{"path": "/etc/NetworkManager/conf.d/sub/x.conf", "content": ""}]),
+                    good(dropins=[{"path": "/etc/NetworkManager/conf.d/x.sh", "content": ""}]),
+                    good(dropins=[{"path": "/etc/NetworkManager/conf.d/.x.conf", "content": ""}]),
+                    good(dropins=[{"path": "/etc/NetworkManager/conf.d/", "content": ""}]),
                     good(name={"en": "only"}), good(kind="other"), good(schema_version=2)):
             with self.assertRaises(ValidationError, msg=str(bad)):
                 mf.parse(bad)
+
+    def test_dropin_allowlist_is_exact(self):
+        for d in mf.DROPIN_DIRS:
+            self.assertTrue(mf.dropin_path_ok(d + "x.conf"), d)
+        for bad in ("/etc/sudoers.d/x.conf", "/etc/pam.d/x.conf", "/etc/x.conf", "/etc/NetworkManager/conf.d/a/b.conf",
+                    "/etc//NetworkManager/conf.d/x.conf", "/etc/NetworkManager/conf.d/../pam.d/x.conf", "", None, 5):
+            self.assertFalse(mf.dropin_path_ok(bad), str(bad))
 
     def test_cycle_and_unknown_reference(self):
         a = mf.parse(good(id="a", requires=["b"]))

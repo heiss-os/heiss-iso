@@ -1,6 +1,6 @@
 # Profiles and add-ons
 
-Manifests live in `profiles/*.toml` (one file per id, file name = id). They are validated by `core/heiss_core/manifest.py`; unknown keys, bad names, non-`/etc/**/*.d/` drop-in paths and unlisted post-actions are rejected.
+Manifests live in `profiles/*.toml` (one file per id, file name = id). They are validated by `core/heiss_core/manifest.py`; unknown keys, bad names, drop-in paths outside the exact directory allowlist (`DROPIN_DIRS` in `manifest.py`: `mkinitcpio.conf.d`, `NetworkManager/conf.d`, `systemd/zram-generator.conf.d`; `*.conf` only; no `sudoers.d`, `pam.d`) and unlisted post-actions are rejected.
 
 | id | kind | requires | packages | download / installed (packages alone, without dependencies) |
 |---|---|---|---|---|
