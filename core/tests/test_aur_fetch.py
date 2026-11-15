@@ -83,10 +83,35 @@ class Fetch(unittest.TestCase):
         self.assertTrue(os.path.isdir(home))
         self.assertTrue(os.path.isdir(self.remote))
 
-    def test_nothing_from_the_remote_head_is_left_in_a_failed_checkout(self):
-        r = self.run_fetch("0" * 40, sha(self.v1))
-        self.assertEqual(r.returncode, 1)
-        self.assertFalse(os.path.exists(os.path.join(self.dest, "PKGBUILD")))   # --no-checkout: the head was never written
+    def test_a_failed_check_leaves_nothing_to_build(self):
+        for commit, want in ((self.c2, sha(self.v1)), ("0" * 40, sha(self.v1))):
+            r = self.run_fetch(commit, want)
+            self.assertEqual(r.returncode, 1)
+            self.assertFalse(os.path.exists(self.dest), "no directory may remain after a failure")
+
+    def test_a_target_behind_a_symlink_is_refused_and_nothing_behind_it_is_deleted(self):
+        real = os.path.join(self.d, "elsewhere")
+        os.makedirs(os.path.join(real, "a", "b"))
+        with open(os.path.join(real, "a", "b", "keep"), "w") as f:
+            f.write("x")
+        os.symlink(real, os.path.join(self.d, "link"))
+        r = self.run_fetch(self.c1, sha(self.v1), dest=os.path.join(self.d, "link", "a", "b"))
+        self.assertEqual(r.returncode, 2)
+        self.assertTrue(os.path.exists(os.path.join(real, "a", "b", "keep")))
+
+    def test_git_hooks_from_the_users_templates_do_not_run(self):
+        tpl = os.path.join(self.d, "tpl", "hooks")
+        os.makedirs(tpl)
+        marker = os.path.join(self.d, "hook-ran")
+        hook = os.path.join(tpl, "post-checkout")
+        with open(hook, "w") as f:
+            f.write("#!/bin/sh\ntouch %s\n" % marker)
+        os.chmod(hook, 0o755)
+        env = dict(os.environ, **GIT_ENV, GIT_TEMPLATE_DIR=os.path.join(self.d, "tpl"))
+        r = subprocess.run([FETCH, "file://" + self.remote, self.dest, self.c1, sha(self.v1)],
+                           capture_output=True, text=True, env=env, timeout=60)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertFalse(os.path.exists(marker))
 
     def test_an_existing_target_is_replaced_not_reused(self):
         os.makedirs(self.dest)

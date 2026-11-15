@@ -31,9 +31,16 @@ case "$home/" in
     "$dir"/*) echo "refusing the target directory '$dir': it is the home directory or contains it" >&2; exit 2 ;;
 esac
 
+# a path through a symlink is refused: the delete below would follow it
+[ "$(realpath -m -- "$dir")" = "$dir" ] || { echo "refusing the target directory '$dir': it goes through a symlink" >&2; exit 2; }
+
+# whatever goes wrong from here on, no half-checked recipe is left behind that someone could build by hand
+ok=0
+trap '[ "$ok" = 1 ] || rm -rf -- "$dir"' EXIT
 rm -rf -- "$dir"
-git clone --quiet --no-checkout -- "$url" "$dir"   # nothing from the remote head is checked out
-git -C "$dir" -c advice.detachedHead=false checkout --quiet --detach "$commit" ||
+# no git hooks (the user's templates or config included) and no checkout of the remote head
+git -c core.hooksPath=/dev/null clone --quiet --no-checkout --template= -- "$url" "$dir"
+git -C "$dir" -c core.hooksPath=/dev/null -c advice.detachedHead=false checkout --quiet --detach "$commit" ||
     { echo "commit $commit is not in $url (rewritten history?): do not build, review the repository again" >&2; exit 1; }
 
 head=$(git -C "$dir" rev-parse HEAD)
@@ -47,3 +54,4 @@ if [ "$got_sha" != "$want_sha" ]; then
     exit 1
 fi
 echo "==> $url at $commit, PKGBUILD sha256 $got_sha: as reviewed"
+ok=1
