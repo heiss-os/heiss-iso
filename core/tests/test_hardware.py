@@ -122,6 +122,26 @@ class VendorNames(unittest.TestCase):
         self.assertEqual(hw.pci_vendor_name("abcd"), "")
 
 
+class TrailingNewline(unittest.TestCase):
+    """"$" alone lets a trailing newline through; every validator must use fullmatch."""
+    BASE = {"schema_version": 1, "id": "x", "name": {"en": "a", "ru": "а"}, "description": {"en": "a", "ru": "а"},
+            "match": {"virt": "none"}}
+
+    def bad(self, **change):
+        doc = dict(self.BASE)
+        doc.update(change)
+        with self.assertRaises(ValidationError, msg=str(change)):
+            hw.parse_profile(doc)
+
+    def test_profile_id_virt_kernel_params_and_hex_ids_reject_a_trailing_newline(self):
+        self.assertEqual(hw.parse_profile(self.BASE).id, "x")
+        self.bad(id="x\n")
+        self.bad(match={"virt": "oracle\n"})
+        self.bad(kernel_params=["quiet\n"])
+        self.bad(match={"pci": [{"vendor": "10de\n"}]})
+        self.bad(match={"pci": [{"vendor": "10de", "devices": ["1e00\n"]}]})
+
+
 class RecoveryText(unittest.TestCase):
     def test_recovery_is_optional_and_needs_both_languages(self):
         base = {"schema_version": 1, "id": "x", "name": {"en": "a", "ru": "а"}, "description": {"en": "a", "ru": "а"},

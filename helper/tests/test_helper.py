@@ -135,7 +135,7 @@ class Validation(Env):
 
     def test_snapshot_description(self):
         self.assertTrue(actions.build_snapshot(self.ctx, "Before update"))
-        for bad in ("", "x" * 81, "a;b", "a\nb", "$(id)", None):
+        for bad in ("", "x" * 81, "a;b", "a\nb", "Before update\n", "$(id)", None):
             with self.assertRaises(HelperError, msg=str(bad)):
                 actions.build_snapshot(self.ctx, bad)
 

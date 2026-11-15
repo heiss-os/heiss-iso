@@ -77,7 +77,7 @@ def check_install(names, trusted):
     names = _names(names, "packages")
     if not names:
         raise invalid("no packages given")
-    bad = [n for n in names if not mf.PKG_RE.match(n) or n not in trusted.packages]
+    bad = [n for n in names if not mf.PKG_RE.fullmatch(n) or n not in trusted.packages]
     if bad:
         raise invalid("packages not allowed: %s" % ", ".join(sorted(bad)[:5]))
     return names
@@ -101,7 +101,7 @@ def check_services(enable, disable, trusted):
         raise invalid("no services given")
     if set(enable) & set(disable):
         raise invalid("a service cannot be enabled and disabled at once")
-    bad = [s for s in enable + disable if not mf.UNIT_RE.match(s) or s not in trusted.services]
+    bad = [s for s in enable + disable if not mf.UNIT_RE.fullmatch(s) or s not in trusted.services]
     if bad:
         raise invalid("services not allowed: %s" % ", ".join(sorted(bad)[:5]))
     return enable, disable
@@ -127,7 +127,7 @@ def check_post_action(action_id):
 
 
 def check_snapshot_description(desc):
-    if not isinstance(desc, str) or not SNAPSHOT_DESC_RE.match(desc):
+    if not isinstance(desc, str) or not SNAPSHOT_DESC_RE.fullmatch(desc):
         raise invalid("invalid snapshot description")
     return desc
 

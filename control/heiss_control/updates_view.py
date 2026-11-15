@@ -89,7 +89,7 @@ def reboot(sh):
 def snapshots(sh):
     rc, out = sh.run(["findmnt", "-n", "-o", "FSTYPE", "/"])
     fstype = out.strip().splitlines()[0].strip() if rc == 0 and out.strip() else ""
-    if not _FSTYPE.match(fstype):
+    if not _FSTYPE.fullmatch(fstype):
         return _item("snapshots", "info", "unknown")
     if fstype != "btrfs":
         return _item("snapshots", "info", "not_btrfs", fstype)

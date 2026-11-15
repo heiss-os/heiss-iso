@@ -26,7 +26,7 @@ DRIVER_STATES = ("installed", "missing", "nothing", "unknown")   # per proposal
 
 
 def virt_name(virt):
-    return virt if _VIRT.match(virt or "") else "other"
+    return virt if _VIRT.fullmatch(virt or "") else "other"
 
 
 def _item(item_id, status, code, data=""):
@@ -72,7 +72,7 @@ def drivers_of(report, installed):
 
 def report_text(report, drivers, has_bluetooth, kernel):
     # a custom kernel's local version string or an odd CPU vendor string could carry a name: only known shapes go in
-    kernel = kernel if _KERNEL.match(kernel or "") else "other"
+    kernel = kernel if _KERNEL.fullmatch(kernel or "") else "other"
     lines = ["Heiss OS hardware report (no personal data: no hostname, serial numbers, addresses or user names)",
              "kernel: %s" % kernel, "form factor: %s" % report.form_factor, "cpu vendor: %s" % (hw.cpu_vendor_name(report.cpu_vendor).lower() or "other"),
              "virtualization: %s" % virt_name(report.virt), "bluetooth: %s" % ("yes" if has_bluetooth else "no")]
