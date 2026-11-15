@@ -36,9 +36,8 @@ class Pins(unittest.TestCase):
         self.assertGreater(n, 0)
 
 
-# guards.yml is a Tier A protected file: `persist-credentials: false` there needs the owner's design-approved. It holds no
-# secrets and has `contents: read`. Remove it from this set in the PR that adds the option.
-CHECKOUT_WITHOUT_OPTION_PENDING_APPROVAL = {"guards.yml"}
+# Workflow files that may keep a checkout without the option for now (none: guards.yml, Tier A, got it with the owner's design-approved).
+CHECKOUT_WITHOUT_OPTION_PENDING_APPROVAL = set()
 
 
 class Credentials(unittest.TestCase):
