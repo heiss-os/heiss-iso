@@ -95,3 +95,24 @@ cat ~/.local/state/heiss/theme-sync.log
 ```
 
 Open a NEW Konsole window and keep one that was open before the switch: both must show the Light colors. Switch back to Heiss Dark and repeat. Expected in the log: six `theme-sync:` lines per switch; anything marked `warn` or `failed` is what I need to see. Details and the list of unverified assumptions: `docs/design/THEME-SYNC.md`.
+
+## Looking at the windows without a display (`scripts/render-gui.py`)
+
+A developer tool, not part of the VM test. On any machine with `pyside6` (no root, no display, no helper):
+
+```bash
+python3 scripts/render-gui.py            # PNGs go to a new directory under $TMPDIR, the paths are printed
+python3 scripts/render-gui.py --out ~/share/gui-shots --only control --lang ru --theme light
+```
+
+It starts the real `Main.qml` of heiss-welcome (every wizard page, plus the applying screen running and failed) and
+heiss-control (every page, a search, and the smallest window) with `QT_QPA_PLATFORM=offscreen`, on the hardware
+fixtures of `core/tests/fixtures/hw` and fake sources, in dark and light, in `en` and `ru`, and prints every Qt/QML
+warning and error. Look at the PNGs; expect `Qt/QML warnings and errors: 0`. The test `tests/test_render_gui.py`
+runs it (skipped without PySide6).
+
+What this does **not** show (still needs the VM): the real fonts (Inter is not installed on the build VM, so text is
+drawn in a fallback face), the real Plasma colour scheme and window decoration, animations, the polkit prompt, the
+worker threads and signals (the script's bridge is synchronous), the clipboard, anything the real helper or system
+tools return. The light theme is rendered from a copy of the QML with the one colour-scheme test replaced
+(the offscreen platform has no colour scheme).

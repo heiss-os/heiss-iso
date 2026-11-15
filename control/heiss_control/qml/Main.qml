@@ -24,10 +24,30 @@ ApplicationWindow {
         readonly property color text: win.dark ? "#ECEAE5" : "#26282B"
         readonly property color dim: win.dark ? "#A9A7A1" : "#6B6963"
         readonly property color accent: win.dark ? "#C9B28A" : "#8C7448"
-        readonly property color onAccent: win.dark ? "#26282B" : "#F5F3EF"
+        readonly property color textOnAccent: win.dark ? "#26282B" : "#F5F3EF"
         readonly property color error: win.dark ? "#E06C64" : "#B3382F"
     }
     font.family: "Inter"
+
+    // Heiss-styled progress bar (the stock one is blue on white): sand fill on a button-coloured track
+    component Bar: ProgressBar {
+        id: pb
+        implicitHeight: 8
+        background: Rectangle { radius: 4; color: pal.button }
+        contentItem: Item {
+            id: track
+            Rectangle { visible: !pb.indeterminate; width: pb.visualPosition * track.width; height: track.height; radius: 4; color: pal.accent }
+            Rectangle {
+                id: block
+                visible: pb.indeterminate; width: track.width * 0.3; height: track.height; radius: 4; color: pal.accent
+                SequentialAnimation on x {
+                    running: pb.indeterminate && pb.visible; loops: Animation.Infinite
+                    NumberAnimation { from: 0; to: track.width * 0.7; duration: 900; easing.type: Easing.InOutQuad }
+                    NumberAnimation { from: track.width * 0.7; to: 0; duration: 900; easing.type: Easing.InOutQuad }
+                }
+            }
+        }
+    }
 
     // plain-language fact cards with a re-run button: the Security Center and Network and privacy pages
     component Facts: ColumnLayout {
@@ -45,17 +65,17 @@ ApplicationWindow {
             focusPolicy: Qt.StrongFocus
             Accessible.name: text
             onClicked: fx.rerun()
-            contentItem: Text { textFormat: Text.PlainText; text: fb.text; color: fb.enabled ? pal.onAccent : pal.dim; font.pixelSize: 16
+            contentItem: Text { textFormat: Text.PlainText; text: fb.text; color: fb.enabled ? pal.textOnAccent : pal.dim; font.pixelSize: 16
                                 horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
             background: Rectangle { radius: 8; color: fb.enabled ? pal.accent : pal.button
                                     border.width: fb.activeFocus ? 2 : 0; border.color: pal.text }
         }
-        ProgressBar { visible: fx.facts && fx.facts.state === "running"; indeterminate: true
+        Bar { visible: !!fx.facts && fx.facts.state === "running"; indeterminate: true
                       Layout.fillWidth: true; Accessible.name: fx.facts ? fx.facts.running : "" }
-        Text { textFormat: Text.PlainText; visible: fx.facts && fx.facts.state === "failed"
+        Text { textFormat: Text.PlainText; visible: !!fx.facts && fx.facts.state === "failed"
                text: fx.facts ? fx.facts.message : ""; color: pal.error; font.pixelSize: 14
                wrapMode: Text.WordWrap; Layout.fillWidth: true }
-        Text { textFormat: Text.PlainText; visible: fx.facts && fx.facts.summary !== ""
+        Text { textFormat: Text.PlainText; visible: !!fx.facts && fx.facts.summary !== ""
                text: fx.facts ? fx.facts.summary : ""; color: pal.text; font.pixelSize: 16; font.bold: true
                wrapMode: Text.WordWrap; Layout.fillWidth: true }
         Repeater {
@@ -108,8 +128,10 @@ ApplicationWindow {
 
                 TextField {
                     id: searchField
+                    objectName: "searchField"
                     Layout.fillWidth: true
                     placeholderText: s.searchLabel
+                    placeholderTextColor: pal.dim
                     color: pal.text
                     Accessible.name: s.searchLabel
                     onTextChanged: control.search(text)
@@ -157,6 +179,9 @@ ApplicationWindow {
                             onClicked: control.setLanguage(modelData)
                             contentItem: Text { textFormat: Text.PlainText; text: lb.text; color: lb.checked ? pal.accent : pal.dim
                                                 font.bold: lb.checked; horizontalAlignment: Text.AlignHCenter }
+                            // the flat style paints a light highlight under a checked button: sand text on it is unreadable
+                            background: Rectangle { radius: 8; color: lb.checked ? pal.button : "transparent"
+                                                    border.width: lb.activeFocus ? 2 : 0; border.color: pal.accent }
                         }
                     }
                 }
@@ -265,12 +290,12 @@ ApplicationWindow {
                     focusPolicy: Qt.StrongFocus
                     Accessible.name: text
                     onClicked: control.runPending()
-                    contentItem: Text { textFormat: Text.PlainText; text: ab.text; color: ab.enabled ? pal.onAccent : pal.dim; font.pixelSize: 16
+                    contentItem: Text { textFormat: Text.PlainText; text: ab.text; color: ab.enabled ? pal.textOnAccent : pal.dim; font.pixelSize: 16
                                         horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
                     background: Rectangle { radius: 8; color: ab.enabled ? pal.accent : pal.button
                                             border.width: ab.activeFocus ? 2 : 0; border.color: pal.text }
                 }
-                ProgressBar { visible: s.page === "profiles" && s.profiles.run.state === "running"; indeterminate: true
+                Bar { visible: s.page === "profiles" && s.profiles.run.state === "running"; indeterminate: true
                               Layout.fillWidth: true; Accessible.name: s.profiles ? s.profiles.run.running : "" }
                 Text { textFormat: Text.PlainText; visible: s.page === "profiles" && s.profiles.run.state === "running"
                        text: s.profiles ? s.profiles.run.step : ""; color: pal.accent; font.pixelSize: 15
@@ -320,14 +345,14 @@ ApplicationWindow {
                             focusPolicy: Qt.StrongFocus
                             Accessible.name: text
                             onClicked: control.setTheme(modelData.id)
-                            contentItem: Text { textFormat: Text.PlainText; text: tb.text; color: tb.checked ? pal.onAccent : pal.text; font.pixelSize: 16
+                            contentItem: Text { textFormat: Text.PlainText; text: tb.text; color: tb.checked ? pal.textOnAccent : pal.text; font.pixelSize: 16
                                                 horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
                             background: Rectangle { radius: 8; color: tb.checked ? pal.accent : pal.button
                                                     border.width: tb.activeFocus ? 2 : 0; border.color: pal.text }
                         }
                     }
                 }
-                ProgressBar { visible: s.page === "appearance" && s.appearance.state === "running"; indeterminate: true
+                Bar { visible: s.page === "appearance" && s.appearance.state === "running"; indeterminate: true
                               Layout.fillWidth: true; Accessible.name: s.appearance ? s.appearance.running : "" }
                 Text { textFormat: Text.PlainText; visible: s.page === "appearance" && s.appearance.state === "failed"; text: s.appearance ? s.appearance.message : ""
                        color: pal.error; font.pixelSize: 14; wrapMode: Text.WordWrap; Layout.fillWidth: true }
@@ -386,15 +411,15 @@ ApplicationWindow {
                 Text { textFormat: Text.PlainText; visible: s.page === "hardware" && s.hardware.report !== ""; text: s.hardware ? s.hardware.report : ""
                        color: pal.dim; font.family: "JetBrains Mono"; font.pixelSize: 13; wrapMode: Text.WrapAnywhere; Layout.fillWidth: true }
                 Button {
-                    id: cb
+                    id: copyBtn
                     visible: s.page === "hardware" && s.hardware.report !== ""
                     text: s.hardware ? s.hardware.copyLabel : ""
                     focusPolicy: Qt.StrongFocus
                     Accessible.name: text
                     onClicked: control.copyReport()
-                    contentItem: Text { textFormat: Text.PlainText; text: cb.text; color: pal.onAccent; font.pixelSize: 16
+                    contentItem: Text { textFormat: Text.PlainText; text: copyBtn.text; color: pal.textOnAccent; font.pixelSize: 16
                                         horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
-                    background: Rectangle { radius: 8; color: pal.accent; border.width: cb.activeFocus ? 2 : 0; border.color: pal.text }
+                    background: Rectangle { radius: 8; color: pal.accent; border.width: copyBtn.activeFocus ? 2 : 0; border.color: pal.text }
                 }
                 Text { textFormat: Text.PlainText; visible: s.page === "hardware" && s.hardware.copied !== ""; text: s.hardware ? s.hardware.copied : ""
                        color: pal.accent; font.pixelSize: 15 }
@@ -447,12 +472,12 @@ ApplicationWindow {
                     focusPolicy: Qt.StrongFocus
                     Accessible.name: text
                     onClicked: control.runCheck()
-                    contentItem: Text { textFormat: Text.PlainText; text: cb.text; color: cb.enabled ? pal.onAccent : pal.dim; font.pixelSize: 16
+                    contentItem: Text { textFormat: Text.PlainText; text: cb.text; color: cb.enabled ? pal.textOnAccent : pal.dim; font.pixelSize: 16
                                         horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
                     background: Rectangle { radius: 8; color: cb.enabled ? pal.accent : pal.button
                                             border.width: cb.activeFocus ? 2 : 0; border.color: pal.text }
                 }
-                ProgressBar { visible: s.page === "advanced" && s.advanced.state === "running"; indeterminate: true
+                Bar { visible: s.page === "advanced" && s.advanced.state === "running"; indeterminate: true
                               Layout.fillWidth: true; Accessible.name: s.advanced ? s.advanced.running : "" }
                 Text { textFormat: Text.PlainText; visible: s.page === "advanced" && s.advanced.state === "failed"
                        text: s.advanced ? s.advanced.message : ""; color: pal.error; font.pixelSize: 14
@@ -484,7 +509,8 @@ ApplicationWindow {
                     delegate: RowLayout {
                         required property var modelData
                         Layout.fillWidth: true
-                        Text { textFormat: Text.PlainText; text: parent.modelData.label; color: pal.dim; font.pixelSize: 16; Layout.preferredWidth: 160 }
+                        Text { textFormat: Text.PlainText; text: parent.modelData.label; color: pal.dim; font.pixelSize: 16; Layout.preferredWidth: 160
+                                   wrapMode: Text.WordWrap; Layout.alignment: Qt.AlignTop }
                         Text { textFormat: Text.PlainText; text: parent.modelData.value; color: pal.text; font.pixelSize: 16; Layout.fillWidth: true
                                wrapMode: Text.WrapAnywhere }
                     }
@@ -499,9 +525,10 @@ ApplicationWindow {
                         Accessible.name: modelData.label + ": " + modelData.url
                         onClicked: control.openUrl(modelData.url)
                         contentItem: RowLayout {
-                            Text { textFormat: Text.PlainText; text: lk.modelData.label; color: pal.dim; font.pixelSize: 16; Layout.preferredWidth: 160 }
+                            Text { textFormat: Text.PlainText; text: lk.modelData.label; color: pal.dim; font.pixelSize: 16; Layout.preferredWidth: 160
+                                   wrapMode: Text.WordWrap; Layout.alignment: Qt.AlignTop }
                             Text { textFormat: Text.PlainText; text: lk.modelData.url; color: pal.accent; font.pixelSize: 16; Layout.fillWidth: true
-                                   elide: Text.ElideMiddle }
+                                   elide: Text.ElideMiddle; Layout.alignment: Qt.AlignTop }
                         }
                         background: Rectangle { radius: 8; color: "transparent"
                                                 border.width: lk.activeFocus ? 2 : 0; border.color: pal.accent }
