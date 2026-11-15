@@ -41,7 +41,7 @@ def parse(text):
         if key in data:
             problems.append("line %d: duplicate key %s" % (n, key))
         ids = [v for v in value.split(";") if v]
-        if not value.endswith(";") or not ids or not all(ID_RE.fullmatch(i) for i in ids):
+        if not value.endswith(";") or not ids or not all(ID_RE.match(i) for i in ids):
             problems.append("line %d: %s needs desktop ids ending with ';'" % (n, key))
         data[key] = ids
     return data, problems
