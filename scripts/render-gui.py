@@ -367,7 +367,9 @@ def main():
     except ImportError:
         sys.exit("PySide6 is required: sudo pacman -S pyside6")
     out = a.out or tempfile.mkdtemp(prefix="heiss-gui-")
-    os.makedirs(out, exist_ok=True)
+    os.makedirs(out, mode=0o700, exist_ok=True)
+    if os.path.islink(out):
+        sys.exit("output directory must not be a symlink")
     if os.listdir(out):
         sys.exit("output directory %s is not empty" % out)
     for var, sub in (("XDG_CACHE_HOME", "cache"), ("XDG_CONFIG_HOME", "config"), ("XDG_DATA_HOME", "data"),
