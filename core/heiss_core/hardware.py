@@ -20,7 +20,12 @@ PARAM_RE = re.compile(r"^[a-z0-9_.-]+(=[A-Za-z0-9_.,:-]+)?$")
 CHASSIS_LAPTOP = {8, 9, 10, 11, 14, 30, 31, 32}  # SMBIOS: portable, laptop, notebook, hand held, sub notebook, tablet, convertible, detachable
 FORM_FACTORS = ("laptop", "desktop", "vm")
 ALLOWED = {"schema_version", "id", "name", "description", "safe_by_default", "match", "packages",
-           "services", "kernel_params", "dropins", "post_actions", "warnings"}
+           "services", "kernel_params", "dropins", "post_actions", "warnings", "recovery"}
+# Readable vendor names, shared by every screen that shows hardware (wizard, Control Center, reports).
+# CPU: the raw `vendor_id` of /proc/cpuinfo. PCI: the vendor ids that matter on a desktop or in a VM.
+CPU_VENDORS = {"GenuineIntel": "Intel", "AuthenticAMD": "AMD", "HygonGenuine": "Hygon", "CentaurHauls": "Centaur"}
+PCI_VENDORS = {"8086": "Intel", "1002": "AMD", "10de": "NVIDIA", "80ee": "VirtualBox", "15ad": "VMware",
+               "1af4": "Virtio", "1234": "QEMU", "1414": "Microsoft"}
 MATCH_KEYS = {"pci", "virt", "form_factor", "cpu_vendor"}
 PCI_KEYS = {"vendor", "class", "devices", "device_min", "device_max"}
 
@@ -137,6 +142,26 @@ class HwProfile:
     dropins: tuple = ()
     post_actions: tuple = ()
     warnings: dict = field(default_factory=dict)
+    recovery: dict = field(default_factory=dict)   # optional short plain-language recovery step (wizard); warnings holds the full text
+
+
+def cpu_vendor_name(raw):
+    """Readable CPU vendor for a raw vendor_id, or "" when it is not one we know (never echoes the raw string)."""
+    return CPU_VENDORS.get(raw, "")
+
+
+def pci_vendor_name(vendor_id, default=""):
+    return PCI_VENDORS.get(vendor_id, default)
+
+
+def gpu_vendor_names(gpus, other="other"):
+    """Each graphics vendor once, in detection order; `other` stands for a vendor we have no name for."""
+    out = []
+    for g in gpus:
+        name = PCI_VENDORS.get(g["vendor"], other)
+        if name not in out:
+            out.append(name)
+    return out
 
 
 def _hex(v, where):
@@ -179,12 +204,15 @@ def parse_profile(doc, where="hardware profile"):
     warnings = doc.get("warnings", {})
     if warnings:
         _text({"w": warnings}, "w", where)
+    recovery = doc.get("recovery", {})
+    if recovery:
+        _text({"r": recovery}, "r", where)
     return HwProfile(
         id=pid, name=_text(doc, "name", where), description=_text(doc, "description", where),
         safe_by_default=bool(doc.get("safe_by_default", False)), match=match,
         packages=_strs(doc, "packages", PKG_RE, where), services=_strs(doc, "services", UNIT_RE, where),
         kernel_params=tuple(params), dropins=_dropins(doc, where), post_actions=tuple(actions),
-        warnings=dict(warnings))
+        warnings=dict(warnings), recovery=dict(recovery))
 
 
 def load_profiles(path):

@@ -1089,6 +1089,56 @@ class HardwareFacts(unittest.TestCase):
         self.assertTrue(d["report"].startswith("Heiss OS hardware report"))
 
 
+class HardwareWording(unittest.TestCase):
+    """Vendor names, uncut warnings and the colours the page may use."""
+
+    def test_cpu_vendor_is_the_shared_readable_name(self):
+        facts = hwc.load_fixture(os.path.join(FIX, "nvidia-hybrid-laptop"))   # GenuineIntel
+        d = hwv.collect(hardware_dir=HW_DIR, facts=facts, installed={"a"}, kernel="6.1")
+        cpu = {f["id"]: f for f in d["facts"]}["cpu"]
+        self.assertEqual((cpu["code"], cpu["data"]), ("named", "Intel"))
+        self.assertIn("cpu vendor: intel", d["report"])
+        facts.cpu_vendor = "AuthenticAMD"
+        cpu = {f["id"]: f for f in hwv.collect(hardware_dir=HW_DIR, facts=facts, installed={"a"}, kernel="6.1")["facts"]}["cpu"]
+        self.assertEqual(cpu["data"], "AMD")
+
+    def test_every_shipped_warning_is_shown_whole(self):
+        for p in hwc.load_profiles(HW_DIR).values():
+            for lang in ("en", "ru"):
+                text = " ".join(p.warnings.get(lang, "").split())
+                self.assertLessEqual(len(text), m.MAX_WARNING, (p.id, lang))
+                mod = m.Model(m.Env(), lang)
+                self.assertEqual(mod._localized(p.warnings or {}, m.MAX_WARNING), text, (p.id, lang))
+
+    def test_nvidia_card_shows_recovery_step_and_the_threshold_detail(self):
+        p = hwc.load_profiles(HW_DIR)["gpu-nvidia-open"]
+        for lang in ("en", "ru"):
+            shown = m.Model(m.Env(), lang)._localized(p.warnings, m.MAX_WARNING)
+            self.assertIn("Heiss OS, safe graphics", shown)
+            self.assertIn("0x1e00", shown)
+            self.assertTrue(shown.rstrip().endswith("."), shown)   # not cut in the middle of a sentence
+
+    def test_palette_literals_in_the_qml_are_the_design_tokens(self):
+        import re
+        sys.path.insert(0, os.path.join(REPO, "scripts"))
+        import heiss_tokens as ht
+        tokens = ht.load()
+        with open(os.path.join(os.path.dirname(HERE), "heiss_control", "qml", "Main.qml"), encoding="utf-8") as f:
+            qml = f.read()
+        want = {"cautionText": "neutral_text"}
+        for prop, token in want.items():
+            dark, light = re.search(r'property color %s: win\.dark \? "(#[0-9A-Fa-f]{6})" : "(#[0-9A-Fa-f]{6})"' % prop, qml).groups()
+            self.assertEqual((dark.upper(), light.upper()),
+                             (ht.palette(tokens, "dark")[token].upper(), ht.palette(tokens, "light")[token].upper()), prop)
+
+    def test_the_search_field_sets_its_own_font(self):
+        with open(os.path.join(os.path.dirname(HERE), "heiss_control", "qml", "Main.qml"), encoding="utf-8") as f:
+            qml = f.read()
+        field = qml[qml.index("id: searchField"):qml.index("onTextChanged")]
+        self.assertIn("font.family:", field)
+        self.assertIn('"sans-serif"', field)   # never a monospace face when Inter is missing
+
+
 class HardwarePage(Fixture):
     def mod(self, lang="en"):
         mod = m.Model(self.env, lang)
@@ -1105,7 +1155,7 @@ class HardwarePage(Fixture):
         self.assertEqual(p["summary"], "")
         self.assertEqual({i["id"]: i for i in p["items"]}["gpu"]["detail"], "Intel (8086:9a49).")
         d = {x["id"]: x for x in p["drivers"]}
-        self.assertEqual((d["gpu-intel"]["status"], d["gpu-intel"]["stateLabel"]), ("warn", "Not installed"))
+        self.assertEqual((d["gpu-intel"]["status"], d["gpu-intel"]["stateLabel"]), ("info", "Can be installed"))   # not a problem: not red
         self.assertIn("--hardware=gpu-intel", d["gpu-intel"]["advice"])
         self.assertIn("mesa", d["gpu-intel"]["missing"])
         self.assertEqual((d["gpu-nvidia-legacy"]["status"], d["gpu-nvidia-legacy"]["advice"]), ("ok", ""))

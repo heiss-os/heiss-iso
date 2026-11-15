@@ -133,6 +133,10 @@ def welcome_pages(out, lang, theme, shots):
     while True:
         sid = vm.w.step_id
         shot(win, bridge, "%02d-%s" % (seen, sid))
+        if sid == "hardware":   # a laptop-sized window: the list must scroll, with a visible sign of it
+            set_size(win, 1024, 600)
+            shot(win, bridge, "%02d-%s-small-window" % (seen, sid))
+            set_size(win, 1280, 800)
         seen += 1
         if sid == wz.SUMMARY:
             break

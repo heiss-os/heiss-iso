@@ -13,12 +13,9 @@ from heiss_core import hardware as hw
 from heiss_core.system import PacmanSystem
 
 HARDWARE_DIR = os.environ.get("HEISS_HARDWARE", "/usr/share/heiss/hardware")
-VENDORS = {"8086": "Intel", "1002": "AMD", "10de": "NVIDIA", "80ee": "VirtualBox", "15ad": "VMware",
-           "1af4": "Virtio", "1234": "QEMU", "1414": "Microsoft"}
-CPUS = {"GenuineIntel": "intel", "AuthenticAMD": "amd"}
 CODES = {
     "form": ("laptop", "desktop", "vm"),
-    "cpu": ("intel", "amd", "other"),
+    "cpu": ("named", "other"),
     "gpu": ("some", "none"),
     "hybrid": ("yes",),
     "bluetooth": ("yes", "no"),
@@ -37,12 +34,17 @@ def _item(item_id, status, code, data=""):
 
 
 def vendor_name(vendor_id):
-    return VENDORS.get(vendor_id, "vendor " + vendor_id)
+    return hw.pci_vendor_name(vendor_id) or "vendor " + vendor_id
+
+
+def _cpu_item(raw):
+    name = hw.cpu_vendor_name(raw)
+    return _item("cpu", "info", "named", name) if name else _item("cpu", "info", "other")
 
 
 def facts_of(report, has_bluetooth):
     out = [_item("form", "info", report.form_factor, virt_name(report.virt) if report.form_factor == "vm" else ""),
-           _item("cpu", "info", CPUS.get(report.cpu_vendor, "other"))]
+           _cpu_item(report.cpu_vendor)]
     if report.gpus:
         out.append(_item("gpu", "info", "some", ", ".join("%s (%s:%s)" % (vendor_name(g["vendor"]), g["vendor"], g["device"])
                                                           for g in report.gpus)))
@@ -72,7 +74,7 @@ def report_text(report, drivers, has_bluetooth, kernel):
     # a custom kernel's local version string or an odd CPU vendor string could carry a name: only known shapes go in
     kernel = kernel if _KERNEL.match(kernel or "") else "other"
     lines = ["Heiss OS hardware report (no personal data: no hostname, serial numbers, addresses or user names)",
-             "kernel: %s" % kernel, "form factor: %s" % report.form_factor, "cpu vendor: %s" % (CPUS.get(report.cpu_vendor, "other")),
+             "kernel: %s" % kernel, "form factor: %s" % report.form_factor, "cpu vendor: %s" % (hw.cpu_vendor_name(report.cpu_vendor).lower() or "other"),
              "virtualization: %s" % virt_name(report.virt), "bluetooth: %s" % ("yes" if has_bluetooth else "no")]
     for g in report.gpus:
         lines.append("gpu: %s:%s" % (g["vendor"], g["device"]))

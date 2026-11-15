@@ -5,6 +5,7 @@ rules (validation, order, skip, defaults) stay in heiss_core.wizard.
 """
 import threading
 
+from heiss_core import hardware as hw
 from heiss_core import wizard as wz
 from heiss_core.errors import HeissError
 
@@ -123,18 +124,22 @@ class ViewModel:
         if r is None:
             return [{"text": t(lang, "hw.failed"), "badge": ""}], opts
         form = {"desktop": "hw.desktop", "laptop": "hw.laptop", "vm": "hw.vm"}.get(r.form_factor, "hw.unknown")
+        cpu = hw.cpu_vendor_name(r.cpu_vendor) or t(lang, "hw.unknown")
         facts = [{"text": "%s: %s" % (t(lang, "hw.form"), t(lang, form)), "badge": ""},
-                 {"text": "%s: %s" % (t(lang, "hw.cpu"), r.cpu_vendor or t(lang, "hw.unknown")), "badge": ""}]
+                 {"text": "%s: %s" % (t(lang, "hw.cpu"), cpu), "badge": ""}]
         if r.virt != "none":
             facts.append({"text": "%s: %s" % (t(lang, "hw.virt"), r.virt), "badge": ""})
-        facts += [{"text": "%s: %s:%s" % (t(lang, "hw.gpu"), g["vendor"], g["device"]), "badge": ""} for g in r.gpus]
+        if r.gpus:   # one readable line; the PCI ids are on the Control Center page
+            names = hw.gpu_vendor_names(r.gpus, t(lang, "hw.other_vendor"))
+            joined = names[0] if len(names) == 1 else "%s %s %s" % (", ".join(names[:-1]), t(lang, "hw.and"), names[-1])
+            facts.append({"text": "%s: %s" % (t(lang, "hw.gpu"), joined), "badge": ""})
         if r.hybrid_graphics:
             facts.append({"text": t(lang, "hw.hybrid"), "badge": ""})
         if not r.proposals:
             facts.append({"text": t(lang, "hw.none"), "badge": ""})
         for p in r.proposals:
-            hint = p.description.get(lang, "") + ("  %s: %s" % (t(lang, "hw.warning"), p.warnings[lang])
-                                                  if p.warnings.get(lang) else "")
+            caution = p.recovery.get(lang) or p.warnings.get(lang)   # the short recovery step; the full text is in the Control Center
+            hint = p.description.get(lang, "") + ("  %s: %s" % (t(lang, "hw.warning"), caution) if caution else "")
             opts.append({"path": "hardware", "value": p.id, "hint": hint, "selected": self._hw_selected(p),
                          "label": "%s (%s)" % (p.name.get(lang, p.id),
                                                t(lang, "hw.safe" if p.safe_by_default else "hw.confirm"))})

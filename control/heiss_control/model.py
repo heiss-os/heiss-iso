@@ -31,6 +31,7 @@ PAGES = (("overview", True), ("profiles", True), ("appearance", True), ("securit
 PAGE_IDS = tuple(p for p, _ in PAGES)
 LANGUAGES = ("en", "ru")
 MAX_MESSAGE = 300   # longest error text shown; messages can echo file content
+MAX_WARNING = 1200   # longest driver warning shown; shipped texts are far shorter (a test checks), so none is cut mid-sentence
 MAX_REPORT = 8000   # longest report text kept; longer ones get a marker
 MAX_LIST = 200   # longest list of package names drawn on the page
 
@@ -393,8 +394,9 @@ class Model:
             put(self.hw_data["report"])
             self.hw_copied = True
 
-    def _localized(self, d):
-        return self._clip(d.get(self.language) or d.get("en") or "")
+    def _localized(self, d, limit=MAX_MESSAGE):
+        text = " ".join(str(d.get(self.language) or d.get("en") or "").split())
+        return text if len(text) <= limit else text[:limit - 3] + "..."
 
     def hardware_page(self):
         data = self.hw_data or {"facts": [], "drivers": [], "report": ""}
@@ -404,9 +406,9 @@ class Model:
         for d in data["drivers"]:
             state = d["state"]
             drivers.append({"id": d["id"], "title": self._localized(d["name"]) or d["id"], "detail": self._localized(d["description"]),
-                            "warning": self._localized(d["warning"]), "state": state,
+                            "warning": self._localized(d["warning"], MAX_WARNING), "state": state,
                             "stateLabel": self.tr("hw.state." + state),
-                            "status": "ok" if state in ("installed", "nothing") else ("warn" if state == "missing" and d["safe"] else "info"),
+                            "status": "ok" if state in ("installed", "nothing") else "info",   # a driver that can be installed is not a problem
                             "missing": self.tr("hw.missing") % " ".join(d["missing"]) if d["missing"] else "",
                             "advice": (self.tr("hw.advice") % d["id"]) if state == "missing" else
                                       (self.tr("hw.unknown_state") if state == "unknown" else "")})
