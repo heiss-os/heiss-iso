@@ -12,11 +12,12 @@ from heiss_helper import runner  # noqa: E402
 
 
 def alive(pid):
+    """Running, not just present: where PID 1 does not reap orphans (a container) a killed process stays a zombie."""
     try:
-        os.kill(pid, 0)
-    except ProcessLookupError:
+        with open("/proc/%d/stat" % pid) as f:
+            return f.read().rsplit(")", 1)[1].split()[0] != "Z"
+    except (FileNotFoundError, ProcessLookupError):
         return False
-    return True
 
 
 class RunnerTests(unittest.TestCase):
@@ -60,7 +61,7 @@ class RunnerTests(unittest.TestCase):
         self.assertLess(took, 5)
 
     def test_binary_and_split_output_is_decoded_and_split_into_lines(self):
-        rc, _ = self.run_cmd("sh", "-c", "printf 'a\\xffb\\nlast without newline'")
+        rc, _ = self.run_cmd("sh", "-c", "printf 'a\\377b\\nlast without newline'")
         self.assertEqual(rc, 0)
         self.assertEqual(self.lines, ["a\ufffdb", "last without newline"])
 
