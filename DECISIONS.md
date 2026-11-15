@@ -335,4 +335,3 @@ Format: date, what, why. Newest at the bottom.
 
 - **`scripts/render-gui.py` renders the real QML offscreen on fixture data; it is a developer tool, not a CI step.** Why: no screenshots can be taken in the build VM, and the owner should not have to find layout bugs one by one. CI cannot run it without installing `pyside6` (a very large download); the new `qml-lint` job installs only `qt6-declarative` (about 20 MiB) and runs `qmllint` plus a check for `on<Capital>` property names, which are the two bug classes the render found. The script's bridge object is a synchronous copy of the glue in `app.py`; the QML is the shipped one (for the light theme a copy with the colour-scheme test replaced, because the offscreen platform has no colour scheme).
 - **A QML property must never be named `on<Capital>`.** Why: QML reads it as a signal handler, the colour binding is never used and the text is drawn black. `onAccent` is now `textOnAccent` in both apps.
-
