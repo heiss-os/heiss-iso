@@ -27,8 +27,16 @@ ALLOW_PREFIXES = ("LC_",)
 FIXED_PATH = "/usr/bin:/bin"   # not the user's PATH: the child runs pacman, systemctl and flatpak by name
 
 
+LOCALE_VALUE = re.compile(r"[A-Za-z0-9_.@:-]{1,100}")   # glibc reads a locale name containing "/" as a file path
+
+
 def clean_env(environ):
-    env = {k: v for k, v in environ.items() if k in ALLOW_NAMES or k.startswith(ALLOW_PREFIXES)}
+    env = {}
+    for k, v in environ.items():
+        if k in ALLOW_NAMES or k.startswith(ALLOW_PREFIXES):
+            if (k in ("LANG", "LANGUAGE") or k.startswith("LC_")) and not LOCALE_VALUE.fullmatch(v):
+                continue
+            env[k] = v
     env["PATH"] = FIXED_PATH
     return env
 
