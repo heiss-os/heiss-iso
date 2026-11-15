@@ -43,8 +43,11 @@ CHECKOUT_WITHOUT_OPTION_PENDING_APPROVAL = {"guards.yml"}
 
 class Credentials(unittest.TestCase):
     def workflows(self):
-        return {os.path.basename(f): open(f, encoding="utf-8").read().splitlines()
-                for f in sorted(glob.glob(os.path.join(REPO, ".github", "workflows", "*.yml")))}
+        out = {}
+        for f in sorted(glob.glob(os.path.join(REPO, ".github", "workflows", "*.yml"))):
+            with open(f, encoding="utf-8") as fh:
+                out[os.path.basename(f)] = fh.read().splitlines()
+        return out
 
     def test_every_checkout_drops_the_token_from_the_clone(self):
         for name, lines in self.workflows().items():
@@ -57,20 +60,34 @@ class Credentials(unittest.TestCase):
                 if any(l.strip() == "persist-credentials: false" for l in block):
                     open_ += 1
             if name in CHECKOUT_WITHOUT_OPTION_PENDING_APPROVAL:
-                self.assertLess(open_, found, "%s is fixed now: remove it from the pending set" % name)
+                self.assertEqual(open_, 0, "%s has the option on some checkouts: finish it and remove it from the pending set" % name)
             else:
                 self.assertEqual(open_, found, "%s: every checkout needs persist-credentials: false" % name)
 
+    @staticmethod
+    def logical_command(lines, needle):
+        """The shell command (backslash continuations joined) that contains `needle`."""
+        idx = next(i for i, l in enumerate(lines) if needle in l)
+        start = idx
+        while start > 0 and lines[start - 1].rstrip().endswith("\\"):
+            start -= 1
+        end = idx
+        while lines[end].rstrip().endswith("\\"):
+            end += 1
+        return " ".join(l.strip().rstrip("\\").strip() for l in lines[start:end + 1])
+
     def test_the_publish_token_is_not_put_on_a_command_line(self):
-        text = "\n".join(self.workflows()["publish-repo.yml"])
+        lines = self.workflows()["publish-repo.yml"]
+        text = "\n".join(lines)
         self.assertNotIn('-c "http.extraheader', text)
         self.assertNotIn("-c http.extraheader", text)
-        lines = self.workflows()["publish-repo.yml"]
-        push = next(i for i, l in enumerate(lines) if "git push origin HEAD:gh-pages" in l)
-        cmd = " ".join(l.strip().rstrip("\\") for l in lines[max(push - 2, 0):push + 1] if "GIT_CONFIG" in l or "git push" in l)
-        for name in ("GIT_CONFIG_COUNT=1", "GIT_CONFIG_KEY_0=http.https://github.com/.extraheader", "GIT_CONFIG_VALUE_0="):
-            self.assertIn(name, cmd, "the header must be set on the same command as git push")
         self.assertNotIn("export GIT_CONFIG", text)         # never for the rest of the step
+        cmd = self.logical_command(lines, "git push origin HEAD:gh-pages")
+        # one simple command: VAR=... VAR=... VAR=... git push ...  (a ';' or '&&' would turn them into plain shell variables)
+        self.assertRegex(cmd, r'^GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=http\.https://github\.com/\.extraheader '
+                              r'GIT_CONFIG_VALUE_0="Authorization: Basic \$hdr" git push origin HEAD:gh-pages$')
+        for bad in (";", "&&", "||", "|"):
+            self.assertNotIn(bad, cmd)
 
 
 if __name__ == "__main__":
