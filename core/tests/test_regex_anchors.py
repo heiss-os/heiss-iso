@@ -9,9 +9,8 @@ import unittest
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 DIRS = ("core/heiss_core", "helper/heiss_helper", "welcome/heiss_welcome", "control/heiss_control")
-# a regex object used for validation (NAME_RE, HEX4, ...) or a literal pattern given to re.match
-BAD = re.compile(r"\b([A-Z][A-Z0-9_]*(?:_RE|RE|HEX4))\.match\(|\bre\.match\(\s*r?[\"']\^")
-
+COMPILED = re.compile(r"^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*re\.compile\(", re.M)
+LITERAL = re.compile(r"\bre\.match\(\s*r?[\"']\^")
 
 # STEP_RE only picks progress lines out of a child's output (nothing is validated or trusted through it)
 PARSERS = {"STEP_RE"}
@@ -21,13 +20,19 @@ class Anchors(unittest.TestCase):
     def test_no_validator_uses_match_instead_of_fullmatch(self):
         files = [f for d in DIRS for f in glob.glob(os.path.join(REPO, d, "*.py"))]
         self.assertTrue(files)
+        names_seen = 0
         for path in files:
             with open(path, encoding="utf-8") as f:
-                for no, line in enumerate(f, 1):
-                    m = BAD.search(line)
-                    if m and m.group(1) in PARSERS:
-                        continue
-                    self.assertIsNone(m, "%s:%d uses match(): use fullmatch" % (os.path.relpath(path, REPO), no))
+                text = f.read()
+            names = set(COMPILED.findall(text)) - PARSERS     # every compiled pattern of this file, any name
+            names_seen += len(names)
+            call = re.compile(r"\b(%s)\.match\(" % "|".join(sorted(names))) if names else None
+            for no, line in enumerate(text.splitlines(), 1):
+                where = "%s:%d uses match(): use fullmatch" % (os.path.relpath(path, REPO), no)
+                if call:
+                    self.assertIsNone(call.search(line), where)
+                self.assertIsNone(LITERAL.search(line), where)
+        self.assertGreater(names_seen, 10)   # the scan really found the patterns
 
     def test_the_helper_policy_rejects_a_trailing_newline_in_every_pattern(self):
         import sys
