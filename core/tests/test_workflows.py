@@ -68,7 +68,7 @@ class Credentials(unittest.TestCase):
         lines = self.workflows()["publish-repo.yml"]
         push = next(i for i, l in enumerate(lines) if "git push origin HEAD:gh-pages" in l)
         cmd = " ".join(l.strip().rstrip("\\") for l in lines[max(push - 2, 0):push + 1] if "GIT_CONFIG" in l or "git push" in l)
-        for name in ("GIT_CONFIG_COUNT=1", "GIT_CONFIG_KEY_0=http.extraheader", "GIT_CONFIG_VALUE_0="):
+        for name in ("GIT_CONFIG_COUNT=1", "GIT_CONFIG_KEY_0=http.https://github.com/.extraheader", "GIT_CONFIG_VALUE_0="):
             self.assertIn(name, cmd, "the header must be set on the same command as git push")
         self.assertNotIn("export GIT_CONFIG", text)         # never for the rest of the step
 
