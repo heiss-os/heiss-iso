@@ -31,14 +31,14 @@ def read(path, mode="r"):
         return f.read()
 
 
-def run_script(files=("vmlinuz-linux", "initramfs-linux.img"), **env):
+def run_script(files=("vmlinuz-linux", "initramfs-linux.img"), lib=None, **env):
     with tempfile.TemporaryDirectory() as d:
         boot = os.path.join(d, "boot")
         os.makedirs(boot)
         for f in files:
             open(os.path.join(boot, f), "w").close()
         with open(os.path.join(d, "grub-mkconfig_lib"), "w") as f:
-            f.write(STUB_LIB)
+            f.write(lib or STUB_LIB)
         # the script has no override for /boot (it runs as root); the tests run a copy with the path replaced
         script = os.path.join(d, "41_heiss_safe")
         src = read(SCRIPT)
@@ -51,6 +51,11 @@ def run_script(files=("vmlinuz-linux", "initramfs-linux.img"), **env):
         e.update(env)
         r = subprocess.run(["sh", script], env=e, capture_output=True, text=True)
         return r, boot
+
+
+def unescape(line):
+    """What GRUB makes of a line of words: a backslash takes the next character literally."""
+    return re.sub(r"\\(.)", r"\1", line)
 
 
 def linux_lines(out):
@@ -110,11 +115,61 @@ class Script(unittest.TestCase):
         ids = re.findall(r"'(heiss-safe-graphics-[^']+)'", r.stdout)
         self.assertEqual(len(set(ids)), 2)
 
-    def test_glob_characters_in_the_command_line_are_not_expanded(self):
+    def test_glob_characters_in_the_command_line_are_not_expanded_by_sh_or_grub(self):
         r, _ = run_script(GRUB_CMDLINE_LINUX="foo=* ?")
-        words = linux_lines(r.stdout)[0].split()
-        self.assertIn("foo=*", words)
-        self.assertIn("?", words)
+        line = linux_lines(r.stdout)[0]
+        self.assertIn("foo=\\*", line.split())     # escaped for GRUB, not expanded by sh
+        self.assertIn("\\?", line.split())
+        self.assertIn("foo=* ?", unescape(line))
+
+    def test_characters_that_change_grub_syntax_are_escaped(self):
+        hostile = "a'b a\"b $x ${y} ;rm &x |x <x >x (x) {x} #x `x` ~x !x \\x"
+        r, _ = run_script(GRUB_CMDLINE_LINUX=hostile)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        (line,) = linux_lines(r.stdout)
+        # nothing special is left unescaped on the linux line
+        stripped = re.sub(r"\\.", "", line)
+        for ch in "'\"$;&|<>(){}#`~!*?[]":
+            self.assertNotIn(ch, stripped, ch)
+        for part in hostile.split():
+            self.assertIn(part, unescape(line).split(), part)
+        self.assertEqual(r.stdout.count("{"), r.stdout.count("}"))   # the menu entry braces are still balanced
+
+    def test_a_newline_or_non_ascii_parameter_is_left_out_with_a_message(self):
+        for bad in ("bad\nword", "caf\u00e9", "tab\x01x"):
+            r, _ = run_script(GRUB_CMDLINE_LINUX="keep " + bad)
+            self.assertEqual(r.returncode, 0, r.stderr)
+            (line,) = linux_lines(r.stdout)
+            self.assertIn("keep", line.split())
+            self.assertNotIn("\u00e9", line)
+            self.assertNotIn("\x01", line)
+
+    def test_btrfs_subvolume_name_is_escaped_or_left_out(self):
+        r, _ = run_script(GRUB_FS="btrfs", STUB_ROOT_REL="/@my 'root'$x;")
+        (line,) = linux_lines(r.stdout)
+        self.assertIn("rootflags=subvol=@my 'root'$x;", unescape(line))
+        self.assertEqual(re.sub(r"\\.", "", line).count("'"), 0)
+        r, _ = run_script(GRUB_FS="btrfs", STUB_ROOT_REL="/@a\nb")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertNotIn("rootflags", r.stdout)
+        self.assertIn("rootflags left out", r.stderr)
+
+    def test_unusual_device_is_escaped_and_the_rest_of_the_entry_is_intact(self):
+        r, _ = run_script(GRUB_DEVICE_UUID="", GRUB_DEVICE="/dev/x y';z")
+        (line,) = linux_lines(r.stdout)
+        self.assertIn("root=/dev/x y';z", unescape(line))
+        self.assertEqual(re.sub(r"\\.", "", line).count("'"), 0)
+
+    def test_unusable_device_writes_no_entry(self):
+        r, _ = run_script(GRUB_DEVICE_UUID="", GRUB_DEVICE="/dev/x\ny")
+        self.assertEqual((r.returncode, r.stdout), (0, ""))
+        self.assertIn("unusable root device", r.stderr)
+
+    def test_the_menu_entry_id_is_quoted(self):
+        lib = STUB_LIB.replace('echo "devid"', "echo \"de'vid\"")
+        r, _ = run_script(lib=lib)
+        ids = re.findall(r"heiss-safe-graphics-linux-([^ ]+)'", r.stdout)
+        self.assertTrue(ids and "'\\''" in ids[0], r.stdout)
 
     def test_no_environment_override_of_the_kernel_directory(self):
         self.assertNotIn("HEISS_SAFE_BOOT", read(SCRIPT))
