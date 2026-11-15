@@ -22,7 +22,7 @@ mkdir -p "$HOME/.cache" "$HOME/.config"
 log() { printf '%s %s\n' "$(date '+%F %T')" "$*" >> "$LOG"; }
 
 # ---- single instance ----
-LOCK="${XDG_RUNTIME_DIR:-/tmp}/heiss-dock.lock"
+LOCK="${XDG_RUNTIME_DIR:-$HOME/.cache}/heiss-dock.lock"
 exec 9>"$LOCK"
 if ! flock -n 9; then log "another instance is running, exit"; exit 0; fi
 

@@ -403,3 +403,8 @@ Format: date, what, why. Newest at the bottom.
 - **Not verified:** behaviour with a real `systemd --user` runtime directory and a path-unit run (tests use scratch directories).
 - **Also:** a relative `XDG_STATE_HOME` is ignored (the default `~/.local/state` is used); our own `~/.local/state/heiss` is tightened to 0700 if an earlier run made it under a loose umask (the log writer now creates it 0700); a symlinked or foreign directory is refused.
 - **Not done, needs the owner:** `profile/airootfs/usr/local/bin/heiss-setup-dock.sh` (Tier A) has the same pattern, `LOCK="${XDG_RUNTIME_DIR:-/tmp}/heiss-dock.lock"`. Only matters when `XDG_RUNTIME_DIR` is unset (unusual under logind; `fs.protected_symlinks` blocks the symlink case, so the effect is a skipped dock fallback). Proposed fix after the owner's approval of that one item: `${XDG_RUNTIME_DIR:-$HOME/.cache}`.
+
+## 2026-11-15 (audit LOW: the dock fallback lock is never in /tmp)
+
+- **`heiss-setup-dock.sh` (Tier A) takes its single-instance lock in `${XDG_RUNTIME_DIR:-$HOME/.cache}/heiss-dock.lock`, no longer in `/tmp`.** The owner approved this one item on 2026-11-15 (label `design-approved` on the PR; `protected.sha256` regenerated in the same PR). Why: with `XDG_RUNTIME_DIR` unset the lock sat in the shared `/tmp`, where another local user could plant a locked file and make the dock fallback exit early. `$HOME/.cache` is created by the script just before. Nothing else in the script changed.
+- **Not verified:** a real first login in a VM with the dock fallback running (the lock block was run alone with `sh` and a scratch `HOME`).
