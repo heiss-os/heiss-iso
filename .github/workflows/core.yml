@@ -14,6 +14,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
       - run: python3 -m unittest discover -s core/tests -v
       - run: python3 -m unittest discover -s helper/tests -v
       - run: python3 -m unittest discover -s welcome/tests -v
@@ -35,6 +37,8 @@ jobs:
       - name: Install tools
         run: pacman -Syu --noconfirm python git
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
       - run: python3 scripts/check-packages.py
       - name: ISO package list is valid
         run: python3 scripts/check-iso-packages.py
@@ -79,6 +83,8 @@ jobs:
       - name: Install tools
         run: pacman -Syu --noconfirm qt6-declarative git
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
       - name: qmllint finds no error (a duplicate id keeps the whole window from loading)
         run: /usr/lib/qt6/bin/qmllint welcome/heiss_welcome/qml/Main.qml control/heiss_control/qml/Main.qml
       - name: No property is named on<Capital> (QML reads it as a signal handler and the colour comes out black)
@@ -96,6 +102,8 @@ jobs:
       - name: Install tools
         run: pacman -Syu --noconfirm base-devel git python
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
       - name: Build all packages with the build script as an unprivileged user
         run: |
           useradd -m builder
@@ -141,6 +149,8 @@ jobs:
       - name: Install tools
         run: pacman -Syu --noconfirm python python-gobject dbus git
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
       - name: Integration test (private bus, fake polkit and runner)
         run: |
           dbus-uuidgen --ensure
@@ -154,6 +164,8 @@ jobs:
       - name: Install tools
         run: pacman -Syu --noconfirm python git zstd tar
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
       - name: Download the Base apps and check their desktop files
         run: |
           mkdir -p /tmp/pk /tmp/sc

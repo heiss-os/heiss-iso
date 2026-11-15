@@ -127,7 +127,9 @@ jobs:
           git config user.email "repo@heiss-os.invalid"
           git add -A .
           git commit -m "publish: packages from ${GITHUB_SHA::7}"
-          git -c "http.extraheader=Authorization: Basic $hdr" push origin HEAD:gh-pages
+          # the header goes to this one git process through its environment, not through its command line (`ps`)
+          GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=http.extraheader GIT_CONFIG_VALUE_0="Authorization: Basic $hdr" \
+            git push origin HEAD:gh-pages
 
       - name: Summary
         run: |

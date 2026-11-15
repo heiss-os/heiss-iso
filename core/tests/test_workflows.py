@@ -36,5 +36,37 @@ class Pins(unittest.TestCase):
         self.assertGreater(n, 0)
 
 
+# guards.yml is a Tier A protected file: `persist-credentials: false` there needs the owner's design-approved. It holds no
+# secrets and has `contents: read`. Remove it from this set in the PR that adds the option.
+CHECKOUT_WITHOUT_OPTION_PENDING_APPROVAL = {"guards.yml"}
+
+
+class Credentials(unittest.TestCase):
+    def workflows(self):
+        return {os.path.basename(f): open(f, encoding="utf-8").read().splitlines()
+                for f in sorted(glob.glob(os.path.join(REPO, ".github", "workflows", "*.yml")))}
+
+    def test_every_checkout_drops_the_token_from_the_clone(self):
+        for name, lines in self.workflows().items():
+            found, open_ = 0, 0
+            for no, line in enumerate(lines):
+                if "uses: actions/checkout@" not in line:
+                    continue
+                found += 1
+                block = lines[no + 1:no + 4]
+                if any(l.strip() == "persist-credentials: false" for l in block):
+                    open_ += 1
+            if name in CHECKOUT_WITHOUT_OPTION_PENDING_APPROVAL:
+                self.assertLess(open_, found, "%s is fixed now: remove it from the pending set" % name)
+            else:
+                self.assertEqual(open_, found, "%s: every checkout needs persist-credentials: false" % name)
+
+    def test_the_publish_token_is_not_put_on_a_command_line(self):
+        text = "\n".join(self.workflows()["publish-repo.yml"])
+        self.assertNotIn('-c "http.extraheader', text)
+        self.assertNotIn("-c http.extraheader", text)
+        self.assertIn("GIT_CONFIG_VALUE_0", text)          # the header goes through the environment of that one process
+
+
 if __name__ == "__main__":
     unittest.main()
