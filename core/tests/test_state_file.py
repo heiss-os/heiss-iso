@@ -1,4 +1,6 @@
 """File modes of what heiss-core writes: the root-written state file is readable by ordinary users, user files are private."""
+import contextlib
+import io
 import os
 import stat
 import sys
@@ -7,6 +9,7 @@ import unittest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
+from heiss_core import cli  # noqa: E402
 from heiss_core import state as st  # noqa: E402
 from heiss_core import wizard as wz  # noqa: E402
 
@@ -73,6 +76,29 @@ class StateFile(unittest.TestCase):
         with self.assertRaises(TypeError):
             st.atomic_write(self.path, 123)    # not a string: the write fails
         self.assertEqual(os.listdir(self.dir), [])
+
+
+class UnreadableState(unittest.TestCase):
+    @unittest.skipIf(os.geteuid() == 0, "root reads everything")
+    def test_an_unreadable_state_file_gives_a_clean_error_not_a_traceback(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "state.json")
+            st.save(path, dict(st.EMPTY))
+            os.chmod(path, 0o000)
+            old = {k: os.environ.get(k) for k in ("HEISS_STATE", "HEISS_ETC")}
+            os.environ["HEISS_STATE"], os.environ["HEISS_ETC"] = path, d
+            err = io.StringIO()
+            try:
+                with contextlib.redirect_stderr(err):
+                    rc = cli.main(["--profiles", os.path.join(os.path.dirname(os.path.dirname(HERE)), "profiles"),
+                                   "profile", "diff", "--profile", "base"], out=io.StringIO())
+            finally:
+                for k, v in old.items():
+                    os.environ.pop(k, None) if v is None else os.environ.__setitem__(k, v)
+                os.chmod(path, 0o600)
+        self.assertEqual(rc, 1)
+        self.assertIn("heiss:", err.getvalue())
+        self.assertIn("Permission denied", err.getvalue())
 
 
 if __name__ == "__main__":

@@ -190,7 +190,7 @@ def main(argv=None, system=None, out=sys.stdout, helper=None, confirm=None, them
     except HeissError as e:
         sys.stderr.write("heiss: %s\n" % e)
         return 1
-    except FileNotFoundError as e:
+    except (FileNotFoundError, PermissionError) as e:   # an unreadable state or answers file: say so, no traceback
         sys.stderr.write("heiss: %s\n" % e)
         return 1
 
