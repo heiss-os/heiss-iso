@@ -77,7 +77,7 @@ class Fetch(unittest.TestCase):
     def test_dangerous_target_directories_are_refused(self):
         home = os.path.expanduser("~")
         for bad in ("", "/", home, home + "/", home + "//aur/x", ".", "..", "x/y/z", "/home", "/tmp", "/tmp/a",
-                    "/tmp/../etc/x/y", "/tmp/./a/b", os.path.dirname(home), self.d + "/"):
+                    "/tmp/../etc/x/y", "/tmp/./a/b", "/tmp/a\nb/c/d", os.path.dirname(home), self.d + "/"):
             r = self.run_fetch(self.c1, sha(self.v1), dest=bad)
             self.assertEqual(r.returncode, 2, bad)
         self.assertTrue(os.path.isdir(home))

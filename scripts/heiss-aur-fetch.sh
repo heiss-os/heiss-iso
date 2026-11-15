@@ -6,7 +6,9 @@
 #   COMMIT full 40-character commit that was reviewed
 #   PKGBUILD_SHA256  sha256 of the PKGBUILD at that commit
 # A later commit in the AUR repository is never used, so an account takeover or a push after the review
-# cannot change what is built. To move to a new version: read `git diff OLD..NEW` of the AUR repository
+# cannot change what is built. The PKGBUILD hash is of the file as checked out (a .gitattributes in the AUR
+# repository could change line endings): compute a new pin with `sha256sum PKGBUILD` in a checkout, not from
+# `git show`. To move to a new version: read `git diff OLD..NEW` of the AUR repository
 # (PKGBUILD, sources, checksums, install scripts), then change both pins in the caller.
 set -euo pipefail
 
@@ -18,6 +20,7 @@ url=$1 dir=$2 commit=$3 want_sha=$4
 
 [[ $commit =~ ^[0-9a-f]{40}$ ]] || { echo "COMMIT must be 40 lowercase hex digits" >&2; exit 2; }
 [[ $want_sha =~ ^[0-9a-f]{64}$ ]] || { echo "PKGBUILD_SHA256 must be 64 lowercase hex digits" >&2; exit 2; }
+[[ $dir != *[[:cntrl:]]* ]] || { echo "refusing a target directory with control characters" >&2; exit 2; }
 # the directory is deleted first: it must be an absolute, clean path at least three levels deep
 # (for example /home/user/aur/calamares), and never the home directory or a parent of it
 [[ $dir == /* && $dir != *//* && $dir != */ ]] || { echo "refusing the target directory '$dir': need a clean absolute path" >&2; exit 2; }
