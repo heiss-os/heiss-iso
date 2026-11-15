@@ -390,9 +390,10 @@ class DataFiles(unittest.TestCase):
         self.assertIn("BusName=org.heiss.Helper1", unit)
         opts = {}
         for line in unit.splitlines():
-            if "=" in line and not line.startswith(("[", "#")):
+            line = line.strip()   # systemd accepts leading blanks
+            if "=" in line and not line.startswith(("[", "#", ";")):
                 k, v = line.split("=", 1)
-                opts[k] = v
+                opts[k.strip()] = v.strip()
         for k, v in {"NoNewPrivileges": "yes", "PrivateTmp": "yes", "ProtectHome": "yes", "ProtectControlGroups": "yes",
                      "ProtectKernelTunables": "yes", "RestrictRealtime": "yes", "LockPersonality": "yes",
                      "ProtectKernelLogs": "yes", "ProtectClock": "yes", "ProtectHostname": "yes",
