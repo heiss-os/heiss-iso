@@ -388,7 +388,22 @@ class DataFiles(unittest.TestCase):
         unit = open(os.path.join(DATA, "heiss-helper.service")).read()
         self.assertIn("Type=dbus", unit)
         self.assertIn("BusName=org.heiss.Helper1", unit)
-        self.assertIn("NoNewPrivileges=yes", unit)
+        opts = {}
+        for line in unit.splitlines():
+            line = line.strip()   # systemd accepts leading blanks
+            if "=" in line and not line.startswith(("[", "#", ";")):
+                k, v = line.split("=", 1)
+                opts[k.strip()] = v.strip()
+        for k, v in {"NoNewPrivileges": "yes", "PrivateTmp": "yes", "ProtectHome": "yes", "ProtectControlGroups": "yes",
+                     "ProtectKernelTunables": "yes", "RestrictRealtime": "yes", "LockPersonality": "yes",
+                     "ProtectKernelLogs": "yes", "ProtectClock": "yes", "ProtectHostname": "yes",
+                     "SystemCallArchitectures": "native",
+                     "RestrictAddressFamilies": "AF_UNIX AF_INET AF_INET6 AF_NETLINK"}.items():
+            self.assertEqual(opts.get(k), v, k)
+        # Deliberately absent: each would break pacman, mkinitcpio, grub or snapper (docs/SECURITY-MODEL.md, item 12).
+        for k in ("ProtectSystem", "ProtectKernelModules", "RestrictSUIDSGID", "PrivateDevices", "CapabilityBoundingSet",
+                  "MemoryDenyWriteExecute", "RestrictNamespaces", "SystemCallFilter"):
+            self.assertNotIn(k, opts, k)
         self.assertIn("SystemdService=heiss-helper.service", open(os.path.join(DATA, "org.heiss.Helper1.service")).read())
 
     def test_glue_files_compile(self):
