@@ -22,6 +22,9 @@ class Pins(unittest.TestCase):
         n = 0
         for path in files:
             if os.path.basename(path) in PENDING_OWNER_APPROVAL:
+                with open(path, encoding="utf-8") as f:
+                    unpinned = [m for m in map(USES.match, f) if m and not SHA.match(m.group(1))]
+                self.assertTrue(unpinned, "%s is pinned now: remove it from PENDING_OWNER_APPROVAL" % os.path.basename(path))
                 continue
             with open(path, encoding="utf-8") as f:
                 for no, line in enumerate(f, 1):
