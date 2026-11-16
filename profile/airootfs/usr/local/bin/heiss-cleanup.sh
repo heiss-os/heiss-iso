@@ -136,8 +136,8 @@ gpgconf --homedir /etc/pacman.d/gnupg --kill all 2>/dev/null || true
 # system would still have an unlocked root or the live user (Calamares aborts on exit 1).
 log "final check"
 fail=0
-set -- $(passwd -S root 2>/dev/null)   # "root L 2026-01-01 0 99999 7 -1"
-root_status=${2:-}
+root_status=""
+read -r _ root_status _ <<< "$(passwd -S root 2>/dev/null)"   # "root L 2026-01-01 0 99999 7 -1"
 if [ "$root_status" != "L" ]; then
   log "ERROR: root is not locked (passwd -S: ${root_status:-no output})"; fail=1
 fi
