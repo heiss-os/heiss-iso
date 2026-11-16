@@ -83,7 +83,14 @@ for kname in linux linux-lts; do
   [ -e "$kernel" ] || continue
   initrd="initramfs-${kname}.img"
   [ -e "${boot_dir}/$initrd" ] || continue
-  rel_dirname="$(grub_word "$(make_system_path_relative_to_its_root "${boot_dir}")" one)" || continue
+  # On a separate /boot partition the kernel sits at the root of that filesystem: grub-mkrelpath
+  # returns an empty string (10_linux gets the same), so the entry uses "/vmlinuz-...".
+  rel_dirname="$(make_system_path_relative_to_its_root "${boot_dir}")"
+  case "$rel_dirname" in
+    ""|/) rel_dirname="" ;;
+    *) rel_dirname="$(grub_word "$rel_dirname" one)" \
+         || { echo "heiss-safe-graphics: boot directory not usable, no entry written" >&2; continue; } ;;
+  esac
   boot_device_id="$(grub_get_device_id "${GRUB_DEVICE}" | grub_quote)"
   title="Heiss OS, safe graphics (${kname})"
   gettext_printf "Found safe graphics kernel: %s\n" "$kernel" >&2

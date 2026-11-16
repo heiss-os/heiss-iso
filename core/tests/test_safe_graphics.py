@@ -190,6 +190,19 @@ class Script(unittest.TestCase):
         r, _ = run_script(lib=lib)
         self.assertEqual(r.stdout, "")
 
+    def test_separate_boot_partition_gets_an_entry_at_the_filesystem_root(self):
+        # grub-mkrelpath returns "" for a directory that is the root of its own filesystem (a separate /boot)
+        for rel in ("", "/"):
+            with self.subTest(rel=repr(rel)):
+                lib = STUB_LIB.replace('echo "$1"; fi; }', 'echo "%s"; fi; }' % rel)
+                r, _ = run_script(lib=lib)
+                self.assertEqual(r.returncode, 0, r.stderr)
+                lines = linux_lines(r.stdout)
+                self.assertEqual(len(lines), 1, r.stdout)
+                self.assertTrue(lines[0].startswith("linux\t/vmlinuz-linux root="), lines[0])
+                self.assertIn("initrd\t/initramfs-linux.img", r.stdout)
+                self.assertNotIn("//", lines[0])
+
     def test_the_menu_entry_id_is_quoted(self):
         lib = STUB_LIB.replace('echo "devid"', "echo \"de'vid\"")
         r, _ = run_script(lib=lib)
