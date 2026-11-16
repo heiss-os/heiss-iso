@@ -192,7 +192,14 @@ def control_pages(out, lang, theme, shots):
     queue.add("apply-profile", {"profile": "developer", "addons": []})
 
     facts, profiles = fixture_hardware()
-    hwdata = hwv.collect(os.path.join(REPO, "hardware"), facts, {"mesa", "vulkan-icd-loader"}, "6.12.1-arch1-1")
+    # the NVIDIA driver is installed by Heiss here, so the page shows the "Remove this driver" button
+    nv = ["nvidia-open", "nvidia-utils", "linux-lts", "nvidia-open-lts"]
+    with open(os.path.join(scratch, "hw-state.json"), "w", encoding="utf-8") as f:
+        json.dump({"schema_version": 1, "applied": {"profile": "base", "addons": []}, "packages": nv, "services": [],
+                   "flatpaks": []}, f)
+    hwdata = hwv.collect(os.path.join(REPO, "hardware"), facts, {"mesa", "vulkan-icd-loader"} | set(nv), "6.12.1-arch1-1",
+                         caps={"safe-graphics-entry"}, manifests_dir=os.path.join(REPO, "profiles"),
+                         state_file=os.path.join(scratch, "hw-state.json"))
 
     def item(i, s, c, d=""):
         return {"id": i, "status": s, "code": c, "data": d}
@@ -239,6 +246,8 @@ def control_pages(out, lang, theme, shots):
         def runHardware(self): pass
         @Slot()
         def copyReport(self): pass
+        @Slot(str)
+        def removeDriver(self, i): pass
         @Slot()
         def runUpdates(self): pass
         @Slot()

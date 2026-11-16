@@ -57,6 +57,7 @@ class Env:
     update_facts: callable = field(default_factory=lambda: updates_view.collect)
     online: callable = field(default_factory=lambda: lambda: PacmanSystem().network_connected())
     run_pending_item: callable = field(default_factory=lambda: runner.run_item)
+    run_hw_remove: callable = field(default_factory=lambda: runner.run_hw_remove)
     run_check: callable = field(default_factory=lambda: tools.run_check)
     open_settings: callable = field(default_factory=lambda: tools.open_settings)
     # default_factory: a plain lambda as a class default would be bound as a method
@@ -84,6 +85,7 @@ class Model:
         self.up_state, self.up_facts, self.up_message = "idle", [], ""   # idle | running | done | failed
         self.hw_state, self.hw_data, self.hw_message, self.hw_copied = "idle", None, "", False   # idle | running | done | failed
         self.pend_state, self.pend_step, self.pend_message = "idle", "", ""   # idle | running | ok | failed | offline
+        self.hwr_state, self.hwr_id, self.hwr_message = "idle", "", ""        # driver removal: idle | running | ok | failed
 
     def tr(self, key):
         return t(self.language, key)
@@ -377,11 +379,40 @@ class Model:
             drivers = [{"id": "".join(c for c in str(d["id"]) if c.isalnum() or c == "-")[:41], "name": dict(d["name"]), "description": dict(d["description"]),
                         "warning": dict(d["warning"]), "safe": bool(d["safe"]),
                         "state": d["state"] if d["state"] in hardware_view.DRIVER_STATES else "unknown",
-                        "missing": [str(x)[:60] for x in d["missing"]][:20]} for d in raw["drivers"]]
+                        "missing": [str(x)[:60] for x in d["missing"]][:20],
+                        "remove": self._clean_removal(d.get("remove"))} for d in raw["drivers"]]
             self.hw_data = {"facts": self._clean_facts(raw["facts"]), "drivers": drivers, "report": self._report_text(raw["report"])}
             self.hw_state = "done"
         except Exception as e:  # noqa: BLE001
             self.hw_data, self.hw_state, self.hw_message = None, "failed", self._err(e)
+
+    @staticmethod
+    def _clean_removal(r):
+        """The plan of "Remove this driver" as shown to the user: package names only, bounded."""
+        if not isinstance(r, dict) or not r.get("packages"):
+            return None
+        return {"packages": [str(x)[:60] for x in r["packages"]][:20], "kept": [str(x)[:60] for x in r.get("kept", [])][:20]}
+
+    # --- "Remove this driver": `heiss hw remove --yes ID` in a child process; the helper and polkit do the work ---
+    def begin_hw_remove(self, driver_id):
+        """True when the removal may start: nothing runs, and the driver is on the page with a removal plan."""
+        if self.hwr_state == "running" or self.pend_state == "running" or self.hw_state == "running":
+            return False
+        d = next((x for x in (self.hw_data or {}).get("drivers", []) if x["id"] == driver_id), None)
+        if d is None or not d["remove"]:
+            return False
+        self.hwr_state, self.hwr_id, self.hwr_message = "running", driver_id, ""
+        return True
+
+    def finish_hw_remove(self, notify=None):
+        """Runs the removal; called from a worker thread. The page is detected again afterwards."""
+        try:
+            self.env.run_hw_remove(self.hwr_id)
+            self.hwr_state, self.hwr_message = "ok", ""
+        except Exception as e:  # noqa: BLE001
+            self.hwr_state, self.hwr_message = "failed", self._clip(self.tr("hw.remove.failed") % e)
+        self.hw_state = "running"
+        self.finish_hardware()
 
     @staticmethod
     def _report_text(text):
@@ -405,7 +436,12 @@ class Model:
         drivers = []
         for d in data["drivers"]:
             state = d["state"]
+            rm = d["remove"]
             drivers.append({"id": d["id"], "title": self._localized(d["name"]) or d["id"], "detail": self._localized(d["description"]),
+                            "removable": bool(rm), "removeLabel": self.tr("hw.remove"),
+                            "removeInfo": ((self.tr("hw.remove.info") % " ".join(rm["packages"]) +
+                                            (" " + self.tr("hw.remove.kept") % " ".join(rm["kept"]) if rm["kept"] else ""))
+                                           if rm else ""),
                             "warning": self._localized(d["warning"], MAX_WARNING), "state": state,
                             "stateLabel": self.tr("hw.state." + state),
                             "status": "ok" if state in ("installed", "nothing") else "info",   # a driver that can be installed is not a problem
@@ -415,7 +451,10 @@ class Model:
         page.update(what=self.tr("hw.what"), note=self.tr("hw.note"), driversTitle=self.tr("hw.drivers"),
                     driversNone=self.tr("hw.drivers.none") if self.hw_state == "done" and not drivers else "",
                     drivers=drivers, reportTitle=self.tr("hw.report"), reportWhat=self.tr("hw.report.what"),
-                    report=data["report"], copyLabel=self.tr("hw.copy"), copied=self.tr("hw.copied") if self.hw_copied else "")
+                    report=data["report"], copyLabel=self.tr("hw.copy"), copied=self.tr("hw.copied") if self.hw_copied else "",
+                    remove={"state": self.hwr_state, "driver": self.hwr_id, "message": self.hwr_message,
+                            "running": self.tr("hw.remove.running"), "done": self.tr("hw.remove.done"),
+                            "warning": self.tr("hw.remove.warning")})
         return page
 
     # --- updates and snapshots: read-only facts ---

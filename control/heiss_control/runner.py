@@ -54,16 +54,33 @@ def argv_for(item, base=None):
     return argv + ["--addon=%s" % a for a in payload["addons"]]
 
 
+def hw_remove_argv(profile_id, base=None):
+    """`heiss hw remove --yes ID`: the id is checked with the manifest id pattern (fullmatch) and cannot start with
+    `-`; the helper checks it again against its own catalog and cuts the plan down (Heiss-installed packages only)."""
+    if not isinstance(profile_id, str) or not mf.ID_RE.fullmatch(profile_id):
+        raise HeissError("this driver cannot be removed from here")
+    return list(base or [sys.executable, "-I", "-m", "heiss_core"]) + ["hw", "remove", "--yes", profile_id]
+
+
 def run_item(item, on_step=None, base=None, popen=subprocess.Popen, environ=None):
     """Apply one saved action. on_step(n, total, description) for each helper call. Raises HeissError."""
-    argv = argv_for(item, base)
+    _run(argv_for(item, base), on_step, popen, environ, "the apply command")
+
+
+def run_hw_remove(profile_id, on_step=None, base=None, popen=subprocess.Popen, environ=None):
+    """Remove one hardware driver through `heiss hw remove`, which asks the helper (polkit asks for the password).
+    on_step(n, total, description) is not called (the command prints helper output, not step lines). Raises HeissError."""
+    _run(hw_remove_argv(profile_id, base), on_step, popen, environ, "the remove command")
+
+
+def _run(argv, on_step, popen, environ, what):
     try:
         # -I: no user site, no PYTHON* variables, no current directory on sys.path; cwd "/": nothing of the user's
         # is next to the interpreter that then calls the helper (whose polkit authorisation is kept per process)
         p = popen(argv, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, errors="replace", bufsize=1,
                   cwd="/", env=clean_env(os.environ if environ is None else environ))
     except OSError as e:
-        raise HeissError("cannot start the apply command: %s" % e)
+        raise HeissError("cannot start %s: %s" % (what, e))
     tail = []
     with p:
         for raw in p.stdout:
