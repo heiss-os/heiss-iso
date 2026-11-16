@@ -24,6 +24,13 @@ rm -f /etc/systemd/system/pacman-init.service
 rm -f /etc/systemd/system/etc-pacman.d-gnupg.mount
 rm -f /etc/systemd/system/choose-mirror.service
 find /etc/systemd/system -xtype l -delete 2>/dev/null || true
+# live-only drop-ins: the installed system keeps its journal on disk and may suspend
+rm -f /etc/systemd/journald.conf.d/volatile-storage.conf
+rm -f /etc/systemd/logind.conf.d/do-not-suspend.conf
+rmdir /etc/systemd/journald.conf.d /etc/systemd/logind.conf.d 2>/dev/null || true
+# the live image masks the GPT auto-generator; the installed system uses the generated fstab anyway
+rm -f /etc/systemd/system-generators/systemd-gpt-auto-generator
+rmdir /etc/systemd/system-generators 2>/dev/null || true
 
 log "установщик"
 rm -f /usr/share/applications/heiss-installer.desktop
@@ -123,6 +130,32 @@ else
 fi
 # do not leave gpg-agent running from the chroot (it would block unmounting the target)
 gpgconf --homedir /etc/pacman.d/gnupg --kill all 2>/dev/null || true
+
+# --- final check (begin) ---
+# Every step above is best effort; this block is not. The installer stops when the installed
+# system would still have an unlocked root or the live user (Calamares aborts on exit 1).
+log "final check"
+fail=0
+set -- $(passwd -S root 2>/dev/null)   # "root L 2026-01-01 0 99999 7 -1"
+root_status=${2:-}
+if [ "$root_status" != "L" ]; then
+  log "ERROR: root is not locked (passwd -S: ${root_status:-no output})"; fail=1
+fi
+getent passwd liveuser >/dev/null 2>&1
+case $? in
+  2) ;;                                            # not found: good
+  0) log "ERROR: live user still exists"; fail=1 ;;
+  *) log "ERROR: cannot check the user database"; fail=1 ;;
+esac
+if [ -e /etc/sddm.conf.d/autologin.conf ] || [ -e /etc/systemd/system/getty@tty1.service.d/autologin.conf ] \
+   || [ -e /etc/sudoers.d/g_wheel ]; then
+  log "ERROR: live autologin or live sudo rule still present"; fail=1
+fi
+if [ "$fail" != 0 ]; then
+  log "cleanup failed: the installation is stopped"
+  exit 1
+fi
+# --- final check (end) ---
 
 rm -f /usr/local/bin/heiss-cleanup.sh
 log "готово"
