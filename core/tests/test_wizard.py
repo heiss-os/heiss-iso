@@ -146,7 +146,8 @@ class Answers(unittest.TestCase):
         w.set("extra.accent", "sand")
         w.set("extra.font_scale", 1.25)
         for path, val in (("extra.nosuch", "x"), ("extra.accent", 3), ("extra.hardware_toggles", ["x"]),
-                          ("extra.hardware_toggles", {"gpu": "yes"}), ("extra.font_scale", True)):
+                          ("extra.hardware_toggles", {"gpu": "yes"}), ("extra.font_scale", True),
+                          ("extra.hardware_confirmed", ["x"]), ("extra.hardware_confirmed", {"gpu": 1})):
             with self.assertRaises(ValidationError, msg=path):
                 w.set(path, val)
         self.assertEqual(w.extras, {"accent": "sand", "font_scale": 1.25})

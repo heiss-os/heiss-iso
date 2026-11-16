@@ -50,6 +50,7 @@ class ViewModel:
         self.w, self.manifests, self.store, self.queue = wizard, manifests, store, queue
         self.detector, self._report, self._detected = detector, None, False
         self.applier, self.on_update, self.theme_applier = applier, None, theme_applier
+        self.snapshot = hw.snapshot_available     # callable: is a system snapshot set up (snapper)? tests replace it
         self.theme_note, self._theme_gen = "", 0
         self._theme_lock = threading.Lock()       # one switch at a time, newest choice wins
         self._spawn = spawn or (lambda fn: threading.Thread(target=fn, daemon=True).start())
@@ -114,7 +115,21 @@ class ViewModel:
     def hardware_ids(self):
         """Hardware profiles the user left ticked (what Apply installs). Detection failed: none."""
         r = self.report()
-        return sorted(p.id for p in r.proposals if p.id not in r.unavailable and self._hw_selected(p)) if r else []
+        return sorted(p.id for p in r.proposals if self._hw_applied(r, p)) if r else []
+
+    def _hw_confirmed(self, p):
+        return bool(self.w.extras.get("hardware_confirmed", {}).get(p.id, False))
+
+    def _hw_applied(self, r, p):
+        """Ticked, offered and, when the profile needs it, confirmed on this screen."""
+        return (p.id not in r.unavailable and self._hw_selected(p)
+                and (not hw.needs_confirmation(p) or self._hw_confirmed(p)))
+
+    def unconfirmed_ids(self):
+        """Ticked profiles that need a confirmation and do not have one: they are not installed."""
+        r = self.report()
+        return sorted(p.id for p in r.proposals if r and p.id not in r.unavailable and self._hw_selected(p)
+                      and hw.needs_confirmation(p) and not self._hw_confirmed(p)) if r else []
 
     def _hw_selected(self, p):
         return self.w.extras.get("hardware_toggles", {}).get(p.id, p.safe_by_default)
@@ -147,6 +162,24 @@ class ViewModel:
                          "label": "%s (%s)" % (p.name.get(lang, p.id),
                                                t(lang, "hw.safe" if p.safe_by_default else "hw.confirm"))})
         return facts, opts
+
+    def _hardware_confirmations(self, lang):
+        """One tick box per ticked profile that needs an explicit confirmation (SAFE-FALLBACK, answer 3 A)."""
+        r = self.report()
+        if r is None:
+            return []
+        try:
+            snap = bool(self.snapshot())
+        except Exception:
+            snap = False
+        body = t(lang, "hw.confirm_body_snap" if snap else "hw.confirm_body_nosnap")
+        out = []
+        for p in r.proposals:
+            if p.id in r.unavailable or not hw.needs_confirmation(p) or not self._hw_selected(p):
+                continue
+            out.append({"path": "hardware", "value": "confirm:" + p.id, "selected": self._hw_confirmed(p), "hint": body,
+                        "label": "%s: %s" % (p.name.get(lang, p.id), t(lang, "hw.confirm_label"))})
+        return out
 
     def _privacy_facts(self, lang):
         adv = self.w.advanced_visible()
@@ -196,6 +229,10 @@ class ViewModel:
             facts, opts = self._hardware(lang)
             if opts:
                 questions.append({"title": "", "kind": "multi", "path": "hardware", "options": opts})
+            confirm = self._hardware_confirmations(lang)
+            if confirm:
+                questions.append({"title": t(lang, "hw.confirm_title"), "kind": "multi", "path": "hardware",
+                                  "options": confirm})
         if sid == "privacy":
             facts = self._privacy_facts(lang)
         if sid == "backups":
@@ -208,6 +245,8 @@ class ViewModel:
                                  ", ".join(self._name(i) for i in a["addons"]) or t(lang, "summary.none"))]
             if self.applier and self.hardware_ids():
                 lines.append("%s: %s" % (t(lang, "summary.hardware"), ", ".join(self.hardware_ids())))
+            if self.applier and self.unconfirmed_ids():
+                lines.append("%s: %s" % (t(lang, "summary.unconfirmed"), ", ".join(self.unconfirmed_ids())))
             if self.applier:
                 more, plan_ok = self._plan_facts(lang)
                 lines += more
@@ -286,10 +325,24 @@ class ViewModel:
     def toggle_hardware(self, proposal_id):
         r = self.report()
         known = {p.id: p for p in r.proposals if p.id not in r.unavailable} if r else {}
-        if proposal_id not in known:
+        confirming = proposal_id.startswith("confirm:")
+        pid = proposal_id[len("confirm:"):] if confirming else proposal_id
+        if pid not in known or (confirming and not (hw.needs_confirmation(known[pid]) and self._hw_selected(known[pid]))):
             return self._run(lambda: self.w.set("extra.nosuch", 0))   # rejected like any unknown option
+        if confirming:
+            done = dict(self.w.extras.get("hardware_confirmed", {}))
+            done[pid] = not self._hw_confirmed(known[pid])
+            return self._run(lambda: self.w.set("extra.hardware_confirmed", done))
         cur = dict(self.w.extras.get("hardware_toggles", {}))
-        cur[proposal_id] = not self._hw_selected(known[proposal_id])
+        cur[pid] = not self._hw_selected(known[pid])
+        if not cur[pid]:     # unticking forgets the confirmation: ticking again asks again
+            done = dict(self.w.extras.get("hardware_confirmed", {}))
+            done.pop(pid, None)
+
+            def both():
+                self.w.set("extra.hardware_toggles", cur)
+                self.w.set("extra.hardware_confirmed", done)
+            return self._run(both)
         return self._run(lambda: self.w.set("extra.hardware_toggles", cur))
 
     def next(self):

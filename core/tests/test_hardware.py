@@ -159,6 +159,71 @@ class Requires(unittest.TestCase):
             self.assertIn("nvidia-open", out.getvalue())
 
 
+class Confirmation(unittest.TestCase):
+    """A profile that is not safe by default is applied only with --confirm-hardware (SAFE-FALLBACK answer 3 A)."""
+
+    def setUp(self):
+        self.cat = hw.load_profiles(HARDWARE)
+
+    def args(self, hardware, confirm=(), sub="apply", dry_run=False):
+        import argparse
+        return argparse.Namespace(hardware=list(hardware), confirm_hardware=list(confirm), sub=sub, dry_run=dry_run)
+
+    def chosen(self, *a, **kw):
+        with mock.patch("heiss_core.hardware.capabilities", return_value={"safe-graphics-entry"}):
+            return cli._chosen_hardware(self.args(*a, **kw), self.cat)
+
+    def test_exactly_the_profiles_that_are_not_safe_by_default_need_it(self):
+        need = {i for i, p in self.cat.items() if hw.needs_confirmation(p)}
+        self.assertEqual(need, {"gpu-nvidia-open", "hybrid-nvidia-amd", "hybrid-nvidia-intel"})
+
+    def test_apply_without_the_flag_is_refused_and_the_message_is_plain(self):
+        for snap, words in ((False, "No snapshot is set up"), (True, "A snapshot is set up")):
+            with mock.patch("heiss_core.hardware.snapshot_available", return_value=snap):
+                with self.assertRaises(cli.HeissError) as cm:
+                    self.chosen(["gpu-nvidia-open"])
+            msg = str(cm.exception)
+            self.assertIn(words, msg)
+            self.assertIn("Heiss OS, safe graphics", msg)
+            self.assertIn("--confirm-hardware gpu-nvidia-open", msg)
+
+    def test_apply_with_the_flag_passes_and_a_safe_profile_needs_nothing(self):
+        self.assertEqual([p.id for p in self.chosen(["gpu-nvidia-open"], ["gpu-nvidia-open"])], ["gpu-nvidia-open"])
+        self.assertEqual([p.id for p in self.chosen(["vm-virtualbox"])], ["vm-virtualbox"])
+        self.assertEqual([p.id for p in self.chosen(["vm-virtualbox"], ["vm-virtualbox"])], ["vm-virtualbox"])
+
+    def test_one_confirmation_does_not_cover_another_profile(self):
+        with self.assertRaises(cli.HeissError):
+            self.chosen(["gpu-nvidia-open", "hybrid-nvidia-intel"], ["gpu-nvidia-open"])
+
+    def test_diff_and_dry_run_only_show_the_plan_and_need_no_confirmation(self):
+        self.assertTrue(self.chosen(["gpu-nvidia-open"], sub="diff"))
+        self.assertTrue(self.chosen(["gpu-nvidia-open"], dry_run=True))
+
+    def test_a_confirmation_for_a_profile_that_was_not_selected_is_an_error(self):
+        with self.assertRaises(cli.HeissError) as cm:
+            self.chosen(["vm-virtualbox"], ["gpu-nvidia-open"])
+        self.assertIn("not selected", str(cm.exception))
+
+    def test_snapshot_available_looks_for_the_snapper_config(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "root")
+            self.assertFalse(hw.snapshot_available(path))
+            open(path, "w").close()
+            self.assertTrue(hw.snapshot_available(path))
+
+    def test_the_cli_flag_exists_on_apply_and_diff(self):
+        env = {"HEISS_HARDWARE": HARDWARE, "HEISS_STATE": "/nonexistent/state.json"}
+        for sub in ("diff", "apply --dry-run"):
+            argv = (["--profiles", os.path.join(REPO, "profiles"), "profile"] + sub.split()
+                    + ["--profile", "base", "--hardware", "gpu-nvidia-open", "--confirm-hardware", "gpu-nvidia-open"])
+            with mock.patch.dict(os.environ, env), mock.patch("heiss_core.hardware.capabilities",
+                                                               return_value={"safe-graphics-entry"}):
+                out = io.StringIO()
+                rc = cli.main(argv, system=__import__("fakes").FakeSystem(), out=out)
+                self.assertEqual(rc, 0, out.getvalue())
+
+
 class VendorNames(unittest.TestCase):
     def test_cpu_vendor_names(self):
         self.assertEqual(hw.cpu_vendor_name("GenuineIntel"), "Intel")

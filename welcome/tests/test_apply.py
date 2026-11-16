@@ -420,7 +420,11 @@ class Cli(unittest.TestCase):
 
     def test_hardware_ids_become_flags(self):
         plan = self.ap.plan({"profile": "base", "addons": []}, ["vm-virtualbox", "gpu-amd"])
-        self.assertEqual(plan["args"][-2:], ["--hardware=vm-virtualbox", "--hardware=gpu-amd"])
+        args = plan["args"]
+        self.assertEqual([a for a in args if a.startswith("--hardware=")], ["--hardware=vm-virtualbox", "--hardware=gpu-amd"])
+        # every id the wizard passes was ticked and, when it needs it, confirmed on the hardware screen
+        self.assertEqual([a for a in args if a.startswith("--confirm-hardware=")],
+                         ["--confirm-hardware=vm-virtualbox", "--confirm-hardware=gpu-amd"])
 
     def test_missing_command_is_a_heiss_error(self):
         with self.assertRaises(HeissError):
