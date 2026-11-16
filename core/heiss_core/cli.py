@@ -1,4 +1,4 @@
-"""heiss command line: profile list|show|diff|apply, hw detect, theme sync|status, check, answers validate.
+"""heiss command line: profile list|show|diff|apply, hw detect|remove, theme sync|status, check, answers validate.
 
 `apply` shows the plan, asks for confirmation and runs it through the privileged
 helper (D-Bus + polkit). `--dry-run` only prints the plan.
@@ -12,6 +12,7 @@ from . import answers as ans
 from . import check as checkmod
 from . import apply as applymod
 from . import hardware as hw
+from . import hwremove
 from . import privacy as pv
 from . import manifest as mf
 from . import resolver, state as st
@@ -142,6 +143,10 @@ def main(argv=None, system=None, out=sys.stdout, helper=None, confirm=None, them
     det.add_argument("--hardware", help="directory with hardware profiles")
     det.add_argument("--fixture", help="use a recorded fixture directory instead of the live system")
     det.add_argument("--lang", choices=("en", "ru"), default="en")
+    rm = hwp.add_parser("remove", help="remove a hardware profile (driver) that Heiss OS installed")
+    rm.add_argument("id")
+    rm.add_argument("--dry-run", action="store_true")
+    rm.add_argument("--yes", action="store_true", help="do not ask for confirmation")
     th = sub.add_parser("theme").add_subparsers(dest="sub", required=True)
     ts = th.add_parser("sync", help="bring launcher icon and Konsole in line with the active Heiss theme and check the rest")
     ts.add_argument("--no-wait", action="store_true", help="do not wait for plasmashell and the settings to settle")
@@ -177,6 +182,20 @@ def main(argv=None, system=None, out=sys.stdout, helper=None, confirm=None, them
         return checkmod.exit_code(items)
     system = system or PacmanSystem()
     try:
+        if args.cmd == "hw" and args.sub == "remove":
+            catalog = hw.load_profiles(_hardware_dir())
+            _, _, state_path = _paths(args)
+            plan = hwremove.plan_removal(args.id, catalog, mf.load_dir(_paths(args)[0]), st.load(state_path),
+                                         system.installed_packages())
+            out.write(plan.to_text() + "\n")
+            if args.dry_run:
+                return 0
+            if not args.yes and not (confirm or _ask)("Remove these packages? [y/N] "):
+                out.write("cancelled, nothing was changed\n")
+                return 1
+            (helper or _real_helper()).call("RemoveHardware", (args.id,), lambda line: out.write("  " + line + "\n"))
+            out.write("done\n")
+            return 0
         if args.cmd == "hw":
             profiles = hw.load_profiles(args.hardware or os.environ.get("HEISS_HARDWARE", DEFAULT_HARDWARE))
             facts = hw.load_fixture(args.fixture) if args.fixture else hw.collect_live()

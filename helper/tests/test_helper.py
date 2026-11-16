@@ -364,6 +364,82 @@ class DispatcherTests(Env):
         self.assertNotIn("\n", clean("a\nb\x1b[31m"))
 
 
+class RemoveHardware(Env):
+    NV = ["nvidia-open", "nvidia-utils", "linux-lts", "nvidia-open-lts"]
+    PATH = "/etc/mkinitcpio.conf.d/heiss-nvidia.conf"
+    CONTENT = "MODULES+=(nvidia nvidia_modeset nvidia_uvm nvidia_drm)\n"
+
+    def setUp(self):
+        super().setUp()
+        self.installed = set(self.NV)
+        self.own(*self.NV)
+        self.full = os.path.join(self.root, self.PATH.lstrip("/"))
+        os.makedirs(os.path.dirname(self.full))
+        with open(self.full, "w") as f:
+            f.write(self.CONTENT)
+
+    def run_it(self, pid="gpu-nvidia-open"):
+        steps = actions.build_remove_hardware(self.ctx, pid)
+        return actions.execute(steps, self.ctx, lambda l: None)
+
+    def test_removes_the_driver_keeps_lts_deletes_the_dropin_and_rebuilds_the_image(self):
+        ok, _ = self.run_it()
+        self.assertTrue(ok)
+        remove = [c for c in self.runner.calls if c[:2] == ["pacman", "-R"]][0]
+        self.assertEqual(remove[:4], ["pacman", "-R", "--noconfirm", "--"])
+        self.assertEqual(sorted(remove[4:]), ["nvidia-open", "nvidia-open-lts", "nvidia-utils"])   # no linux-lts
+        self.assertFalse(os.path.exists(self.full))
+        self.assertEqual(self.runner.calls[-1], ["mkinitcpio", "-P"])
+        self.assertEqual(st.load(self.state)["packages"], ["linux-lts"])
+
+    def test_a_changed_dropin_is_left_in_place(self):
+        with open(self.full, "w") as f:
+            f.write("MODULES+=(mine)\n")
+        self.assertTrue(self.run_it()[0])
+        self.assertTrue(os.path.exists(self.full))
+
+    def test_a_failed_removal_keeps_state_and_dropin(self):
+        self.runner.fail_on = "pacman"
+        self.assertFalse(self.run_it()[0])
+        self.assertEqual(sorted(st.load(self.state)["packages"]), sorted(self.NV))
+        self.assertTrue(os.path.exists(self.full))
+        self.assertNotIn(["mkinitcpio", "-P"], self.runner.calls)
+
+    def test_only_a_profile_id_is_accepted(self):
+        for bad in ("../x", "nvidia-open", "", None, 5, ["gpu-nvidia-open"], "gpu-nvidia-open\n", "no-such-profile"):
+            with self.assertRaises(HelperError, msg=str(bad)) as cm:
+                actions.build_remove_hardware(self.ctx, bad)
+            self.assertEqual(cm.exception.code, "Invalid")
+
+    def test_nothing_installed_by_heiss_is_refused(self):
+        self.own()
+        with self.assertRaises(HelperError):
+            actions.build_remove_hardware(self.ctx, "gpu-nvidia-open")
+
+    def test_remove_dropin_refuses_symlinks_and_other_directories(self):
+        with self.assertRaises(HelperError):
+            policy.remove_dropin("/etc/passwd", "x", self.root)
+        with self.assertRaises(HelperError):
+            policy.remove_dropin("/etc/sudoers.d/x.conf", "x", self.root)
+        os.rename(os.path.dirname(self.full), os.path.join(self.root, "etc", "real"))
+        os.symlink(os.path.join(self.root, "etc", "real"), os.path.dirname(self.full))
+        with self.assertRaises(HelperError):
+            policy.remove_dropin(self.PATH, self.CONTENT, self.root)
+
+    def test_dispatcher_asks_polkit_with_the_hardware_action(self):
+        auth = FakeAuth()
+        d = Dispatcher(auth, lambda *a: None, self.ctx, Audit(os.path.join(self.tmp, "audit.log")))
+        job = d.handle(":1.5", 1000, "RemoveHardware", ("gpu-nvidia-open",))
+        d.join()
+        self.assertTrue(job)
+        self.assertEqual(auth.asked, [(":1.5", "org.heiss.hardware.remove")])
+        FakeAuth(False)
+        d2 = Dispatcher(FakeAuth(False), lambda *a: None, self.ctx, Audit(os.path.join(self.tmp, "audit2.log")))
+        with self.assertRaises(HelperError) as cm:
+            d2.handle(":1.5", 1000, "RemoveHardware", ("gpu-nvidia-open",))
+        self.assertEqual(cm.exception.code, "NotAuthorized")
+
+
 class DataFiles(unittest.TestCase):
     def polkit_ids(self):
         root = ET.parse(os.path.join(DATA, "org.heiss.helper.policy")).getroot()
