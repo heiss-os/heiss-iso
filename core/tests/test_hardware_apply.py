@@ -72,6 +72,20 @@ class HardwareInPlan(unittest.TestCase):
         naive = self.plan([], state=first.next_state, system=system)
         self.assertIn("virtualbox-guest-utils", naive.remove_packages)
 
+    def test_a_system_that_applied_the_old_nvidia_profile_is_not_kept_wanted(self):
+        # Before step 4a the profile owned only nvidia-open and nvidia-utils. Without the LTS packages it is no longer
+        # "applied", so a later apply that does not name it proposes to remove the old packages. Accepted and recorded
+        # in DECISIONS (the driver never shipped in a release); this pins the behaviour so a change is noticed.
+        old = dict(EMPTY, packages=["nvidia-open", "nvidia-utils"])
+        system = FakeSystem(installed=["nvidia-open", "nvidia-utils"])
+        later = self.plan([], state=old, system=system, catalog=self.cat)
+        self.assertEqual(later.hardware, [])
+        self.assertEqual(later.remove_packages, ["nvidia-open", "nvidia-utils"])
+        again = self.plan(["gpu-nvidia-open"], state=old, system=system, catalog=self.cat)
+        self.assertEqual(again.remove_packages, [])
+        self.assertTrue({"linux-lts", "nvidia-open-lts"} <= set(again.install_packages))
+        self.assertFalse({"nvidia-open", "nvidia-utils"} & set(again.install_packages))   # already there
+
     def test_profiles_whose_packages_the_profile_already_wants_are_not_listed(self):
         first = self.plan([])           # a plain Base install owns intel-ucode, amd-ucode, vulkan-radeon ...
         later = self.plan([], state=dict(EMPTY, packages=first.next_state["packages"]), catalog=self.cat)
@@ -118,7 +132,9 @@ class HardwareInPlan(unittest.TestCase):
     def test_sticky_needs_every_own_package_owned(self):
         self.assertEqual(resolver.sticky_hardware(self.cat, dict(EMPTY)), [])
         self.assertEqual(resolver.sticky_hardware(self.cat, dict(EMPTY, packages=["nvidia-open"])), [])
-        self.assertEqual(resolver.sticky_hardware(self.cat, dict(EMPTY, packages=["nvidia-open", "nvidia-utils"])), ["gpu-nvidia-open"])
+        self.assertEqual(resolver.sticky_hardware(self.cat, dict(EMPTY, packages=["nvidia-open", "nvidia-utils"])), [])   # the LTS kernel is part of it now
+        self.assertEqual(resolver.sticky_hardware(self.cat, dict(EMPTY, packages=["nvidia-open", "nvidia-utils", "linux-lts", "nvidia-open-lts"])),
+                         ["gpu-nvidia-open"])
 
 
 class Cli(unittest.TestCase):
