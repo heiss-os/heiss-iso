@@ -29,6 +29,18 @@
     </defaults>
   </action>
 
+  <action id="org.heiss.hardware.remove">
+    <description>Remove a Heiss OS hardware driver</description>
+    <description xml:lang="ru">Удаление драйвера оборудования Heiss OS</description>
+    <message>Authentication is required to remove a hardware driver that Heiss OS installed</message>
+    <message xml:lang="ru">Требуется аутентификация для удаления драйвера оборудования, установленного Heiss OS</message>
+    <defaults>
+      <allow_any>no</allow_any>
+      <allow_inactive>no</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+  </action>
+
   <action id="org.heiss.packages.adopt">
     <description>Claim installed packages as managed by Heiss OS</description>
     <description xml:lang="ru">Отметить установленные пакеты как управляемые Heiss OS</description>

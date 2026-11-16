@@ -162,3 +162,29 @@ def write_dropin(path, content, root="/"):
         except FileNotFoundError:
             pass
         raise
+
+
+def remove_dropin(path, content, root="/"):
+    """Delete a drop-in below `root` that a manifest declared, but only while it still has the declared content
+    (a file the user changed is left alone). Returns a short message. Refuses symlinks like write_dropin."""
+    if not mf.dropin_path_ok(path):
+        raise invalid("bad drop-in path")
+    cur = root
+    for part in path.strip("/").split("/"):
+        cur = os.path.join(cur, part)
+        if os.path.islink(cur):
+            raise invalid("symlink in drop-in path")
+    full = os.path.join(root, path.lstrip("/"))
+    if not os.path.lexists(full):
+        return "%s is already gone" % path
+    if not os.path.isfile(full):
+        raise invalid("drop-in target is not a regular file")
+    try:
+        fd = os.open(full, os.O_RDONLY | os.O_NOFOLLOW)
+    except OSError as e:
+        raise invalid("cannot open the drop-in: %s" % (e.strerror or e))
+    with os.fdopen(fd, encoding="utf-8", errors="replace") as f:
+        if f.read() != content:
+            return "%s was changed by you, left in place" % path
+    os.unlink(full)
+    return "removed %s" % path

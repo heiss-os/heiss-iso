@@ -20,7 +20,7 @@ PARAM_RE = re.compile(r"^[a-z0-9_.-]+(=[A-Za-z0-9_.,:-]+)?$")
 CHASSIS_LAPTOP = {8, 9, 10, 11, 14, 30, 31, 32}  # SMBIOS: portable, laptop, notebook, hand held, sub notebook, tablet, convertible, detachable
 FORM_FACTORS = ("laptop", "desktop", "vm")
 ALLOWED = {"schema_version", "id", "name", "description", "safe_by_default", "match", "packages",
-           "services", "kernel_params", "dropins", "post_actions", "warnings", "recovery", "requires"}
+           "services", "kernel_params", "dropins", "post_actions", "warnings", "recovery", "requires", "keep_on_remove"}
 # Things this machine must have before a profile is offered. "safe-graphics-entry": the GRUB entry of the package
 # heiss-safe-graphics, so a bad driver can be backed out of (docs/hardware/SAFE-FALLBACK.md, answer 3 A).
 REQUIRES = {"safe-graphics-entry"}
@@ -149,6 +149,7 @@ class HwProfile:
     warnings: dict = field(default_factory=dict)
     recovery: dict = field(default_factory=dict)   # optional short plain-language recovery step (wizard); warnings holds the full text
     requires: tuple = ()                            # subset of REQUIRES; unmet means "not offered" (see capabilities)
+    keep_on_remove: tuple = ()                      # packages of this profile that stay when the profile is removed (hwremove.py)
 
 
 def cpu_vendor_name(raw):
@@ -217,12 +218,16 @@ def parse_profile(doc, where="hardware profile"):
     recovery = doc.get("recovery", {})
     if recovery:
         _text({"r": recovery}, "r", where)
+    packages = _strs(doc, "packages", PKG_RE, where)
+    keep = _strs(doc, "keep_on_remove", PKG_RE, where)
+    if set(keep) - set(packages):
+        raise ValidationError("%s: keep_on_remove must be packages of this profile" % where)
     return HwProfile(
         id=pid, name=_text(doc, "name", where), description=_text(doc, "description", where),
         safe_by_default=bool(doc.get("safe_by_default", False)), match=match,
-        packages=_strs(doc, "packages", PKG_RE, where), services=_strs(doc, "services", UNIT_RE, where),
+        packages=packages, services=_strs(doc, "services", UNIT_RE, where),
         kernel_params=tuple(params), dropins=_dropins(doc, where), post_actions=tuple(actions),
-        warnings=dict(warnings), recovery=dict(recovery), requires=tuple(requires))
+        warnings=dict(warnings), recovery=dict(recovery), requires=tuple(requires), keep_on_remove=keep)
 
 
 def load_profiles(path):

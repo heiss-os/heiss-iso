@@ -8,11 +8,15 @@ import subprocess
 from dataclasses import dataclass
 from typing import Callable, Optional
 
+from heiss_core import hardware as hw
+from heiss_core.errors import ValidationError
+from heiss_core import hwremove
+from heiss_core import manifest as mf
 from heiss_core import privacy as pv
 from heiss_core import state as st
 
 from . import policy
-from .errors import HelperError
+from .errors import HelperError, invalid
 from .runner import Runner
 
 MIN_FREE_BYTES = 1 << 30   # 1 GiB free before install/update
@@ -189,6 +193,37 @@ def build_privacy(ctx, level):
     return [_dropin_step(d["path"], d["content"]) for d in pv.dropins(level)]
 
 
+def _dropin_remove_step(path, content):
+    def run(ctx, emit):
+        try:
+            emit(policy.remove_dropin(path, content, ctx.root))
+        except HelperError as e:        # the packages are already gone: the image rebuild after this must still run
+            emit("warning: %s left in place: %s" % (path, e.message))
+    return Step("remove drop-in", func=run)
+
+
+def build_remove_hardware(ctx, profile_id):
+    """Remove one hardware profile. Only the profile id comes from the client; packages, services, drop-ins and
+    post actions come from the root-owned catalog and are cut down by heiss_core.hwremove (only what Heiss
+    installed, nothing still wanted, the LTS kernel stays)."""
+    trusted = ctx.trusted()          # checks that the catalog directories are root-owned
+    if not isinstance(profile_id, str) or not mf.ID_RE.fullmatch(profile_id):
+        raise invalid("invalid hardware profile id")
+    catalog = hw.load_profiles(ctx.hardware_dir)
+    try:
+        plan = hwremove.plan_removal(profile_id, catalog, mf.load_dir(ctx.profiles_dir), st.load(ctx.state_path),
+                                     ctx.installed_packages())
+    except ValidationError as e:
+        raise invalid(str(e))
+    steps = build_remove(ctx, plan.packages)           # owned, allowed, not essential: checked again here
+    if plan.services:
+        steps += build_services(ctx, [], plan.services)
+    steps += [_dropin_remove_step(d["path"], d["content"]) for d in plan.dropins]
+    for action in plan.post_actions:
+        steps += build_post_action(ctx, action)
+    return steps
+
+
 def build_post_action(ctx, action_id):
     argv = policy.check_post_action(action_id)      # validates first: only known ids reach the description
     return [Step("post action " + action_id, argv=argv)]
@@ -218,6 +253,7 @@ class Action:
 ACTIONS = {a.method: a for a in (
     Action("InstallPackages", "org.heiss.packages.install", "as", build_install),
     Action("RemovePackages", "org.heiss.packages.remove", "as", build_remove),
+    Action("RemoveHardware", "org.heiss.hardware.remove", "s", build_remove_hardware),
     Action("AdoptPackages", "org.heiss.packages.adopt", "as", build_adopt),
     Action("SetServices", "org.heiss.services.manage", "asas", build_services),
     Action("WriteDropin", "org.heiss.config.write", "s", build_dropin),
