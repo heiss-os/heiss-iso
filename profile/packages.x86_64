@@ -6,7 +6,6 @@ base
 bolt
 brltty
 btrfs-progs
-cloud-init
 cryptsetup
 darkhttpd
 dhcpcd
