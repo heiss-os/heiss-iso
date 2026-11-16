@@ -1101,7 +1101,7 @@ class HardwareNeeds(unittest.TestCase):
         d = self.collect(set())
         nv = next(x for x in d["drivers"] if x["id"] == "gpu-nvidia-open")
         self.assertEqual(nv["needs"], ["safe-graphics-entry"])
-        self.assertIn("driver proposal gpu-nvidia-open: missing (missing: nvidia-open nvidia-utils) "
+        self.assertIn("driver proposal gpu-nvidia-open: missing (missing: nvidia-open nvidia-utils linux-lts nvidia-open-lts) "
                       "(not offered: needs safe-graphics-entry)", d["report"])
 
     def test_present_entry_changes_nothing(self):

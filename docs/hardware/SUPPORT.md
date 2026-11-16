@@ -19,7 +19,7 @@ One TOML file per profile (`schema_version`, `id`, `name`/`description`/`warning
 |---|---|---|
 | cpu-microcode-intel / -amd | CPU vendor, not in a VM | intel-ucode / amd-ucode |
 | gpu-intel, gpu-amd | PCI vendor 8086 / 1002, display class | Mesa, Vulkan (+ intel-media-driver) |
-| gpu-nvidia-open | NVIDIA display, device ID >= 0x1e00 | nvidia-open, nvidia-utils, early KMS drop-in; needs confirmation; needs the safe-graphics boot entry |
+| gpu-nvidia-open | NVIDIA display, device ID >= 0x1e00 | nvidia-open, nvidia-utils, linux-lts and nvidia-open-lts (second kernel), early KMS drop-in; needs confirmation; needs the safe-graphics boot entry |
 | gpu-nvidia-legacy | NVIDIA display, device ID <= 0x1dff | nothing new; stays on the open nouveau stack; message; never AUR |
 | hybrid-nvidia-intel / -amd | laptop with both GPUs | nvidia-prime; needs the safe-graphics boot entry |
 | wifi-broadcom | PCI vendor 14e4 network | linux-firmware-broadcom; warning that older chips need an out-of-tree driver that is NOT installed |
@@ -31,4 +31,4 @@ One TOML file per profile (`schema_version`, `id`, `name`/`description`/`warning
 - Fixtures in `core/tests/fixtures/hw/`: one REAL capture (`virtualbox-vmsvga`, taken on the build VM, only non-identifying fields) and six SYNTHETIC ones written by hand from known PCI IDs (`synthetic: true` in `facts.json`): Intel iGPU laptop, AMD desktop, NVIDIA modern desktop, NVIDIA old desktop, NVIDIA + Intel hybrid laptop, Broadcom Wi-Fi laptop. Synthetic fixtures check the rules, not real hardware.
 - The NVIDIA threshold (open modules for device IDs from 0x1e00, Turing and newer) is a heuristic taken from NVIDIA's public statement, NOT verified against the package: the pacman file database is not synced here, so `supported-gpus.json` could not be inspected. The profile warning says so.
 - NOT verified: any real hardware, hybrid graphics behavior and boot safety, early KMS, Broadcom behavior, USB devices (not collected yet: `lsusb` is not installed on the build VM), fingerprint readers, printers, touchscreens, Bluetooth detection beyond `/sys/class/bluetooth`, Secure Boot interaction, install-time use.
-- Not built yet: snapshot before driver changes, the LTS kernel with `nvidia-open-lts` (Phase 7). The safe-graphics boot entry exists (package `heiss-safe-graphics`); design in `SAFE-FALLBACK.md`. The driver doctor report exists since the Control Center Hardware and drivers page (`docs/CONTROL-CENTER.md`); it has not run on real hardware.
+- Not built yet: snapshot before driver changes, "Remove this driver" (Phase 7). The LTS kernel with `nvidia-open-lts` is installed together with `gpu-nvidia-open`. The safe-graphics boot entry exists (package `heiss-safe-graphics`); design in `SAFE-FALLBACK.md`. The driver doctor report exists since the Control Center Hardware and drivers page (`docs/CONTROL-CENTER.md`); it has not run on real hardware.

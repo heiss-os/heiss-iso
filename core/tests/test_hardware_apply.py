@@ -118,7 +118,9 @@ class HardwareInPlan(unittest.TestCase):
     def test_sticky_needs_every_own_package_owned(self):
         self.assertEqual(resolver.sticky_hardware(self.cat, dict(EMPTY)), [])
         self.assertEqual(resolver.sticky_hardware(self.cat, dict(EMPTY, packages=["nvidia-open"])), [])
-        self.assertEqual(resolver.sticky_hardware(self.cat, dict(EMPTY, packages=["nvidia-open", "nvidia-utils"])), ["gpu-nvidia-open"])
+        self.assertEqual(resolver.sticky_hardware(self.cat, dict(EMPTY, packages=["nvidia-open", "nvidia-utils"])), [])   # the LTS kernel is part of it now
+        self.assertEqual(resolver.sticky_hardware(self.cat, dict(EMPTY, packages=["nvidia-open", "nvidia-utils", "linux-lts", "nvidia-open-lts"])),
+                         ["gpu-nvidia-open"])
 
 
 class Cli(unittest.TestCase):

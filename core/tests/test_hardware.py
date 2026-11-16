@@ -159,6 +159,27 @@ class Requires(unittest.TestCase):
             self.assertIn("nvidia-open", out.getvalue())
 
 
+class LtsFallback(unittest.TestCase):
+    """SAFE-FALLBACK answer 2 A: linux-lts and its driver come only together with the NVIDIA driver."""
+
+    def setUp(self):
+        self.cat = hw.load_profiles(HARDWARE)
+
+    def test_the_nvidia_profile_installs_the_lts_kernel_with_its_driver(self):
+        pk = set(self.cat["gpu-nvidia-open"].packages)
+        self.assertTrue({"nvidia-open", "nvidia-utils", "linux-lts", "nvidia-open-lts"} <= pk)
+
+    def test_no_other_profile_pulls_in_the_lts_kernel(self):
+        for i, p in self.cat.items():
+            if i != "gpu-nvidia-open":
+                self.assertFalse({"linux-lts", "nvidia-open-lts"} & set(p.packages), i)
+
+    def test_the_warning_no_longer_says_the_lts_kernel_is_unsupported(self):
+        for lang, w in self.cat["gpu-nvidia-open"].warnings.items():
+            self.assertNotIn("only", w.split("linux-lts")[0][-40:], lang)
+            self.assertIn("nvidia-open-lts", w, lang)
+
+
 class Confirmation(unittest.TestCase):
     """A profile that is not safe by default is applied only with --confirm-hardware (SAFE-FALLBACK answer 3 A)."""
 

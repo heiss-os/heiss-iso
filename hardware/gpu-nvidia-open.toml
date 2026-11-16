@@ -2,11 +2,11 @@ schema_version = 1
 id = "gpu-nvidia-open"
 name = { en = "NVIDIA graphics (open kernel modules)", ru = "Графика NVIDIA (открытые модули ядра)" }
 description = { en = "NVIDIA driver with open kernel modules for GeForce RTX/GTX 16 series (Turing) and newer.", ru = "Драйвер NVIDIA с открытыми модулями ядра для GeForce RTX и GTX 16 (Turing) и новее." }
-packages = ["nvidia-open", "nvidia-utils"]
+packages = ["nvidia-open", "nvidia-utils", "linux-lts", "nvidia-open-lts"]
 kernel_params = ["nvidia-drm.modeset=1"]
 post_actions = ["mkinitcpio"]
 requires = ["safe-graphics-entry"]
-warnings = { en = "If the screen stays black after the installation, restart and choose \"Heiss OS, safe graphics\" in the boot menu, then remove the driver. Built for the standard kernel (linux) only; the LTS kernel needs the package nvidia-open-lts. Which graphics cards are supported is decided by a PCI ID threshold (0x1e00) that has not been verified against the package.", ru = "Если после установки экран станет чёрным, перезагрузитесь и выберите в меню загрузки пункт «Heiss OS, safe graphics», затем удалите драйвер. Драйвер собран только для обычного ядра (linux); для ядра LTS нужен пакет nvidia-open-lts. Какие видеокарты поддерживаются, определяется порогом идентификатора PCI (0x1e00), который не проверен по пакету." }
+warnings = { en = "If the screen stays black after the installation, restart and choose \"Heiss OS, safe graphics\" in the boot menu, then remove the driver. It also installs the LTS kernel (linux-lts) with its driver (nvidia-open-lts), about 165 MiB, as a second kernel to start from in the boot menu if the standard one fails. Which graphics cards are supported is decided by a PCI ID threshold (0x1e00) that has not been verified against the package.", ru = "Если после установки экран станет чёрным, перезагрузитесь и выберите в меню загрузки пункт «Heiss OS, safe graphics», затем удалите драйвер. Также устанавливается ядро LTS (linux-lts) с его драйвером (nvidia-open-lts), около 165 МиБ: запасное ядро, которое можно выбрать в меню загрузки, если обычное не запустится. Какие видеокарты поддерживаются, определяется порогом идентификатора PCI (0x1e00), который не проверен по пакету." }
 recovery = { en = "If the screen stays black after the installation, restart and choose \"Heiss OS, safe graphics\" in the boot menu, then remove the driver.", ru = "Если после установки экран станет чёрным, перезагрузитесь и выберите в меню загрузки пункт «Heiss OS, safe graphics», затем удалите драйвер." }
 [match]
 virt = "none"
