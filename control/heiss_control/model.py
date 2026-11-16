@@ -391,7 +391,7 @@ class Model:
         """The plan of "Remove this driver" as shown to the user: package names only, bounded."""
         if not isinstance(r, dict) or not r.get("packages"):
             return None
-        return {"packages": [str(x)[:60] for x in r["packages"]][:20], "kept": [str(x)[:60] for x in r.get("kept", [])][:20]}
+        return {"packages": [str(x)[:60] for x in r["packages"]][:20], "kept": [str(x)[:60] for x in (r.get("kept") or [])][:20]}
 
     # --- "Remove this driver": `heiss hw remove --yes ID` in a child process; the helper and polkit do the work ---
     def begin_hw_remove(self, driver_id):

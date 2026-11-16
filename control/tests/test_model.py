@@ -1290,6 +1290,11 @@ class DriverRemoval(Fixture):
         self.assertEqual(d["removeLabel"], "Remove this driver")
         self.assertEqual(d["removeInfo"], "Removes: nvidia-open nvidia-utils. Stays: linux-lts.")
 
+    def test_a_malformed_kept_list_does_not_break_the_page(self):
+        for kept in (None, [], ["a"]):
+            self.data = {"facts": [], "drivers": [dict(self.NV, remove={"packages": ["p"], "kept": kept})], "report": ""}
+            self.assertEqual(self.mod().hw_state, "done", kept)
+
     def test_no_plan_no_button(self):
         for rm in (None, {}, {"packages": [], "kept": []}, "x"):
             self.data = {"facts": [], "drivers": [dict(self.NV, remove=rm)], "report": ""}
@@ -1394,6 +1399,9 @@ class RemovalPlan(unittest.TestCase):
             f.write("{not json")
         self.assertEqual(hwv.removals_of(self.cat, {"nvidia-open"}, os.path.join(REPO, "profiles"), self.state), {})
         self.assertEqual(hwv.removals_of(self.cat, {"nvidia-open"}, "/nonexistent", self.state), {})
+        with open(self.state, "wb") as f:
+            f.write(b"\xff\xfe")                      # not UTF-8: no button, and no crash of the whole page
+        self.assertEqual(hwv.removals_of(self.cat, {"nvidia-open"}, os.path.join(REPO, "profiles"), self.state), {})
 
     def test_collect_carries_the_plan_into_the_driver_data(self):
         nv = ["nvidia-open", "nvidia-utils", "linux-lts", "nvidia-open-lts"]

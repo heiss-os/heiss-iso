@@ -76,7 +76,7 @@ def removals_of(profiles, installed, manifests_dir=None, state_file=None):
     Empty when the state or the manifests cannot be read: then no button is offered."""
     try:
         manifests, state = mf.load_dir(manifests_dir or PROFILES_DIR), st.load(state_file or STATE_FILE)
-    except (OSError, HeissError):
+    except (OSError, ValueError, HeissError):   # ValueError: a state file that is not valid UTF-8 or JSON
         return {}
     out = {}
     for pid, p in profiles.items():
