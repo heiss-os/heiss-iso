@@ -176,7 +176,10 @@ class LtsFallback(unittest.TestCase):
 
     def test_the_warning_no_longer_says_the_lts_kernel_is_unsupported(self):
         for lang, w in self.cat["gpu-nvidia-open"].warnings.items():
-            self.assertNotIn("only", w.split("linux-lts")[0][-40:], lang)
+            self.assertNotIn("Built for the standard kernel", w, lang)
+            self.assertNotIn("Драйвер собран только для обычного ядра", w, lang)
+            self.assertNotIn("needs the package nvidia-open-lts", w, lang)
+            self.assertIn("linux-lts", w, lang)
             self.assertIn("nvidia-open-lts", w, lang)
 
 
