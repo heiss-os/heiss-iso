@@ -33,19 +33,35 @@ def block(lines, key):
 
 
 class ActiveModules(unittest.TestCase):
-    def test_sequence_uses_the_files_checked_here(self):
+    def test_sequence_is_unchanged_and_uses_the_files_checked_here(self):
         with open(SETTINGS, encoding="utf-8") as f:
-            seq = [l.strip() for l in f if l.strip().startswith("- ")]
-        self.assertIn("- welcome", seq)
-        self.assertIn("- locale", seq)
+            seq = [l.strip() for l in f if l.strip().startswith("- ") and l.startswith("  ")]
+        # the Tier A module order; welcome and locale (not the q variants) are the active pages
+        self.assertEqual(seq, ["- welcome", "- locale", "- keyboard", "- partition", "- usersq", "- summary",
+                               "- partition", "- mount", "- unpackfs", "- machineid", "- fstab", "- locale",
+                               "- keyboard", "- localecfg", "- shellprocess@boot", "- shellprocess@cleanup",
+                               "- usersq", "- hwclock", "- bootloader", "- umount", "- finished"])
+
+    def test_modules_with_a_remote_url_are_not_in_the_sequence(self):
+        # tracking.conf and netinstall.conf keep their stock URLs; they are never loaded
+        with open(SETTINGS, encoding="utf-8") as f:
+            text = f.read()
+        for mod in ("tracking", "netinstall"):
+            self.assertNotRegex(text, r"^\s*- %s\s*$" % mod, mod)
 
 
 class NoNetwork(unittest.TestCase):
     def test_no_active_line_names_a_remote_host(self):
         for name in WELCOME + LOCALE:
             for l in active_lines(name):
+                self.assertNotRegex(l, r"https?://", "%s: %s" % (name, l))
                 for h in HOSTS:
                     self.assertNotIn(h, l, "%s: %s" % (name, l))
+
+    def test_geoip_url_is_empty(self):
+        for name in WELCOME + LOCALE:
+            urls = [g.strip() for g in block(active_lines(name), "geoip") if g.strip().startswith("url:")]
+            self.assertEqual(urls, ['url:      ""'], name)
 
     def test_welcome_checks_have_no_internet_and_no_sample_conditions(self):
         for name in WELCOME:
