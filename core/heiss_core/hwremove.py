@@ -59,7 +59,7 @@ def plan_removal(profile_id, catalog, manifests, state, installed):
     """Raises ValidationError when the profile is unknown or nothing of it was installed by Heiss."""
     prof = catalog.get(profile_id)
     if prof is None:
-        raise ValidationError("unknown hardware profile %r" % profile_id)
+        raise ValidationError("unknown hardware profile %r" % str(profile_id)[:60])
     owned, installed = set(state["packages"]), set(installed)
     pkgs, svcs, paths = _wanted_by_others(profile_id, catalog, manifests, state)
     out = Removal(profile=profile_id)
