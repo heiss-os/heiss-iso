@@ -406,9 +406,36 @@ ApplicationWindow {
                                    font.pixelSize: 14; wrapMode: Text.WrapAnywhere; Layout.fillWidth: true }
                             Text { textFormat: Text.PlainText; visible: dr.modelData.advice !== ""; text: dr.modelData.advice; color: pal.dim
                                    font.pixelSize: 14; wrapMode: Text.WordWrap; Layout.fillWidth: true }
+                            Text { textFormat: Text.PlainText; visible: dr.modelData.removable; text: dr.modelData.removeInfo; color: pal.text
+                                   font.family: "JetBrains Mono"; font.pixelSize: 13; wrapMode: Text.WrapAnywhere; Layout.fillWidth: true }
+                            Text { textFormat: Text.PlainText; visible: dr.modelData.removable; text: s.hardware.remove.warning; color: pal.dim
+                                   font.pixelSize: 14; wrapMode: Text.WordWrap; Layout.fillWidth: true }
+                            Button {
+                                id: rmBtn
+                                visible: dr.modelData.removable
+                                enabled: s.hardware.remove.state !== "running"
+                                text: dr.modelData.removeLabel
+                                focusPolicy: Qt.StrongFocus
+                                Accessible.name: text + ", " + dr.modelData.title
+                                onClicked: control.removeDriver(dr.modelData.id)
+                                contentItem: Text { textFormat: Text.PlainText; text: rmBtn.text; color: pal.text; font.pixelSize: 16
+                                                    horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                                background: Rectangle { radius: 8; color: pal.button; border.width: rmBtn.activeFocus ? 2 : 1
+                                                        border.color: rmBtn.activeFocus ? pal.text : pal.dim; opacity: rmBtn.enabled ? 1 : 0.5 }
+                            }
                         }
                     }
                 }
+                Bar { visible: s.page === "hardware" && s.hardware.remove.state === "running"; indeterminate: true
+                      Layout.fillWidth: true; Accessible.name: s.hardware ? s.hardware.remove.running : "" }
+                Text { textFormat: Text.PlainText; visible: s.page === "hardware" && s.hardware.remove.state === "running"
+                       text: s.hardware ? s.hardware.remove.running : ""; color: pal.accent; font.pixelSize: 15; Layout.fillWidth: true }
+                Text { textFormat: Text.PlainText; visible: s.page === "hardware" && s.hardware.remove.state === "ok"
+                       text: s.hardware ? s.hardware.remove.done : ""; color: pal.accent; font.pixelSize: 15
+                       wrapMode: Text.WordWrap; Layout.fillWidth: true }
+                Text { textFormat: Text.PlainText; visible: s.page === "hardware" && s.hardware.remove.state === "failed"
+                       text: s.hardware ? s.hardware.remove.message : ""; color: pal.error; font.pixelSize: 14
+                       wrapMode: Text.WordWrap; Layout.fillWidth: true }
                 Text { textFormat: Text.PlainText; visible: s.page === "hardware" && s.hardware.report !== ""; text: s.hardware ? s.hardware.reportTitle : ""
                        color: pal.accent; font.pixelSize: 18; font.bold: true; Accessible.role: Accessible.Heading }
                 Text { textFormat: Text.PlainText; visible: s.page === "hardware" && s.hardware.report !== ""; text: s.hardware ? s.hardware.reportWhat : ""

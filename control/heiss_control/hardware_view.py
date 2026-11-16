@@ -10,9 +10,15 @@ import os
 import re
 
 from heiss_core import hardware as hw
+from heiss_core import hwremove
+from heiss_core import manifest as mf
+from heiss_core import state as st
+from heiss_core.errors import HeissError
 from heiss_core.system import PacmanSystem
 
 HARDWARE_DIR = os.environ.get("HEISS_HARDWARE", "/usr/share/heiss/hardware")
+PROFILES_DIR = os.environ.get("HEISS_PROFILES", "/usr/share/heiss/profiles")
+STATE_FILE = os.environ.get("HEISS_STATE", "/var/lib/heiss/state.json")
 CODES = {
     "form": ("laptop", "desktop", "vm"),
     "cpu": ("named", "other"),
@@ -64,12 +70,33 @@ def driver_state(profile, installed):
     return "installed" if all(p in installed for p in profile.packages) else "missing"
 
 
-def drivers_of(report, installed):
+def removals_of(profiles, installed, manifests_dir=None, state_file=None):
+    """{profile id: {"packages": [...], "kept": [...]}} for the drivers that "Remove this driver" may remove: not
+    safe by default, and the same plan `heiss hw remove` would make (only what Heiss installed; heiss_core.hwremove).
+    Empty when the state or the manifests cannot be read: then no button is offered."""
+    try:
+        manifests, state = mf.load_dir(manifests_dir or PROFILES_DIR), st.load(state_file or STATE_FILE)
+    except (OSError, ValueError, HeissError):   # ValueError: a state file that is not valid UTF-8 or JSON
+        return {}
+    out = {}
+    for pid, p in profiles.items():
+        if p.safe_by_default:
+            continue
+        try:
+            plan = hwremove.plan_removal(pid, profiles, manifests, state, installed)
+        except HeissError:
+            continue                     # nothing of it was installed by Heiss: no button
+        out[pid] = {"packages": list(plan.packages), "kept": sorted(plan.kept)}
+    return out
+
+
+def drivers_of(report, installed, removals=None):
     unavailable = getattr(report, "unavailable", {})
+    removals = removals or {}
     return [{"id": p.id, "name": dict(p.name), "description": dict(p.description), "warning": dict(p.warnings),
              "safe": p.safe_by_default, "state": driver_state(p, installed),
              "missing": [x for x in p.packages if installed and x not in installed],
-             "needs": list(unavailable.get(p.id, []))} for p in report.proposals]
+             "needs": list(unavailable.get(p.id, [])), "remove": removals.get(p.id)} for p in report.proposals]
 
 
 def report_text(report, drivers, has_bluetooth, kernel):
@@ -97,13 +124,13 @@ def report_text(report, drivers, has_bluetooth, kernel):
 _LIVE = object()
 
 
-def collect(hardware_dir=None, facts=None, installed=None, kernel=None, caps=_LIVE):
+def collect(hardware_dir=None, facts=None, installed=None, kernel=None, caps=_LIVE, manifests_dir=None, state_file=None):
     """Returns {"facts", "drivers", "report"}. Raises when detection fails (the model shows the error)."""
     profiles = hw.load_profiles(hardware_dir or HARDWARE_DIR)
     facts = facts or hw.collect_live()
     report = hw.detect(facts, profiles, hw.capabilities() if caps is _LIVE else caps)
     if installed is None:
         installed = PacmanSystem().installed_packages()
-    drivers = drivers_of(report, installed)
+    drivers = drivers_of(report, installed, removals_of(profiles, installed, manifests_dir, state_file) if installed else {})
     return {"facts": facts_of(report, facts.has_bluetooth), "drivers": drivers,
             "report": report_text(report, drivers, facts.has_bluetooth, kernel if kernel is not None else os.uname().release)}

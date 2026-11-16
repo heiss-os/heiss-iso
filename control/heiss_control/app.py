@@ -64,6 +64,19 @@ def main(argv=None):
             finally:
                 self.hardwareDone.emit()
 
+        @Slot(str)
+        def removeDriver(self, driver_id):
+            # removes packages through the helper (the system asks for the password): only on a click, in a worker thread
+            if self.model.begin_hw_remove(driver_id):
+                threading.Thread(target=self._remove_driver, daemon=True).start()
+            self._set()
+
+        def _remove_driver(self):
+            try:
+                self.model.finish_hw_remove()
+            finally:
+                self.hardwareDone.emit()
+
         @Slot()
         def copyReport(self):
             self.model.copy_report(QGuiApplication.clipboard().setText)

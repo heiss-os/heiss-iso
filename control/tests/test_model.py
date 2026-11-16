@@ -684,6 +684,39 @@ class Runner(unittest.TestCase):
                                            "WAYLAND_DISPLAY": "wayland-0"})
         self.assertNotIn("shell", seen["kw"])
 
+    def test_hw_remove_argv_takes_only_a_valid_id(self):
+        self.assertEqual(runner.hw_remove_argv("gpu-nvidia-open", ["heiss"]), ["heiss", "hw", "remove", "--yes", "gpu-nvidia-open"])
+        from heiss_core.errors import HeissError
+        for bad in ("--yes", "-x", "gpu-nvidia-open\n", "GPU", "a b", "", None, 5, ["x"], "x" * 50, "../x"):
+            with self.assertRaises(HeissError, msg=repr(bad)):
+                runner.hw_remove_argv(bad, ["heiss"])
+
+    def test_hw_remove_runs_isolated_and_reports_the_last_error(self):
+        base = self.fake('echo "== remove"; echo "heiss: the helper refused" >&2; exit 1')
+        from heiss_core.errors import HeissError
+        with self.assertRaises(HeissError) as cm:
+            runner.run_hw_remove("gpu-nvidia-open", None, base)
+        self.assertEqual(str(cm.exception), "the helper refused")
+        runner.run_hw_remove("gpu-nvidia-open", None, self.fake("exit 0"))
+        seen = {}
+
+        class P:
+            stdout = iter(())
+            returncode = 0
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+
+        def popen(argv, **kw):
+            seen["argv"], seen["kw"] = argv, kw
+            return P()
+        runner.run_hw_remove("gpu-nvidia-open", None, None, popen, {"HOME": "/h", "PYTHONPATH": "/x", "LD_PRELOAD": "/y"})
+        self.assertEqual(seen["argv"][1:], ["-I", "-m", "heiss_core", "hw", "remove", "--yes", "gpu-nvidia-open"])
+        self.assertEqual((seen["kw"]["cwd"], sorted(seen["kw"]["env"])), ("/", ["HOME", "PATH"]))
+
     def fake(self, script):
         import stat
         import tempfile
@@ -1230,6 +1263,155 @@ class HardwarePage(Fixture):
         mod.begin_hardware()
         mod.finish_hardware()
         self.assertTrue(mod.screen()["hardware"]["driversNone"])
+
+
+class DriverRemoval(Fixture):
+    NV = {"id": "gpu-nvidia-open", "name": {"en": "NVIDIA", "ru": "NVIDIA ru"}, "description": {"en": "d", "ru": "д"},
+          "warning": {}, "safe": False, "state": "installed", "missing": [],
+          "remove": {"packages": ["nvidia-open", "nvidia-utils"], "kept": ["linux-lts"]}}
+
+    def setUp(self):
+        super().setUp()
+        self.calls = []
+        self.data = {"facts": [], "drivers": [dict(self.NV)], "report": "r\n"}
+        self.env.hardware_data = lambda: self.data
+        self.env.run_hw_remove = lambda i: self.calls.append(i)
+
+    def mod(self, lang="en"):
+        mod = m.Model(self.env, lang)
+        mod.open("hardware")
+        mod.begin_hardware()
+        mod.finish_hardware()
+        return mod
+
+    def test_the_button_data_names_what_goes_and_what_stays(self):
+        d = self.mod().screen()["hardware"]["drivers"][0]
+        self.assertTrue(d["removable"])
+        self.assertEqual(d["removeLabel"], "Remove this driver")
+        self.assertEqual(d["removeInfo"], "Removes: nvidia-open nvidia-utils. Stays: linux-lts.")
+
+    def test_a_malformed_kept_list_does_not_break_the_page(self):
+        for kept in (None, [], ["a"]):
+            self.data = {"facts": [], "drivers": [dict(self.NV, remove={"packages": ["p"], "kept": kept})], "report": ""}
+            self.assertEqual(self.mod().hw_state, "done", kept)
+
+    def test_no_plan_no_button(self):
+        for rm in (None, {}, {"packages": [], "kept": []}, "x"):
+            self.data = {"facts": [], "drivers": [dict(self.NV, remove=rm)], "report": ""}
+            mod = self.mod()
+            self.assertFalse(mod.screen()["hardware"]["drivers"][0]["removable"], rm)
+            self.assertFalse(mod.begin_hw_remove("gpu-nvidia-open"))
+
+    def test_only_a_listed_driver_with_a_plan_can_start(self):
+        mod = self.mod()
+        for bad in ("other", "", None, "--yes", "gpu-nvidia-open\n"):
+            self.assertFalse(mod.begin_hw_remove(bad), repr(bad))
+        self.assertEqual((self.calls, mod.hwr_state), ([], "idle"))
+
+    def test_a_run_calls_the_runner_with_the_id_and_detects_again(self):
+        mod = self.mod()
+        self.assertTrue(mod.begin_hw_remove("gpu-nvidia-open"))
+        self.assertFalse(mod.begin_hw_remove("gpu-nvidia-open"))      # one at a time
+        self.assertEqual(mod.screen()["hardware"]["remove"]["state"], "running")
+        self.data = {"facts": [], "drivers": [dict(self.NV, state="missing", remove=None)], "report": "r\n"}   # after the removal
+        seen = []
+        orig = self.env.hardware_data
+        self.env.hardware_data = lambda: (seen.append(mod.hwr_state), orig())[1]
+        mod.finish_hw_remove()
+        self.assertEqual(seen, ["running"])        # still "running" (button off) while the page is detected again
+        self.assertEqual(self.calls, ["gpu-nvidia-open"])
+        p = mod.screen()["hardware"]
+        self.assertEqual((p["remove"]["state"], mod.hw_state), ("ok", "done"))
+        self.assertFalse(p["drivers"][0]["removable"])
+        self.assertIn("Restart", p["remove"]["done"])
+
+    def test_a_failure_is_shown_and_the_button_works_again(self):
+        def boom(i):
+            raise RuntimeError("polkit dismissed")
+        self.env.run_hw_remove = boom
+        mod = self.mod()
+        mod.begin_hw_remove("gpu-nvidia-open")
+        mod.finish_hw_remove()
+        p = mod.screen()["hardware"]
+        self.assertEqual(p["remove"]["state"], "failed")
+        self.assertIn("polkit dismissed", p["remove"]["message"])
+        self.assertTrue(p["drivers"][0]["removable"])
+        self.assertTrue(mod.begin_hw_remove("gpu-nvidia-open"))
+
+    def test_not_while_a_saved_action_or_detection_runs(self):
+        mod = self.mod()
+        mod.pend_state = "running"
+        self.assertFalse(mod.begin_hw_remove("gpu-nvidia-open"))
+        mod.pend_state, mod.hw_state = "idle", "running"
+        self.assertFalse(mod.begin_hw_remove("gpu-nvidia-open"))
+
+    def test_nothing_else_starts_while_a_removal_runs(self):
+        from heiss_core import wizard as wz
+        mod = self.mod()
+        wz.PendingQueue(self.p("user/pending.json")).add("apply-profile", {"profile": "base", "addons": []})
+        self.assertTrue(mod.begin_hw_remove("gpu-nvidia-open"))
+        self.assertFalse(mod.begin_pending())
+        self.assertFalse(mod.begin_hardware())
+        item = wz.PendingQueue(self.p("user/pending.json")).list()[0]["id"]
+        mod.remove_pending(item)
+        self.assertEqual(len(wz.PendingQueue(self.p("user/pending.json")).list()), 1)   # not removed meanwhile
+        mod.finish_hw_remove()
+        self.assertTrue(mod.begin_hardware())
+
+    def test_russian_texts_exist_and_data_is_bounded(self):
+        mod = self.mod("ru")
+        d = mod.screen()["hardware"]["drivers"][0]
+        self.assertEqual(d["removeLabel"], "Удалить этот драйвер")
+        self.data = {"facts": [], "drivers": [dict(self.NV, remove={"packages": ["p" * 500] * 100, "kept": []})], "report": ""}
+        d = self.mod().screen()["hardware"]["drivers"][0]
+        self.assertLess(len(d["removeInfo"]), 20 * 70)
+
+
+class RemovalPlan(unittest.TestCase):
+    """hardware_view.removals_of: the same plan `heiss hw remove` makes, never for a safe driver."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.state = os.path.join(self.tmp.name, "state.json")
+        self.cat = hwc.load_profiles(HW_DIR)
+
+    def save(self, packages):
+        import json
+        with open(self.state, "w") as f:
+            json.dump({"schema_version": 1, "applied": {"profile": "base", "addons": []}, "packages": packages,
+                       "services": [], "flatpaks": []}, f)
+
+    def test_nvidia_installed_by_heiss_gets_a_plan_that_keeps_the_lts_kernel(self):
+        nv = ["nvidia-open", "nvidia-utils", "linux-lts", "nvidia-open-lts"]
+        self.save(nv)
+        r = hwv.removals_of(self.cat, set(nv), os.path.join(REPO, "profiles"), self.state)
+        self.assertEqual(sorted(r["gpu-nvidia-open"]["packages"]), ["nvidia-open", "nvidia-open-lts", "nvidia-utils"])
+        self.assertEqual(r["gpu-nvidia-open"]["kept"], ["linux-lts"])
+
+    def test_nothing_from_heiss_or_a_safe_driver_or_an_unreadable_state_gives_no_plan(self):
+        self.save([])
+        self.assertEqual(hwv.removals_of(self.cat, {"nvidia-open", "mesa"}, os.path.join(REPO, "profiles"), self.state), {})
+        self.save(["mesa", "virtualbox-guest-utils"])
+        r = hwv.removals_of(self.cat, {"mesa", "virtualbox-guest-utils"}, os.path.join(REPO, "profiles"), self.state)
+        self.assertEqual([k for k in r if self.cat[k].safe_by_default], [])
+        with open(self.state, "w") as f:
+            f.write("{not json")
+        self.assertEqual(hwv.removals_of(self.cat, {"nvidia-open"}, os.path.join(REPO, "profiles"), self.state), {})
+        self.assertEqual(hwv.removals_of(self.cat, {"nvidia-open"}, "/nonexistent", self.state), {})
+        with open(self.state, "wb") as f:
+            f.write(b"\xff\xfe")                      # not UTF-8: no button, and no crash of the whole page
+        self.assertEqual(hwv.removals_of(self.cat, {"nvidia-open"}, os.path.join(REPO, "profiles"), self.state), {})
+
+    def test_collect_carries_the_plan_into_the_driver_data(self):
+        nv = ["nvidia-open", "nvidia-utils", "linux-lts", "nvidia-open-lts"]
+        self.save(nv)
+        facts = hwc.load_fixture(os.path.join(FIX, "nvidia-hybrid-laptop"))
+        d = hwv.collect(hardware_dir=HW_DIR, facts=facts, installed=set(nv), kernel="6.1", caps={"safe-graphics-entry"},
+                        manifests_dir=os.path.join(REPO, "profiles"), state_file=self.state)
+        by = {x["id"]: x for x in d["drivers"]}
+        self.assertIsNotNone(by["gpu-nvidia-open"]["remove"])
+        self.assertTrue(all(x["remove"] is None for x in d["drivers"] if x["id"] != "gpu-nvidia-open" and x["safe"]))
 
 
 class Advanced(Fixture):

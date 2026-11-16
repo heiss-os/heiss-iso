@@ -1,6 +1,6 @@
 # Safe fallback and snapshot before driver changes (Phase 7 design)
 
-Status: the owner answered 1 A, 2 A, 3 A, 4 A (2026-11-15). Built: order step 1 (package `heiss-safe-graphics`, `packages/heiss-safe-graphics/41_heiss_safe`) and step 2 (NVIDIA warning text). Step 3a built (2026-11-16): the NVIDIA proposals are offered only when the safe-graphics entry is installed (`requires` in the hardware profile, see DECISIONS). Step 3b built (2026-11-16): second confirmation for drivers that are not safe by default. Step 4a built (2026-11-16): `linux-lts` and `nvidia-open-lts` are installed together with `gpu-nvidia-open`. Step 4b built (2026-11-16): `heiss hw remove ID` and the helper method `RemoveHardware`. Not built: the Control Center "Remove this driver" button. The text below is the original proposal. No Tier A file is touched by this document. Items marked NOT VERIFIED
+Status: the owner answered 1 A, 2 A, 3 A, 4 A (2026-11-15). Built: order step 1 (package `heiss-safe-graphics`, `packages/heiss-safe-graphics/41_heiss_safe`) and step 2 (NVIDIA warning text). Step 3a built (2026-11-16): the NVIDIA proposals are offered only when the safe-graphics entry is installed (`requires` in the hardware profile, see DECISIONS). Step 3b built (2026-11-16): second confirmation for drivers that are not safe by default. Step 4a built (2026-11-16): `linux-lts` and `nvidia-open-lts` are installed together with `gpu-nvidia-open`. Step 4b built (2026-11-16): `heiss hw remove ID` and the helper method `RemoveHardware`. Step 4c built (2026-11-16): the Control Center "Remove this driver" button. All four steps of the agreed order are built; none ran on real hardware. The text below is the original proposal. No Tier A file is touched by this document. Items marked NOT VERIFIED
 could not be checked on the build host (no UEFI, no real GPU, the pacman file database is not synced there).
 
 ## Problem
@@ -39,7 +39,7 @@ A bad GPU driver can leave the user with a black screen and no way back. Today:
    explicit confirmation that says "no snapshot is available, rollback means removing the packages", shown by the
    wizard and by the Hardware page before it offers a driver that is not `safe_by_default`.
 4. **Rollback in one step**: `heiss profile apply` already removes what a profile installed (state file). A
-   "Remove this driver" action on the Hardware page would call the same path through the helper. Not built.
+   "Remove this driver" action on the Hardware page would call the same path through the helper. Built (steps 4b and 4c, 2026-11-16); not run on real hardware.
 
 ## Decisions needed from the owner
 
