@@ -1340,6 +1340,19 @@ class DriverRemoval(Fixture):
         mod.pend_state, mod.hw_state = "idle", "running"
         self.assertFalse(mod.begin_hw_remove("gpu-nvidia-open"))
 
+    def test_nothing_else_starts_while_a_removal_runs(self):
+        from heiss_core import wizard as wz
+        mod = self.mod()
+        wz.PendingQueue(self.p("user/pending.json")).add("apply-profile", {"profile": "base", "addons": []})
+        self.assertTrue(mod.begin_hw_remove("gpu-nvidia-open"))
+        self.assertFalse(mod.begin_pending())
+        self.assertFalse(mod.begin_hardware())
+        item = wz.PendingQueue(self.p("user/pending.json")).list()[0]["id"]
+        mod.remove_pending(item)
+        self.assertEqual(len(wz.PendingQueue(self.p("user/pending.json")).list()), 1)   # not removed meanwhile
+        mod.finish_hw_remove()
+        self.assertTrue(mod.begin_hardware())
+
     def test_russian_texts_exist_and_data_is_bounded(self):
         mod = self.mod("ru")
         d = mod.screen()["hardware"]["drivers"][0]

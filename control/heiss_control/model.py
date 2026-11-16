@@ -217,7 +217,7 @@ class Model:
 
     def begin_pending(self):
         """True when the run may start: nothing runs already, something is waiting, and the network is up."""
-        if self.pend_state == "running":
+        if self.pend_state == "running" or self.hwr_state == "running":
             return False
         try:
             waiting = bool(self._queue().list())
@@ -253,7 +253,7 @@ class Model:
 
     def remove_pending(self, item_id):
         """Drop one saved action without running it. Not while a run is in progress."""
-        if self.pend_state == "running" or not isinstance(item_id, int) or isinstance(item_id, bool):
+        if self.pend_state == "running" or self.hwr_state == "running" or not isinstance(item_id, int) or isinstance(item_id, bool):
             return False
         try:
             q = self._queue()
@@ -367,7 +367,7 @@ class Model:
 
     # --- hardware and drivers: read-only detection, driver state, report without personal data ---
     def begin_hardware(self):
-        if self.hw_state == "running":
+        if self.hw_state == "running" or self.hwr_state == "running":
             return False
         self.hw_state, self.hw_message, self.hw_copied = "running", "", False
         return True
