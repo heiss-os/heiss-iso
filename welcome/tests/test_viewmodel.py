@@ -219,6 +219,59 @@ class HardwareAndPrivacy(unittest.TestCase):
             self.assertIn("gpu-nvidia-open", opts)
             self.assertNotIn("gpu-nvidia-open", vm.hardware_ids())     # never ticked by default
 
+    def nvidia_vm(self, d):
+        vm = self.vm(d, self.detector_caps("nvidia-desktop-modern", {"safe-graphics-entry"}))
+        vm.snapshot = lambda: False
+        return vm
+
+    def confirm_options(self, vm):
+        return [o for q in vm.screen()["questions"] if q["title"] for o in q["options"]]
+
+    def test_unsafe_driver_needs_its_own_confirmation_before_it_is_applied(self):
+        with tempfile.TemporaryDirectory() as d:
+            vm = self.nvidia_vm(d)
+            self.assertEqual(self.confirm_options(vm), [])          # not ticked: nothing to confirm
+            vm.toggle_hardware("gpu-nvidia-open")
+            self.assertEqual(vm.unconfirmed_ids(), ["gpu-nvidia-open"])
+            self.assertNotIn("gpu-nvidia-open", vm.hardware_ids())  # ticked but not confirmed: not applied
+            opts = self.confirm_options(vm)
+            self.assertEqual([o["value"] for o in opts], ["confirm:gpu-nvidia-open"])
+            self.assertIn("Heiss OS, safe graphics", opts[0]["hint"])
+            vm.toggle_hardware("confirm:gpu-nvidia-open")
+            self.assertIn("gpu-nvidia-open", vm.hardware_ids())
+            self.assertEqual(vm.unconfirmed_ids(), [])
+
+    def test_unticking_forgets_the_confirmation(self):
+        with tempfile.TemporaryDirectory() as d:
+            vm = self.nvidia_vm(d)
+            vm.toggle_hardware("gpu-nvidia-open")
+            vm.toggle_hardware("confirm:gpu-nvidia-open")
+            vm.toggle_hardware("gpu-nvidia-open")                   # untick
+            vm.toggle_hardware("gpu-nvidia-open")                   # tick again
+            self.assertNotIn("gpu-nvidia-open", vm.hardware_ids())  # asks again
+            self.assertEqual(vm.unconfirmed_ids(), ["gpu-nvidia-open"])
+
+    def test_confirming_an_unticked_or_safe_or_unknown_profile_is_rejected(self):
+        with tempfile.TemporaryDirectory() as d:
+            vm = self.nvidia_vm(d)
+            self.assertTrue(vm.toggle_hardware("confirm:gpu-nvidia-open")["error"])   # not ticked
+            self.assertTrue(vm.toggle_hardware("confirm:nosuch")["error"])
+            self.assertNotIn("hardware_confirmed", vm.w.extras)
+        with tempfile.TemporaryDirectory() as d:
+            vm = self.vm(d, self.detector(self.fixture()))
+            safe = vm.report().proposals[0].id
+            self.assertTrue(vm.toggle_hardware("confirm:" + safe)["error"])           # safe by default
+
+    def test_confirmation_text_follows_the_snapshot_and_the_language(self):
+        with tempfile.TemporaryDirectory() as d:
+            vm = self.nvidia_vm(d)
+            vm.toggle_hardware("gpu-nvidia-open")
+            self.assertIn("no snapshot", self.confirm_options(vm)[0]["hint"].lower())
+            vm.snapshot = lambda: True
+            self.assertIn("A snapshot is set up", self.confirm_options(vm)[0]["hint"])
+            vm.w.set("language", "ru")
+            self.assertIn("Снимок настроен", self.confirm_options(vm)[0]["hint"])
+
     def test_intro_has_no_second_colon_in_either_language(self):
         from heiss_welcome.strings import S
         for lang in S:

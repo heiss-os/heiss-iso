@@ -38,13 +38,13 @@ PROFILE_DEFAULTS = {
     "developer": {"privacy": {"level": "standard"}},
     "custom": {"privacy": {"level": "standard"}},
 }
-EXTRA_KEYS = {"accent": str, "density": str, "font_scale": float, "hardware_toggles": dict, "backups": str}
+EXTRA_KEYS = {"accent": str, "density": str, "font_scale": float, "hardware_toggles": dict, "hardware_confirmed": dict, "backups": str}
 
 
 def _extra_ok(key, value):
     if not isinstance(value, EXTRA_KEYS[key]) or isinstance(value, bool):
         return False
-    if key == "hardware_toggles":
+    if key in ("hardware_toggles", "hardware_confirmed"):
         return all(isinstance(k, str) and isinstance(v, bool) for k, v in value.items())
     return True
 PENDING_KINDS = ("apply-profile",)
