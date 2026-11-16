@@ -1,0 +1,6 @@
+{
+  "policies": {
+    "DisableTelemetry": true,
+    "DisableFirefoxStudies": true
+  }
+}
