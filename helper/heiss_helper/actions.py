@@ -195,7 +195,10 @@ def build_privacy(ctx, level):
 
 def _dropin_remove_step(path, content):
     def run(ctx, emit):
-        emit(policy.remove_dropin(path, content, ctx.root))
+        try:
+            emit(policy.remove_dropin(path, content, ctx.root))
+        except HelperError as e:        # the packages are already gone: the image rebuild after this must still run
+            emit("warning: %s left in place: %s" % (path, e.message))
     return Step("remove drop-in", func=run)
 
 

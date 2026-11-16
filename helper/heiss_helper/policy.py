@@ -179,7 +179,11 @@ def remove_dropin(path, content, root="/"):
         return "%s is already gone" % path
     if not os.path.isfile(full):
         raise invalid("drop-in target is not a regular file")
-    with open(full, encoding="utf-8", errors="replace") as f:
+    try:
+        fd = os.open(full, os.O_RDONLY | os.O_NOFOLLOW)
+    except OSError as e:
+        raise invalid("cannot open the drop-in: %s" % (e.strerror or e))
+    with os.fdopen(fd, encoding="utf-8", errors="replace") as f:
         if f.read() != content:
             return "%s was changed by you, left in place" % path
     os.unlink(full)

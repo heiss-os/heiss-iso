@@ -405,6 +405,14 @@ class RemoveHardware(Env):
         self.assertTrue(os.path.exists(self.full))
         self.assertNotIn(["mkinitcpio", "-P"], self.runner.calls)
 
+    def test_a_dropin_problem_does_not_stop_the_image_rebuild(self):
+        os.remove(self.full)
+        os.symlink("/nonexistent", self.full)        # a dangling symlink at the drop-in path
+        ok, _ = self.run_it()
+        self.assertTrue(ok)
+        self.assertEqual(self.runner.calls[-1], ["mkinitcpio", "-P"])
+        self.assertTrue(os.path.islink(self.full))
+
     def test_only_a_profile_id_is_accepted(self):
         for bad in ("../x", "nvidia-open", "", None, 5, ["gpu-nvidia-open"], "gpu-nvidia-open\n", "no-such-profile"):
             with self.assertRaises(HelperError, msg=str(bad)) as cm:
