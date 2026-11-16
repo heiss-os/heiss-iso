@@ -1,6 +1,6 @@
 # Safe fallback and snapshot before driver changes (Phase 7 design)
 
-Status: the owner answered 1 A, 2 A, 3 A, 4 A (2026-11-15). Built: order step 1 (package `heiss-safe-graphics`, `packages/heiss-safe-graphics/41_heiss_safe`) and step 2 (NVIDIA warning text). Step 3a built (2026-11-16): the NVIDIA proposals are offered only when the safe-graphics entry is installed (`requires` in the hardware profile, see DECISIONS). Not built: the LTS kernel with the driver, the second confirmation, "Remove this driver". The text below is the original proposal. No Tier A file is touched by this document. Items marked NOT VERIFIED
+Status: the owner answered 1 A, 2 A, 3 A, 4 A (2026-11-15). Built: order step 1 (package `heiss-safe-graphics`, `packages/heiss-safe-graphics/41_heiss_safe`) and step 2 (NVIDIA warning text). Step 3a built (2026-11-16): the NVIDIA proposals are offered only when the safe-graphics entry is installed (`requires` in the hardware profile, see DECISIONS). Step 3b built (2026-11-16): second confirmation for drivers that are not safe by default. Step 4a built (2026-11-16): `linux-lts` and `nvidia-open-lts` are installed together with `gpu-nvidia-open`. Not built: "Remove this driver" (4b helper method, then the Control Center button). The text below is the original proposal. No Tier A file is touched by this document. Items marked NOT VERIFIED
 could not be checked on the build host (no UEFI, no real GPU, the pacman file database is not synced there).
 
 ## Problem
@@ -32,8 +32,8 @@ A bad GPU driver can leave the user with a black screen and no way back. Today:
 2. **A second kernel (`linux-lts`) as a fallback**. `pacman -Si` (core): linux-lts 6.18.60-1, 155.46 MiB download,
    155.95 MiB installed; `linux-lts-headers` 58.85 MiB download, 273.51 MiB installed (only needed for DKMS).
    `nvidia-open-lts` exists in the repositories (1:615.78.08-10, 9.7 MiB, depends on `linux-lts`), so the
-   "with the LTS kernel use the DKMS variant" sentence in the NVIDIA warning is out of date and should be
-   corrected in a later PR. `grub-mkconfig` lists installed kernels on its own. Cost: about 156 MiB on disk and
+   "with the LTS kernel use the DKMS variant" sentence in the NVIDIA warning was out of date and was
+   corrected in step 2 and step 4a. `grub-mkconfig` lists installed kernels on its own. Cost: about 156 MiB on disk and
    a longer `mkinitcpio` run for every kernel update.
 3. **Snapshot before a driver change**, in the order: (a) snapper snapshot if the system has one, (b) otherwise an
    explicit confirmation that says "no snapshot is available, rollback means removing the packages", shown by the
