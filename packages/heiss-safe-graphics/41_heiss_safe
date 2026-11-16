@@ -85,7 +85,8 @@ for kname in linux linux-lts; do
   [ -e "${boot_dir}/$initrd" ] || continue
   # On a separate /boot partition the kernel sits at the root of that filesystem: grub-mkrelpath
   # returns an empty string (10_linux gets the same), so the entry uses "/vmlinuz-...".
-  rel_dirname="$(make_system_path_relative_to_its_root "${boot_dir}")"
+  rel_dirname="$(make_system_path_relative_to_its_root "${boot_dir}")" \
+    || { echo "heiss-safe-graphics: cannot resolve the boot directory, no entry written" >&2; continue; }
   case "$rel_dirname" in
     ""|/) rel_dirname="" ;;
     *) rel_dirname="$(grub_word "$rel_dirname" one)" \

@@ -189,6 +189,14 @@ class Script(unittest.TestCase):
         lib = STUB_LIB.replace('echo "$1"; fi; }', 'echo "$1 x"; fi; }')
         r, _ = run_script(lib=lib)
         self.assertEqual(r.stdout, "")
+        self.assertIn("boot directory not usable", r.stderr)
+
+    def test_failing_path_helper_writes_no_entry_and_does_not_abort_the_script(self):
+        # a failure must neither be read as "empty means separate /boot" nor end the script under set -e
+        lib = STUB_LIB.replace('echo "$1"; fi; }', 'return 1; fi; }')
+        r, _ = run_script(lib=lib)
+        self.assertEqual((r.returncode, r.stdout), (0, ""), r.stderr)
+        self.assertIn("cannot resolve the boot directory", r.stderr)
 
     def test_separate_boot_partition_gets_an_entry_at_the_filesystem_root(self):
         # grub-mkrelpath returns "" for a directory that is the root of its own filesystem (a separate /boot)
