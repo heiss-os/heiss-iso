@@ -39,7 +39,7 @@ A bad GPU driver can leave the user with a black screen and no way back. Today:
    explicit confirmation that says "no snapshot is available, rollback means removing the packages", shown by the
    wizard and by the Hardware page before it offers a driver that is not `safe_by_default`.
 4. **Rollback in one step**: `heiss profile apply` already removes what a profile installed (state file). A
-   "Remove this driver" action on the Hardware page would call the same path through the helper. Not built.
+   "Remove this driver" action on the Hardware page would call the same path through the helper. Built (steps 4b and 4c, 2026-11-16); not run on real hardware.
 
 ## Decisions needed from the owner
 
