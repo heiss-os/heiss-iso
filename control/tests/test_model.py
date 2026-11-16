@@ -1309,7 +1309,11 @@ class DriverRemoval(Fixture):
         self.assertFalse(mod.begin_hw_remove("gpu-nvidia-open"))      # one at a time
         self.assertEqual(mod.screen()["hardware"]["remove"]["state"], "running")
         self.data = {"facts": [], "drivers": [dict(self.NV, state="missing", remove=None)], "report": "r\n"}   # after the removal
+        seen = []
+        orig = self.env.hardware_data
+        self.env.hardware_data = lambda: (seen.append(mod.hwr_state), orig())[1]
         mod.finish_hw_remove()
+        self.assertEqual(seen, ["running"])        # still "running" (button off) while the page is detected again
         self.assertEqual(self.calls, ["gpu-nvidia-open"])
         p = mod.screen()["hardware"]
         self.assertEqual((p["remove"]["state"], mod.hw_state), ("ok", "done"))

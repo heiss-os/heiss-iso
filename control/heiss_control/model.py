@@ -405,14 +405,16 @@ class Model:
         return True
 
     def finish_hw_remove(self, notify=None):
-        """Runs the removal; called from a worker thread. The page is detected again afterwards."""
+        """Runs the removal; called from a worker thread. The page is detected again afterwards; the result is
+        published only then, so the button stays disabled until the page is up to date (and begin_hw_remove, on the
+        GUI thread, never sees a half state)."""
+        state, message = "ok", ""
         try:
             self.env.run_hw_remove(self.hwr_id)
-            self.hwr_state, self.hwr_message = "ok", ""
         except Exception as e:  # noqa: BLE001
-            self.hwr_state, self.hwr_message = "failed", self._clip(self.tr("hw.remove.failed") % e)
-        self.hw_state = "running"
+            state, message = "failed", self._clip(self.tr("hw.remove.failed") % e)
         self.finish_hardware()
+        self.hwr_message, self.hwr_state = message, state
 
     @staticmethod
     def _report_text(text):
