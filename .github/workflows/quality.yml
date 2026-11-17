@@ -70,7 +70,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           persist-credentials: false
-      - name: Render every wizard and Control Center page offscreen (as an unprivileged user: the tool refuses root; fixture data, no network)
+      - name: Render every wizard and Control Center page offscreen (as an unprivileged user because the tool refuses root, fixture data, no network)
         run: |
           useradd -m builder
           cp -r "$GITHUB_WORKSPACE" /home/builder/src

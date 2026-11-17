@@ -39,6 +39,17 @@ class Dependabot(unittest.TestCase):
         self.assertIn("groups:", text)
 
 
+class Yaml(unittest.TestCase):
+    def test_workflows_and_dependabot_parse(self):         # a ": " inside an unquoted step name once broke a workflow
+        try:
+            import yaml
+        except ImportError:
+            self.skipTest("PyYAML is not installed")
+        for f in sorted(os.listdir(os.path.join(REPO, ".github", "workflows"))) + ["../dependabot.yml"]:
+            with open(os.path.join(REPO, ".github", "workflows", f), encoding="utf-8") as fh:
+                yaml.safe_load(fh)
+
+
 class Quality(unittest.TestCase):
     def test_workflow_uploads_the_gui_renders_for_seven_days_and_keeps_pngs_out_of_the_repo(self):
         text = read(".github/workflows/quality.yml")
