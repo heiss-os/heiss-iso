@@ -29,7 +29,14 @@ GSETTINGS_OK = {"dark": {"prefer-dark"}, "light": {"default", "prefer-light"}}
 CHECKED_KEYS = {("kdeglobals", "General", "ColorScheme"), ("kdeglobals", "Icons", "Theme"),
                 ("kdeglobals", "KDE", "widgetStyle"), ("plasmarc", "Theme", "name"),
                 ("ksplashrc", "KSplash", "Theme")}
-TARGETS_ORDER = ("launcher-icon", "konsole", "plasma-consistency", "gtk", "portal", "kitty")
+WALLPAPER = {"dark": "Heiss-Everyday", "light": "Heiss-Everyday-Light"}   # plain wallpaper packages, one per theme
+WALLPAPER_DIR = "/usr/share/wallpapers"
+FILL_MODE_CROP = "2"        # Image.PreserveAspectCrop: always covers the screen, never letterboxed
+APPLETSRC = ".config/plasma-org.kde.plasma.desktop-appletsrc"
+LOCKSCREEN = ("kscreenlockerrc", ("Greeter", "Wallpaper", "org.kde.image", "General"), "Image")
+FIRST_LOGIN_MARK = ".local/state/heiss/theme-first-login"
+FIRST_LOGIN_LNF = "org.heiss.dark.desktop"
+TARGETS_ORDER = ("launcher-icon", "wallpaper", "konsole", "plasma-consistency", "gtk", "portal", "kitty")
 
 
 @dataclass
@@ -61,9 +68,33 @@ class RealEnv:
         rc, out = self._run(["kreadconfig6", "--file", file, "--group", group, "--key", key])
         return out.rstrip("\n") if rc == 0 else None
 
+    def kde_read_nested(self, file, groups, key):
+        argv = ["kreadconfig6", "--file", file]
+        for g in groups:
+            argv += ["--group", g]
+        rc, out = self._run(argv + ["--key", key])
+        return out.rstrip("\n") if rc == 0 else None
+
     def kde_write(self, file, group, key, value):
-        rc, _ = self._run(["kwriteconfig6", "--file", file, "--group", group, "--key", key, "--", value])
+        """`group` is one name or a tuple of nested group names."""
+        groups = [group] if isinstance(group, str) else list(group)
+        argv = ["kwriteconfig6", "--file", file]
+        for g in groups:
+            argv += ["--group", g]
+        rc, _ = self._run(argv + ["--key", key, "--", value])
         return rc == 0
+
+    def apply_lnf(self, package):
+        return self._run(["plasma-apply-lookandfeel", "--apply", package], timeout=60)[0] == 0
+
+    def touch(self, path):
+        try:
+            os.makedirs(os.path.dirname(path), mode=0o700, exist_ok=True)
+            with open(path, "a", encoding="utf-8"):
+                pass
+            return True
+        except OSError:
+            return False
 
     def plasma_eval(self, script):
         return self._run(["busctl", "--user", "call", "org.kde.plasmashell", "/PlasmaShell",
@@ -182,6 +213,45 @@ for (var p of panels()) {
     return Result("launcher-icon", "failed", "plasmashell did not accept the script (is it running?)")
 
 
+def target_wallpaper(env, theme, dry):
+    """Desktop and lock-screen wallpaper follow the theme. A wallpaper the user chose is never replaced."""
+    pid = WALLPAPER[theme]
+    if not env.exists(os.path.join(WALLPAPER_DIR, pid)):
+        return Result("wallpaper", "skipped", "wallpaper package %s is missing" % pid)
+    ours = set(WALLPAPER.values())
+    text = env.read_text(os.path.join(env.home, APPLETSRC)) or ""
+    images = [i.strip() for i in re.findall(r"^Image=(.*)$", text, re.M)]
+    lock_file, lock_groups, lock_key = LOCKSCREEN
+    lock_now = env.kde_read_nested(lock_file, lock_groups, lock_key)
+    desktop_custom = any(i not in ours for i in images)
+    lock_custom = lock_now not in (None, "") and lock_now not in ours
+    changes = []
+    if not desktop_custom and (not images or any(i != pid for i in images)):
+        changes.append("desktop")
+    if not lock_custom and lock_now != pid:
+        changes.append("lock screen")
+    custom = [n for n, c in (("desktop", desktop_custom), ("lock screen", lock_custom)) if c]
+    note = " (custom %s wallpaper left alone)" % " and ".join(custom) if custom else ""
+    if not changes:
+        return Result("wallpaper", "skipped" if custom else "ok",
+                      "custom wallpaper left alone" if custom else "%s already in place" % pid)
+    if dry:
+        return Result("wallpaper", "changed", "would set %s on the %s%s" % (pid, " and ".join(changes), note))
+    if "desktop" in changes:
+        script = """
+for (var d of desktops()) {
+  d.wallpaperPlugin = 'org.kde.image';
+  d.currentConfigGroup = ['Wallpaper', 'org.kde.image', 'General'];
+  d.writeConfig('Image', '%s');
+  d.writeConfig('FillMode', %s);
+}""" % (pid, FILL_MODE_CROP)
+        if not env.plasma_eval(script):
+            return Result("wallpaper", "failed", "plasmashell did not accept the wallpaper script (is it running?)")
+    if "lock screen" in changes and not env.kde_write(lock_file, lock_groups, lock_key, pid):
+        return Result("wallpaper", "failed", "could not write the lock screen wallpaper")
+    return Result("wallpaper", "changed", "set %s on the %s%s" % (pid, " and ".join(changes), note))
+
+
 def target_konsole(env, theme, dry):
     name, filename = KONSOLE_PROFILE[theme]
     if not env.command_exists("konsole"):
@@ -279,13 +349,35 @@ def target_kitty(env, theme, dry):
     return Result("kitty", "warn", "automatic theme files for kitty are missing (package heiss-theme)")
 
 
-TARGETS = (("launcher-icon", target_launcher), ("konsole", target_konsole),
+TARGETS = (("launcher-icon", target_launcher), ("wallpaper", target_wallpaper), ("konsole", target_konsole),
            ("plasma-consistency", target_plasma_consistency), ("gtk", target_gtk),
            ("portal", target_portal), ("kitty", target_kitty))
 assert tuple(n for n, _ in TARGETS) == TARGETS_ORDER
 
 
 # ---------- driver ----------
+
+def _first_login(env, scheme, out, sleep):
+    """Once per user: a fresh account must start on Heiss Dark. System defaults (/etc/xdg/kdeglobals) normally do
+    that; if the desktop still started on another global theme (Plasma's own default is Breeze), apply Heiss Dark
+    one time. The mark is written either way, so a theme the user picks later is never overridden. Returns the
+    color scheme to continue with."""
+    mark = os.path.join(env.home, FIRST_LOGIN_MARK)
+    if env.exists(mark):
+        return scheme
+    if scheme not in THEME_OF:
+        if env.apply_lnf(FIRST_LOGIN_LNF):
+            sleep(2)    # the switch writes kdeglobals several times
+            now = env.kde_read("kdeglobals", "General", "ColorScheme")
+            out.append(Result("first-login", "changed", "started on color scheme %s, applied %s" % (scheme, FIRST_LOGIN_LNF)))
+            scheme = now if now is not None else scheme
+        else:
+            out.append(Result("first-login", "failed", "started on color scheme %s and plasma-apply-lookandfeel could not apply %s"
+                              % (scheme, FIRST_LOGIN_LNF)))
+            return scheme       # no mark: try again at the next login
+    env.touch(mark)
+    return scheme
+
 
 def sync(env, wait=True, dry_run=False, sleep=time.sleep, say=None):
     """Run every target once. Returns (results, exit_code). exit_code 1 only when a target failed."""
@@ -303,6 +395,9 @@ def sync(env, wait=True, dry_run=False, sleep=time.sleep, say=None):
                 sleep(1)
             sleep(2)   # a theme switch writes kdeglobals several times: read the final state
         scheme = env.kde_read("kdeglobals", "General", "ColorScheme")
+        first = []
+        if scheme is not None and not dry_run:
+            scheme = _first_login(env, scheme, first, sleep)
         theme = THEME_OF.get(scheme)
         if scheme is None:
             results = [Result("all", "failed", "cannot read the color scheme (kreadconfig6 missing or not in a desktop session)")]
@@ -315,6 +410,7 @@ def sync(env, wait=True, dry_run=False, sleep=time.sleep, say=None):
                     results.append(fn(env, theme, dry_run))
                 except Exception as e:  # a bug in one target must not hide the others
                     results.append(Result(name, "failed", "internal error: %s: %s" % (type(e).__name__, e)))
+        results = first + results
         for r in results:
             say(r.line())
     return results, (1 if any(r.status == "failed" for r in results) else 0)

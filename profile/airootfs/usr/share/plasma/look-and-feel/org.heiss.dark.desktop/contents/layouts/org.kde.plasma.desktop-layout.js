@@ -51,5 +51,6 @@ for (var j = 0; j < desktopsArray.length; j++) {
     // when the image fails to load, so a failure shows the theme background, not white.
     desktopsArray[j].currentConfigGroup = ["Wallpaper", "org.kde.image", "General"];
     desktopsArray[j].writeConfig("Image", "Heiss-Everyday");
+    desktopsArray[j].writeConfig("FillMode", 2);   // PreserveAspectCrop: always covers the screen
     desktopsArray[j].writeConfig("Color", "#1E1F21");
 }

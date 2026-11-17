@@ -9,6 +9,7 @@ Plasma first applies the Look-and-Feel defaults (color scheme, accent, icons, wi
 | Target | Does | Result values |
 |---|---|---|
 | launcher-icon | asks plasmashell to switch the Kickoff icon (`heiss-launcher-sand` or `-sand-light`); a custom icon is left alone | ok / failed |
+| wallpaper | sets the wallpaper package of the theme (`Heiss-Everyday` dark, `Heiss-Everyday-Light` light, fill mode crop) on the desktop and the lock screen; a wallpaper the user chose is left alone | changed / ok / skipped / failed |
 | konsole | sets `DefaultProfile` (Heiss-Dark or Heiss-Light) in `konsolerc` and switches running Konsole sessions through D-Bus | changed / ok / warn / skipped |
 | plasma-consistency | compares color scheme, icon theme, widget style, Plasma style and splash with the Look-and-Feel defaults of the active theme (accent excluded) and REPORTS differences | ok / warn |
 | gtk | checks the kde-gtk-config module `gtkconfig` is loaded and GSettings `color-scheme` agrees | ok / warn / failed |
@@ -23,9 +24,13 @@ Log: stdout (journal: `journalctl --user -u heiss-theme-sync`) and `~/.local/sta
 
 Generated from the tokens: Konsole color schemes and profiles (JetBrains Mono 11, `Parent=FALLBACK/`, opacity 1) in `/usr/share/konsole`, `/etc/xdg/konsolerc` (default profile Heiss Dark), kitty `/etc/xdg/kitty/kitty.conf` plus `dark-theme.auto.conf`, `light-theme.auto.conf`, `no-preference-theme.auto.conf`, and the plain theme files in `/usr/share/heiss/kitty`. Konsole and kitty stay optional; kitty is an add-on.
 
+## First login
+
+Once per user (mark `~/.local/state/heiss/theme-first-login`): if the desktop started on a color scheme that is not a Heiss one (Plasma's own default is Breeze), `heiss theme sync` applies Heiss Dark with `plasma-apply-lookandfeel` and logs a `first-login` line. The mark is written either way, so a theme the user picks later is never overridden. If applying fails, there is no mark and the next login tries again. System defaults in `/etc/xdg/kdeglobals` (`LookAndFeelPackage`, `DefaultDarkLookAndFeel`, `DefaultLightLookAndFeel`, `AutomaticLookAndFeel=false`) are the primary mechanism; this is the safety net.
+
 ## What the sync does NOT do
 
-It does not write files that Plasma owns (kdeglobals, plasmarc, ksplashrc, kwinrc): differences are reported only. GTK and libadwaita are handled by kde-gtk-config and the portal (see `GTK.md`). Wallpaper is set by the Look-and-Feel package and cannot be read back reliably, so it is not checked.
+It does not write the color scheme, icons, widget style, Plasma style or splash (kdeglobals, plasmarc, ksplashrc, kwinrc): differences are reported only. The only Plasma-owned values it writes are the wallpaper (through plasmashell) and the lock screen wallpaper (`kscreenlockerrc`), and only while they are Heiss wallpapers. GTK and libadwaita are handled by kde-gtk-config and the portal (see `GTK.md`). The wallpaper is applied through plasmashell (no read-back); whether it is ours is read from `plasma-org.kde.plasma.desktop-appletsrc`.
 
 ## Not verified
 
