@@ -324,11 +324,14 @@ Added in round 23 PR 5. Each line is run in part 3 of `heiss-task-28.md` (read-o
 - [ ] Choose Cyber, tick add-ons, press Apply on the summary: expect a polkit password prompt, the progress page, then the done page; afterwards `heiss profile diff` shows nothing left and `heiss check` is OK apart from normal warnings.
 
 ### Round 25, PR C: boot look
-- [ ] Installed system, reboot: GRUB shows the logo and four lines (Heiss OS Linux, Advanced options, Heiss OS safe graphics, UEFI Firmware Settings; the safe graphics line comes from the package heiss-safe-graphics, not from this PR), the block is vertically centred with no empty band above, the text is solid (no gaps in letters). Check at the VM's default size and at 1920x1080; for the 640x480 fallback press `c` in GRUB and type `set gfxmode=640x480`, then `terminal_output gfxterm`, then Esc (the theme must fit on the screen).
+- [ ] Installed system, reboot: GRUB shows the logo and four lines (Heiss OS Linux, Advanced options, Heiss OS safe graphics, UEFI Firmware Settings; the safe graphics line comes from the package heiss-safe-graphics, not from this PR), the block is vertically centred with no empty band above, the text is solid (no gaps in letters). Check at the VM's default size and at 1920x1080 (VM display setting); expect the logo and menu centred as one block, no band above the logo; for the 640x480 fallback press `c` in GRUB and type `set gfxmode=640x480`, then `terminal_output gfxterm`, then Esc (the theme must fit on the screen).
 - [ ] `GRUB_GFXMODE=auto` (new): the menu appears at a sensible resolution, not tiny and not the 640x480 fallback; if it does, say which resolution the VM reports.
 - [ ] No "(EFI BootNext)" lines: `grep -c BootNext /boot/grub/grub.cfg` prints 0; `grep GRUB_DISABLE_BOOTNEXT /etc/default/grub` prints `GRUB_DISABLE_BOOTNEXT=true`.
 - [ ] Live ISO, UEFI: the boot menu shows Heiss OS Live, safe graphics, speech, Memtest86+ and no "EFI Shell"; safe graphics boots to a desktop (`cat /proc/cmdline` contains `nomodeset`).
 - [ ] Live ISO, BIOS: the syslinux menu has the same entries; "safe graphics" works the same way.
+- [ ] Re-run on an existing install: `sudo /usr/local/bin/heiss-boot-branding.sh` (only if the script is still there; on a normal install it removes itself, then mark n/a), `ls /boot/grub/themes/heiss/*.pf2`; expect only `inter-medium-16.pf2` and `inter-medium-24.pf2`.
+- [ ] Live session: `pacman -Q edk2-shell` prints "was not found"; the Memtest86+ entry starts the RAM test (UEFI and BIOS).
+- [ ] Live ISO booted through GRUB (`grub.cfg`/`loopback.cfg`, only if you boot it that way, otherwise n/a): the same entries, hotkey `g` safe graphics, `s` speech.
 - [ ] How long until the first menu appears in the VM (stopwatch from power on), with and without the CD attached: if it is more than 10 s, say so, the cause is the firmware and not the menu.
 
 ## Round 20, item 3a (2026-11-11): hardware choices applied

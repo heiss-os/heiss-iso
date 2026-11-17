@@ -7,7 +7,7 @@
 # rendering the glyph bitmaps of the .pf2 files). 16 px is for the footer label and the terminal, 24 px for the
 # menu entries (20 px was tried, and renders solid too, but the theme does not use it).
 #
-#   scripts/gen-grub-fonts.sh           write the three fonts into the theme directory
+#   scripts/gen-grub-fonts.sh           write the two fonts (16 and 24) into the theme directory
 #   scripts/gen-grub-fonts.sh --check   exit 1 when the committed fonts differ from a fresh build
 #
 # Needs grub-mkfont (package grub). It prints many "unsupported font feature" warnings for Inter; they are
