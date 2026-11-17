@@ -324,7 +324,8 @@ Added in round 23 PR 5. Each line is run in part 3 of `heiss-task-28.md` (read-o
 - [ ] Choose Cyber, tick add-ons, press Apply on the summary: expect a polkit password prompt, the progress page, then the done page; afterwards `heiss profile diff` shows nothing left and `heiss check` is OK apart from normal warnings.
 
 ### Round 25, PR C: boot look
-- [ ] Installed system, reboot: GRUB shows the logo and four lines (Heiss OS Linux, Advanced options, Heiss OS safe graphics, UEFI Firmware Settings), the block is vertically centred with no empty band above, the text is solid (no gaps in letters). Check at the VM's default size and at 1920x1080; for the 640x480 fallback press `c` in GRUB and type `set gfxmode=640x480`, then `terminal_output gfxterm`, then Esc (the theme must fit on the screen).
+- [ ] Installed system, reboot: GRUB shows the logo and four lines (Heiss OS Linux, Advanced options, Heiss OS safe graphics, UEFI Firmware Settings; the safe graphics line comes from the package heiss-safe-graphics, not from this PR), the block is vertically centred with no empty band above, the text is solid (no gaps in letters). Check at the VM's default size and at 1920x1080; for the 640x480 fallback press `c` in GRUB and type `set gfxmode=640x480`, then `terminal_output gfxterm`, then Esc (the theme must fit on the screen).
+- [ ] `GRUB_GFXMODE=auto` (new): the menu appears at a sensible resolution, not tiny and not the 640x480 fallback; if it does, say which resolution the VM reports.
 - [ ] No "(EFI BootNext)" lines: `grep -c BootNext /boot/grub/grub.cfg` prints 0; `grep GRUB_DISABLE_BOOTNEXT /etc/default/grub` prints `GRUB_DISABLE_BOOTNEXT=true`.
 - [ ] Live ISO, UEFI: the boot menu shows Heiss OS Live, safe graphics, speech, Memtest86+ and no "EFI Shell"; safe graphics boots to a desktop (`cat /proc/cmdline` contains `nomodeset`).
 - [ ] Live ISO, BIOS: the syslinux menu has the same entries; "safe graphics" works the same way.
@@ -467,6 +468,6 @@ Branch `feat/heiss-global-theme`: Plasma defaults point Automatic/Dark Mode at t
 
 Branch `feat/wizard-ui-round25`. Tests: `welcome/tests/test_viewmodel.py`, `core/tests/test_wizard.py`. Not verified: see the Round 25 PR B lines in the FINAL VM TEST LIST.
 
-## Round 25, PR C (2026-11-18): boot look
+## Round 25, PR C (2026-11-17): boot look
 
 Branch `feat/boot-look-round25`. Tests: `tests/test_boot_look.py`. Not verified: see the Round 25 PR C lines in the FINAL VM TEST LIST.

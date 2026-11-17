@@ -7,7 +7,7 @@
 set -u
 # ---- switches (environment overrides) ----------------------------------------------------
 HEISS_GRUB_THEME="${HEISS_GRUB_THEME:-1}"            # 0: leave GRUB on its default text menu
-HEISS_GRUB_GFXMODE="${HEISS_GRUB_GFXMODE:-auto}"   # the firmware's own best mode; a fixed list picked bad modes in VMs
+HEISS_GRUB_GFXMODE="${HEISS_GRUB_GFXMODE:-auto}"   # the firmware's own best mode (was a fixed list)
 HEISS_GRUB_SELECT_BAR="${HEISS_GRUB_SELECT_BAR:-1}"  # 0: no selection bar, only text color
 HEISS_GRUB_OVERRIDE_NAME="${HEISS_GRUB_OVERRIDE_NAME:-0}"  # see the note near the end
 LOGFILE=/var/log/heiss-boot-branding.log
@@ -56,6 +56,7 @@ if [ -f "$G" ]; then
   fi
   if [ "$HEISS_GRUB_THEME" != 0 ] && [ -d /usr/share/heiss/grub-theme ]; then
     install -d /boot/grub/themes/heiss
+    rm -f /boot/grub/themes/heiss/inter-regular-*.pf2   # fonts of the earlier theme (a re-run on an existing install)
     cp -a /usr/share/heiss/grub-theme/. /boot/grub/themes/heiss/
     T=/boot/grub/themes/heiss/theme.txt
     if [ "$HEISS_GRUB_SELECT_BAR" = 0 ]; then

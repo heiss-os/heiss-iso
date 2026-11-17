@@ -4,7 +4,7 @@
 # selected_item_pixmap_style line when HEISS_GRUB_SELECT_BAR=0 (text color only).
 #
 # Fonts: GRUB fonts are 1-bit bitmaps, so the weight is Inter Medium (strokes stay solid;
-# Inter Regular broke into gaps). Built by scripts/gen-grub-fonts.sh as inter-medium-{16,20,24}.pf2;
+# Inter Regular broke into gaps). Built by scripts/gen-grub-fonts.sh as inter-medium-{16,24}.pf2;
 # grub-mkconfig loads every *.pf2 of the theme directory. The names below must match the files.
 desktop-image: "background.png"
 desktop-color: "#1E1F21"

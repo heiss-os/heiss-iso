@@ -64,7 +64,7 @@ d9a0d3436dee6e6c0385abedfa0affa6e635d96191761b4fe8e6462f55c481dc  profile/airoot
 adf2ecb46060e590e69ff5b6b843847bf1c600f66c15f80f604839d21f6b8008  profile/airootfs/etc/calamares/settings.conf
 5edaea9ca651fdb0e195140eb91d8202eb0c7572488961d80cd5b2b57946df2b  profile/airootfs/etc/sddm.conf.d/autologin.conf
 2d78ead7990c46f52e92c45426d5a465440ddb72fc5a4048b1a49319fc0cce9e  profile/airootfs/etc/sddm.conf.d/heiss-theme.conf
-a7e03a4ac298917361f3efd2c6df8063aaf28d680f69489de0e911ab0e46628d  profile/airootfs/usr/local/bin/heiss-boot-branding.sh
+47eaf60e6bc26602edd5916fa39567e516edc95e55bd030c26ef254fe38aee28  profile/airootfs/usr/local/bin/heiss-boot-branding.sh
 837f78cf2e192cb52d65e9e7eccd70b688132725b8930ff9a9bffdeb4e587e25  profile/airootfs/usr/local/bin/heiss-cleanup.sh
 64d2e4526f9505027026989e1920bfa6ba3ce2dcea9c11ad695b10bef9eeb099  profile/airootfs/usr/local/bin/heiss-setup-dock.sh
 0b93653f185046b434f3244d8a58a1dac745e70599c605deb04d66ed77eb516c  profile/airootfs/usr/share/calamares/branding/heiss/banner.png
@@ -92,7 +92,6 @@ b29c72d9cb15a249a23bdc6961f946d843c26c37889feafc5d716e62d97b5419  profile/airoot
 b2f580a583de7d3416ec6c12a4281ff0fdcdb4937f4fca18ae6299abfe3512cb  profile/airootfs/usr/share/color-schemes/HeissLight.colors
 0c5a1331513dacb7b5e5ac7d43d10c64972f528dd6748aa6ddd3ef3673813433  profile/airootfs/usr/share/heiss/grub-theme/background.png
 173cc947d900ae2c3892ad368f8328125db57cd75ff6200360b9de558964d5ec  profile/airootfs/usr/share/heiss/grub-theme/inter-medium-16.pf2
-c692c462e5457d95cb7246848955f1a2dc643be93be35c85ff39e3838edbb3f0  profile/airootfs/usr/share/heiss/grub-theme/inter-medium-20.pf2
 048dd75ada6a09a3d9381864976137b3e61344949cf0afb5cd761de191b03717  profile/airootfs/usr/share/heiss/grub-theme/inter-medium-24.pf2
 e87261418fc28115a1a6610032e0f83e0174a8398a40646e61ceaa7e98ca3abd  profile/airootfs/usr/share/heiss/grub-theme/logo.png
 5399b32f64e12aa57f19ad959f6bc1e7eadd7fcfe9f06b36a23a97d57857c312  profile/airootfs/usr/share/heiss/grub-theme/select_c.png
@@ -104,7 +103,7 @@ e87261418fc28115a1a6610032e0f83e0174a8398a40646e61ceaa7e98ca3abd  profile/airoot
 5399b32f64e12aa57f19ad959f6bc1e7eadd7fcfe9f06b36a23a97d57857c312  profile/airootfs/usr/share/heiss/grub-theme/select_se.png
 5399b32f64e12aa57f19ad959f6bc1e7eadd7fcfe9f06b36a23a97d57857c312  profile/airootfs/usr/share/heiss/grub-theme/select_sw.png
 5399b32f64e12aa57f19ad959f6bc1e7eadd7fcfe9f06b36a23a97d57857c312  profile/airootfs/usr/share/heiss/grub-theme/select_w.png
-41ddc00da42e5331dace74bad67d40d4c75ef272497f0350a1e160d60c65472c  profile/airootfs/usr/share/heiss/grub-theme/theme.txt
+bd9be291f917e6141c43303f302c65b7ab70d1ccbb36e2fbdf890c08ccb46723  profile/airootfs/usr/share/heiss/grub-theme/theme.txt
 fca4af61c7e82da7614307b6c8de7aa335504e493e1bf763adf2d85cda55f3c9  profile/airootfs/usr/share/heiss/heiss-glyph-sand.svg
 9ab4598cd6c3468687a010f354a12a2f79673278312bca6d64679af3d36b83da  profile/airootfs/usr/share/heiss/lsb-release
 9290cac35293296a98a45cc16f1d9a6b6ed7976fd35f7290247118fd69a20ce1  profile/airootfs/usr/share/heiss/os-release

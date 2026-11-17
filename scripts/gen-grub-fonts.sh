@@ -4,8 +4,8 @@
 # GRUB fonts (.pf2) are 1-bit bitmaps: there is no anti-aliasing. Inter Regular has hairline strokes (about 1.5
 # px at 20 px) that break into gaps and steps in 1-bit, which is the "jagged, holey" text seen in the first real
 # install. Inter Medium keeps its strokes at least 2 px wide at these sizes and renders solid (checked by
-# rendering the glyph bitmaps of the .pf2 files). 16 px is for labels and the terminal, 20 and 24 px for menu
-# entries; the theme picks the size.
+# rendering the glyph bitmaps of the .pf2 files). 16 px is for the footer label and the terminal, 24 px for the
+# menu entries (20 px was tried, and renders solid too, but the theme does not use it).
 #
 #   scripts/gen-grub-fonts.sh           write the three fonts into the theme directory
 #   scripts/gen-grub-fonts.sh --check   exit 1 when the committed fonts differ from a fresh build
@@ -21,7 +21,7 @@ command -v grub-mkfont >/dev/null || { echo "grub-mkfont not found (package grub
 work="$(mktemp -d "${TMPDIR:-/var/tmp}/heiss-grub-fonts.XXXXXX")"
 trap '[ -n "${work:-}" ] && [ -d "$work" ] && rm -rf -- "$work"' EXIT
 bad=0
-for size in 16 20 24; do
+for size in 16 24; do
   name="inter-medium-$size.pf2"
   grub-mkfont -s "$size" -n "Inter Medium" -o "$work/$name" "$src" 2>/dev/null
   if [ "${1:-}" = "--check" ]; then
