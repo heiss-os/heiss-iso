@@ -34,7 +34,8 @@ APP_DIRS = ("/usr/local/share/applications", "/usr/share/applications")
 HELPER_FILES = ("/usr/share/polkit-1/actions/org.heiss.helper.policy",
                 "/usr/share/dbus-1/system.d/org.heiss.Helper1.conf",
                 "/usr/share/dbus-1/system-services/org.heiss.Helper1.service")
-LIVE_PACKAGES = ("archiso", "mkinitcpio-archiso", "mkinitcpio-nfs-utils", "cloud-init", "livecd-sounds", "archinstall")
+LIVE_PACKAGES = ("archiso", "mkinitcpio-archiso", "mkinitcpio-nfs-utils", "cloud-init", "livecd-sounds", "archinstall",
+                 "arch-install-scripts", "refind")
 PROFILES_DIR = "/usr/share/heiss/profiles"
 ETC_PROFILE = "/etc/heiss/profile.toml"
 STATE_FILE = "/var/lib/heiss/state.json"
