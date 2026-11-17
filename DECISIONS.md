@@ -556,6 +556,7 @@ Format: date, what, why. Newest at the bottom.
 
 ## 2026-11-17 (Round 25: shellcheck findings in the two Tier A scripts)
 
+- **Supersedes the PR F decision "Two Tier A scripts are skipped" (2026-11-17, shellcheck is blocking):** the owner approved the two fixes, so the skip is removed. The PR F test that required a non-empty skip list is replaced by `test_no_tier_a_script_is_skipped_any_more`.
 - **Fixed, with the owner's approval of this item (label `design-approved`):** `profile/airootfs/usr/local/bin/heiss-setup-dock.sh` (SC2034: the counter of the 60 s wait loop is now `_`, behaviour unchanged) and `scripts/heiss-calamares-build.sh` (SC2155: `MAKEFLAGS="-j$(nproc)"` and `export MAKEFLAGS` on two lines, so a failing `nproc` is not masked; same value; one edge case differs: if `nproc` failed, the old line carried on with `MAKEFLAGS=-j` (unlimited jobs), the new one stops the script under `set -e`, which is the intended outcome). `docs/design/protected.sha256` regenerated (2 lines).
 - **The skip list of `scripts/check-shell.sh` is now empty**, so shellcheck (warnings and errors) covers every shell script of the repository. A new entry must be a Tier A file with a written reason; a test checks that.
 - **Not verified:** the dock script in a running Plasma session and the Calamares build script on the build VM (no VM here; only `bash -n`, shellcheck 0.11 from a PyPI build via `scripts/check-shell.sh`: 22 scripts, 0 skipped, ok, and the unit tests were run; CI runs the Arch package of shellcheck). See the Round 25 lines of the FINAL VM TEST LIST.

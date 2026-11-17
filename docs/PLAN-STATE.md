@@ -359,9 +359,9 @@ Added in round 23 PR 5. Each line is run in part 3 of `heiss-task-28.md` (read-o
 - [ ] Audit on a UEFI-built image (the 2026-11-17 image was inspected, UEFI boot files included only as files): same command; expect the boot-menu line `OK    boot menus (loader, GRUB, syslinux): no Arch in titles` and no `boot files could not be read` WARN.
 - [ ] `branding-auditor`: in a new session on this repo with an ISO newer than the last change to `profile/` and `packages/`, ask for the agent; expect it to run `scripts/audit-image.sh`, repeat the OK/WARN/FAIL lines and the counts line, say the 2 WARNs are expected, end with a `Verdict:` line and leave no `/var/tmp/heiss-audit.*` behind; with an older ISO it says first that the image is older than the PR.
 
-### Round 25, shellcheck findings in the Tier A scripts
-- [ ] After the next rebuild, a fresh live session: the Dock appears within about a minute of the desktop (`heiss-setup-dock.sh` wait loop changed from `i` to `_`, nothing else); Judge by looking at the screen and say if the Dock is missing.
-- [ ] The next `bash scripts/heiss-calamares-build.sh` on the build VM runs as before (`MAKEFLAGS` is still `-jN`; it prints the pinned AUR commit check and ends with the package in `~/localrepo`).
+### Round 25, shellcheck in the Tier A scripts
+- [ ] After the next rebuild, fresh live session, wait 60 s after the desktop appears, then in Konsole `cat ~/.cache/heiss-dock.log`; expect a `start: live=true` line followed by `panel is already ours (layout script), nothing to build` (or `done, marker set`) and no `giving up` and no `FAILED` line (only the wait-loop counter of `heiss-setup-dock.sh` changed from `i` to `_`); the Dock shows Dolphin, Konsole, System Settings, Firefox.
+- [ ] On the build VM `bash scripts/heiss-calamares-build.sh`; expect the line `==> Что будет собираться:`, build lines with `-j<number of cores>` (for example `make -j4`), and `ls ~/localrepo/calamares-*.pkg.tar.zst` listing the package.
 
 ## Round 20, item 3a (2026-11-11): hardware choices applied
 
@@ -518,4 +518,4 @@ Branch `build/dev-quality-round25`. Tests: `tests/test_dev_quality.py`, `tests/t
 
 ## Round 25, shellcheck findings in the Tier A scripts (2026-11-17)
 
-Branch `fix/shellcheck-tier-a-round25`. Tests: `tests/test_dev_quality.py`. Not verified: see the FINAL VM TEST LIST.
+Branch `fix/shellcheck-tier-a-round25`. Fixed SC2034 in `heiss-setup-dock.sh` and SC2155 in `heiss-calamares-build.sh` (owner-approved Tier A items); the shellcheck skip list is empty. Tests: `tests/test_dev_quality.py`. Not verified: see the FINAL VM TEST LIST.
