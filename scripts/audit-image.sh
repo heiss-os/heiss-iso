@@ -8,7 +8,8 @@
 # Exit status: 0 no FAIL, 1 at least one FAIL, 2 wrong usage or a tool is missing.
 #
 # The work directory is a normal directory (default /var/tmp, never tmpfs: the squashfs alone is about 2 GB).
-# Set AUDIT_TMP to use another parent directory. It is removed at the end only if it is a real directory
+# A SIGKILL, an out-of-memory kill or a power loss cannot run the cleanup: delete a left-over /var/tmp/heiss-audit.*
+# by hand (about 2.2 GB). Set AUDIT_TMP to use another parent directory. It is removed at the end only if it is a real directory
 # of the form <parent>/heiss-audit.XXXXXX that this script created (see cleanup).
 set -uo pipefail
 
@@ -17,13 +18,15 @@ ok()   { printf 'OK    %s\n' "$*"; PASS=$((PASS + 1)); }
 warn() { printf 'WARN  %s\n' "$*"; WARN=$((WARN + 1)); }
 fail() { printf 'FAIL  %s\n' "$*"; FAIL=$((FAIL + 1)); }
 info() { printf 'INFO  %s\n' "$*"; }
-usage() { sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'; exit 2; }
+usage() { sed -n '2,8p' "$0" | sed 's/^# \{0,1\}//'; exit 2; }
 
 ISO="" ROOT="" BOOT=""
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --root) ROOT="${2:-}"; shift 2 ;;
-        --boot) BOOT="${2:-}"; shift 2 ;;
+        --root|--boot)
+            [[ $# -ge 2 && -n $2 ]] || { echo "$1 needs a directory" >&2; usage; }
+            if [[ $1 == --root ]]; then ROOT="$2"; else BOOT="$2"; fi
+            shift 2 ;;
         -h|--help) usage ;;
         -*) echo "unknown option: $1" >&2; usage ;;
         *) [[ -z $ISO ]] || usage; ISO="$1"; shift ;;
@@ -70,6 +73,7 @@ if [[ -n $ISO ]]; then
     [[ -d $ROOT/etc ]] || { fail "could not unpack /etc from the squashfs"; exit 1; }
 fi
 [[ -d $ROOT ]] || { echo "no such directory: $ROOT" >&2; exit 2; }
+[[ -d $ROOT/etc && ! -L $ROOT/etc ]] || { echo "$ROOT has no real etc directory: not an unpacked image" >&2; exit 2; }
 
 # A hostile image could plant a symlink to a host file where a check reads: such a path is never followed.
 r() {
@@ -77,12 +81,11 @@ r() {
 }
 mode() { stat -c %a -- "$1" 2>/dev/null; }
 
-for f in etc usr/lib/os-release etc/issue etc/motd etc/shadow etc/gshadow etc/pacman.conf etc/grub.d/41_heiss_safe \
+for f in usr/lib/os-release etc/issue etc/motd etc/shadow etc/gshadow etc/pacman.conf etc/grub.d/41_heiss_safe \
          etc/NetworkManager/conf.d/20-connectivity.conf etc/calamares/settings.conf etc/calamares/modules/tracking.conf \
          usr/share/pacman/keyrings/heiss.gpg usr/share/pacman/keyrings/heiss-trusted usr/local/bin/heiss-cleanup.sh; do
     [[ -L $ROOT/$f ]] && fail "$f is a symbolic link in the image (not followed)"
 done
-[[ -L $ROOT/etc ]] && exit 1
 
 # ---- identity: nothing a user sees may say Arch Linux --------------------------------------------------------
 section() { printf '\n== %s\n' "$*"; }

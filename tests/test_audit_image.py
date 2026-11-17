@@ -102,6 +102,13 @@ class Audit(unittest.TestCase):
         self.assertEqual(self.run_audit("--root", os.path.join(self.d, "missing")).returncode, 2)
         self.assertEqual(self.run_audit("/nonexistent.iso").returncode, 2)
         self.assertEqual(self.run_audit("a.iso", "--root", self.root).returncode, 2)
+        for opt in ("--root", "--boot"):                       # an option without its value must not loop forever
+            r = subprocess.run(["bash", SCRIPT, opt], capture_output=True, text=True, timeout=20)
+            self.assertEqual(r.returncode, 2, opt)
+        os.symlink("/etc", os.path.join(self.d, "linked"))
+        self.assertEqual(self.run_audit("--root", os.path.join(self.d, "linked")).returncode, 2)
+        os.makedirs(os.path.join(self.d, "empty"))
+        self.assertEqual(self.run_audit("--root", os.path.join(self.d, "empty")).returncode, 2)
 
     def test_work_directory_must_not_be_memory(self):
         if shutil.which("unsquashfs") is None or shutil.which("bsdtar") is None:
