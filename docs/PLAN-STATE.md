@@ -10,7 +10,7 @@ See the phase and round sections below. Phases 0 to 7 are merged; round 23 (pre-
 
 ## In progress
 
-- Round 23 PR 5: documents and small leftovers (this PR). Then part 3 of `heiss-task-28.md`: the first ISO build (the owner runs the commands, the assistant reads the log and inspects the image without booting it).
+- Round 23 PR 5: documents and small leftovers (this PR). Then part 3 of `heiss-task-28.md`: the first ISO build (the owner runs the commands; the log is read and the image is inspected without booting it).
 
 ## Next
 
@@ -267,13 +267,13 @@ Owner's rule (2026-11-11): no ISO build and no VM check until the whole master p
 - [ ] Safe-graphics entry with a separate `/boot` (round 23 PR 4): in a VM install with Calamares using manual partitioning with `/boot` on its own partition (ext4, 1 GiB) and `/` on another / expect `findmnt -no SOURCE /boot` to print the separate partition (not the root device), then after the first boot `sudo grub-mkconfig -o /boot/grub/grub.cfg` to print "Found safe graphics kernel: /boot/vmlinuz-linux", `grep -A8 'safe graphics' /boot/grub/grub.cfg` to show `linux	/vmlinuz-linux root=UUID=... nomodeset ...` and `initrd	/initramfs-linux.img` (no `/boot/` prefix, no `//`), and the entry to boot to a login with `cat /proc/cmdline` containing `nomodeset`. Run it once in BIOS mode (the VirtualBox default); UEFI with a separate `/boot` stays unverified until a UEFI VM. The test uses a stub that returns the empty string; a real `grub-mkrelpath` was never run.
 
 ### Static checks on the built image (no boot, no root: unpack the squashfs into a `mktemp` directory)
-Added in round 23 PR 5. Each line is run by the assistant in part 3 of `heiss-task-28.md` and then moved to "checked on the built image"; what a static look cannot show stays an item for the VM run above.
+Added in round 23 PR 5. Each line is run in part 3 of `heiss-task-28.md` (read-only inspection of the unpacked image) and then ticked here with the evidence; what a static look cannot show stays an item for the VM run above.
 - [ ] ISO size: `ls -l out/*.iso` / record the number (the 2.55 GiB figure predates the Heiss packages, `pyside6` and `inter-font`).
 - [ ] Branding: `grep -rIil arch <unpacked>/etc/os-release <unpacked>/etc/issue <unpacked>/etc/motd <unpacked>/usr/share/heiss/os-release` and the boot menu files (`syslinux/`, `loader/`, `efiboot`) / expect no Arch name or logo in user-visible text (package names and URLs of the Arch repositories excepted); `usr/lib/os-release` carries `NAME="Heiss OS"` (the pacman hook ran).
 - [ ] Repository and keyring: `grep -n '^\[' <unpacked>/etc/pacman.conf` / the live image has `[core]`, `[extra]` and `[heiss-local]` (the `[heiss]` section is written into the INSTALLED system by `heiss-cleanup.sh`, so it is not expected here: read lines 83 to 130 of that script instead, and see the VM item for the installed system); `ls <unpacked>/usr/share/pacman/keyrings/` / expect `heiss.gpg`, `heiss-trusted`, `heiss-revoked`.
 - [ ] Root locked: `grep '^root:' <unpacked>/etc/shadow` / the live image keeps archiso's own state; the check that matters is `heiss-cleanup.sh` (VM item "Cleanup fails closed" above); here only read that the script is present and executable.
 - [ ] Units: `find <unpacked>/etc/systemd -type l` compared with `core/tests/test_live_units.py` / expect no `sshd`, `cloud-init`, `reflector`, `pkgstats` or timer that calls out.
-- [ ] Permissions: `stat -c '%a %U:%G %n'` on `etc/shadow` and `etc/gshadow` (expect `400 root:root`), `usr/lib/systemd/system/heiss-helper.service`, `usr/share/dbus-1/system.d/org.heiss.Helper1.conf`, `usr/share/polkit-1/actions/org.heiss.helper.policy` (these three are data files: expect `644 root:root`, and no file under them writable by group or others), `usr/local/bin/heiss-*.sh` (expect `755`), `etc/sudoers.d/g_wheel` (`440`).
+- [ ] Permissions: `stat -c '%a %U:%G %n'` on `etc/shadow` and `etc/gshadow` (expect `400 root:root`), `usr/lib/systemd/system/heiss-helper.service`, `usr/share/dbus-1/system.d/org.heiss.Helper1.conf`, `usr/share/polkit-1/actions/org.heiss.helper.policy` (these three are data files: expect `644 root:root`, and no file under them writable by group or others), `usr/local/bin/heiss-cleanup.sh`, `heiss-theme-sync.sh`, `heiss-boot-branding.sh`, `heiss-start-installer.sh`, `heiss-open-link` (expect `755`; `heiss-set-wallpaper.sh` and `heiss-setup-dock.sh` have no `file_permissions` entry and show `644`, which is fine because their autostart entries run them as `sh /usr/local/bin/...`: record it), `etc/sudoers.d/g_wheel` (`440`).
 - [ ] Safe graphics: `stat -c '%a %n' <unpacked>/etc/grub.d/41_heiss_safe` / expect `755`.
 
 ### Tooling (not a product phase)
