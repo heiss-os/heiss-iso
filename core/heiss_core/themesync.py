@@ -31,6 +31,7 @@ CHECKED_KEYS = {("kdeglobals", "General", "ColorScheme"), ("kdeglobals", "Icons"
                 ("ksplashrc", "KSplash", "Theme")}
 WALLPAPER = {"dark": "Heiss-Everyday", "light": "Heiss-Everyday-Light"}   # plain wallpaper packages, one per theme
 WALLPAPER_DIR = "/usr/share/wallpapers"
+WALLPAPER_URL = "file://" + WALLPAPER_DIR + "/%s/"   # how Plasma stores a wallpaper package; a bare id does not resolve
 FILL_MODE_CROP = "2"        # Image.PreserveAspectCrop: always covers the screen, never letterboxed
 APPLETSRC = ".config/plasma-org.kde.plasma.desktop-appletsrc"
 LOCKSCREEN = ("kscreenlockerrc", ("Greeter", "Wallpaper", "org.kde.image", "General"), "Image")
@@ -251,16 +252,19 @@ def target_wallpaper(env, theme, dry):
         return Result("wallpaper", "skipped", "wallpaper package %s is missing" % pid)
     ours = set(WALLPAPER.values())
     text = env.read_text(os.path.join(env.home, APPLETSRC)) or ""
-    images = [_wallpaper_id(i) for i in _desktop_images(text)]
+    raw_images = [i.strip() for i in _desktop_images(text)]
+    images = [_wallpaper_id(i) for i in raw_images]
+    want = WALLPAPER_URL % pid
     lock_file, lock_groups, lock_key = LOCKSCREEN
-    lock_now = env.kde_read_nested(lock_file, lock_groups, lock_key)
-    lock_now = _wallpaper_id(lock_now) if lock_now else lock_now
+    lock_raw = env.kde_read_nested(lock_file, lock_groups, lock_key)
+    lock_now = _wallpaper_id(lock_raw) if lock_raw else lock_raw
     desktop_custom = any(i not in ours for i in images)
     lock_custom = lock_now not in (None, "") and lock_now not in ours
     changes = []
-    if not desktop_custom and (not images or any(i != pid for i in images)):
+    # only the URL form counts as in place: a bare id (what the first image wrote) is rewritten
+    if not desktop_custom and (not raw_images or any(i != want for i in raw_images)):
         changes.append("desktop")
-    if not lock_custom and lock_now != pid:
+    if not lock_custom and lock_raw != want:
         changes.append("lock screen")
     custom = [n for n, c in (("desktop", desktop_custom), ("lock screen", lock_custom)) if c]
     note = " (custom %s wallpaper left alone)" % " and ".join(custom) if custom else ""
@@ -276,10 +280,10 @@ for (var d of desktops()) {
   d.currentConfigGroup = ['Wallpaper', 'org.kde.image', 'General'];
   d.writeConfig('Image', '%s');
   d.writeConfig('FillMode', %s);
-}""" % (pid, FILL_MODE_CROP)
+}""" % (WALLPAPER_URL % pid, FILL_MODE_CROP)
         if not env.plasma_eval(script):
             return Result("wallpaper", "failed", "plasmashell did not accept the wallpaper script (is it running?)")
-    if "lock screen" in changes and not env.kde_write(lock_file, lock_groups, lock_key, pid):
+    if "lock screen" in changes and not env.kde_write(lock_file, lock_groups, lock_key, WALLPAPER_URL % pid):
         return Result("wallpaper", "failed", "could not write the lock screen wallpaper")
     return Result("wallpaper", "changed", "set %s on the %s%s" % (pid, " and ".join(changes), note))
 

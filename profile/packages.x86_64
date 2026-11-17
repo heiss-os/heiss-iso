@@ -82,7 +82,7 @@ udftools
 usb_modeswitch
 usbutils
 vim
-virtualbox-guest-utils-nox
+virtualbox-guest-utils
 wireless-regdb
 wpa_supplicant
 xdg-utils

@@ -127,9 +127,9 @@ class Sync(unittest.TestCase):
                          {"launcher-icon": "ok", "wallpaper": "changed", "konsole": "changed", "plasma-consistency": "ok",
                           "gtk": "ok", "portal": "ok", "kitty": "ok"})
         self.assertIn("heiss-launcher-sand'", env.evals[0])
-        self.assertIn("'Heiss-Everyday'", env.evals[1])
+        self.assertIn("'file:///usr/share/wallpapers/Heiss-Everyday/'", env.evals[1])     # a package URL, not a bare id
         self.assertIn("FillMode', 2", env.evals[1])
-        self.assertEqual(env.writes, [ts.LOCKSCREEN[:1] + (ts.LOCKSCREEN[1], ts.LOCKSCREEN[2], "Heiss-Everyday"),
+        self.assertEqual(env.writes, [ts.LOCKSCREEN[:1] + (ts.LOCKSCREEN[1], ts.LOCKSCREEN[2], "file:///usr/share/wallpapers/Heiss-Everyday/"),
                                       ("konsolerc", "Desktop Entry", "DefaultProfile", "Heiss-Dark.profile")])
 
     def test_light_uses_light_values(self):
@@ -137,9 +137,9 @@ class Sync(unittest.TestCase):
         results, rc, _ = run(env)
         self.assertEqual(rc, 0)
         self.assertIn("heiss-launcher-sand-light", env.evals[0])
-        self.assertEqual(env.writes[0][3], "Heiss-Everyday-Light")      # lock screen
+        self.assertEqual(env.writes[0][3], "file:///usr/share/wallpapers/Heiss-Everyday-Light/")      # lock screen
         self.assertEqual(env.writes[-1][3], "Heiss-Light.profile")
-        self.assertIn("'Heiss-Everyday-Light'", env.evals[1])
+        self.assertIn("'file:///usr/share/wallpapers/Heiss-Everyday-Light/'", env.evals[1])
         self.assertEqual(results["portal"].status, "ok")
 
     def test_idempotent_second_run_changes_nothing(self):
@@ -152,8 +152,8 @@ class Sync(unittest.TestCase):
 
     def test_switch_changes_scheme_wallpaper_and_konsole_together_and_back(self):
         env = FakeEnv(scheme="HeissLight", kde=lnf_kde("light"), gsettings="default", portal=2,
-                      appletsrc="[C][1][Wallpaper][org.kde.image][General]\nImage=Heiss-Everyday-Light\n")
-        env.kde[ts.LOCKSCREEN[:1] + (ts.LOCKSCREEN[1], ts.LOCKSCREEN[2])] = "Heiss-Everyday-Light"
+                      appletsrc="[C][1][Wallpaper][org.kde.image][General]\nImage=file:///usr/share/wallpapers/Heiss-Everyday-Light/\n")
+        env.kde[ts.LOCKSCREEN[:1] + (ts.LOCKSCREEN[1], ts.LOCKSCREEN[2])] = "file:///usr/share/wallpapers/Heiss-Everyday-Light/"
         r, _, _ = run(env)
         self.assertEqual(r["wallpaper"].status, "ok")       # already light: nothing to do
         env.kde[("kdeglobals", "General", "ColorScheme")] = "HeissDark"
@@ -161,13 +161,13 @@ class Sync(unittest.TestCase):
         env.gs, env.portal = "prefer-dark", 1
         r, rc, _ = run(env)
         self.assertEqual((rc, r["wallpaper"].status, r["konsole"].status), (0, "changed", "changed"))
-        self.assertIn("'Heiss-Everyday'", env.evals[-1])
-        self.assertEqual(env.kde[ts.LOCKSCREEN[:1] + (ts.LOCKSCREEN[1], ts.LOCKSCREEN[2])], "Heiss-Everyday")
+        self.assertIn("'file:///usr/share/wallpapers/Heiss-Everyday/'", env.evals[-1])
+        self.assertEqual(env.kde[ts.LOCKSCREEN[:1] + (ts.LOCKSCREEN[1], ts.LOCKSCREEN[2])], "file:///usr/share/wallpapers/Heiss-Everyday/")
         self.assertEqual(env.kde[("konsolerc", "Desktop Entry", "DefaultProfile")], "Heiss-Dark.profile")
 
     def test_sync_is_idempotent_for_wallpaper_too(self):
-        env = FakeEnv(kde=lnf_kde("dark"), appletsrc="[C][1][Wallpaper][org.kde.image][General]\nImage=Heiss-Everyday\n")
-        env.kde[ts.LOCKSCREEN[:1] + (ts.LOCKSCREEN[1], ts.LOCKSCREEN[2])] = "Heiss-Everyday"
+        env = FakeEnv(kde=lnf_kde("dark"), appletsrc="[C][1][Wallpaper][org.kde.image][General]\nImage=file:///usr/share/wallpapers/Heiss-Everyday/\n")
+        env.kde[ts.LOCKSCREEN[:1] + (ts.LOCKSCREEN[1], ts.LOCKSCREEN[2])] = "file:///usr/share/wallpapers/Heiss-Everyday/"
         run(env)
         env.writes.clear()
         env.evals.clear()
@@ -183,6 +183,19 @@ class Sync(unittest.TestCase):
         self.assertEqual(r["wallpaper"].status, "skipped")
         self.assertFalse([e for e in env.evals if "writeConfig('Image'" in e])
         self.assertFalse([w for w in env.writes if w[0] == "kscreenlockerrc"])
+
+    def test_a_bare_id_from_the_first_image_is_rewritten_to_the_url(self):
+        lock = ts.LOCKSCREEN[:1] + (ts.LOCKSCREEN[1], ts.LOCKSCREEN[2])
+        env = FakeEnv(kde=lnf_kde("dark"), appletsrc="[C][1][Wallpaper][org.kde.image][General]\nImage=Heiss-Everyday\n")
+        env.kde[lock] = "Heiss-Everyday"
+        r, _, _ = run(env)
+        self.assertEqual(r["wallpaper"].status, "changed")
+        self.assertIn("'file:///usr/share/wallpapers/Heiss-Everyday/'", env.evals[1])
+        self.assertEqual(env.kde[lock], "file:///usr/share/wallpapers/Heiss-Everyday/")
+        env.evals.clear()
+        env.appletsrc = "[C][1][Wallpaper][org.kde.image][General]\nImage=file:///usr/share/wallpapers/Heiss-Everyday/\n"
+        r, _, _ = run(env)
+        self.assertEqual(r["wallpaper"].status, "ok")
 
     def test_wallpaper_dry_run_and_plasma_refusal(self):
         env = FakeEnv(kde=lnf_kde("dark"))
