@@ -7,7 +7,7 @@
 set -u
 # ---- switches (environment overrides) ----------------------------------------------------
 HEISS_GRUB_THEME="${HEISS_GRUB_THEME:-1}"            # 0: leave GRUB on its default text menu
-HEISS_GRUB_GFXMODE="${HEISS_GRUB_GFXMODE:-1920x1080,1280x800,1024x768,auto}"
+HEISS_GRUB_GFXMODE="${HEISS_GRUB_GFXMODE:-auto}"   # the firmware's own best mode (was a fixed list)
 HEISS_GRUB_SELECT_BAR="${HEISS_GRUB_SELECT_BAR:-1}"  # 0: no selection bar, only text color
 HEISS_GRUB_OVERRIDE_NAME="${HEISS_GRUB_OVERRIDE_NAME:-0}"  # see the note near the end
 LOGFILE=/var/log/heiss-boot-branding.log
@@ -43,6 +43,10 @@ if [ -f "$G" ]; then
   setvar GRUB_DISTRIBUTOR '"Heiss OS"'
   setvar GRUB_CMDLINE_LINUX_DEFAULT '"loglevel=3 quiet splash"'
   setvar GRUB_TIMEOUT_STYLE menu
+  # GRUB 2.14's /etc/grub.d/31_efi_bootnext lists every firmware boot entry as "<name> (EFI BootNext)": the
+  # installer CD-ROM, the disk, "UiApp" and our own firmware entry showed up as menu lines (first real install).
+  # "UEFI Firmware Settings" (30_uefi-firmware) stays; this switch is documented in the script itself.
+  setvar GRUB_DISABLE_BOOTNEXT true
   # 3 s, unless other operating systems are found (then 5 s and os-prober on)
   if command -v os-prober >/dev/null && [ -n "$(os-prober 2>/dev/null)" ]; then
     setvar GRUB_TIMEOUT 5
@@ -52,6 +56,7 @@ if [ -f "$G" ]; then
   fi
   if [ "$HEISS_GRUB_THEME" != 0 ] && [ -d /usr/share/heiss/grub-theme ]; then
     install -d /boot/grub/themes/heiss
+    rm -f /boot/grub/themes/heiss/inter-regular-*.pf2   # fonts of the earlier theme (a re-run on an existing install)
     cp -a /usr/share/heiss/grub-theme/. /boot/grub/themes/heiss/
     T=/boot/grub/themes/heiss/theme.txt
     if [ "$HEISS_GRUB_SELECT_BAR" = 0 ]; then
@@ -73,7 +78,7 @@ if [ -f "$G" ]; then
     sed -i 's/OS="${GRUB_DISTRIBUTOR} Linux"/OS="${GRUB_DISTRIBUTOR}"/' /etc/grub.d/10_linux
   fi
   log "wrote /etc/default/grub:"
-  grep -E '^(GRUB_(DISTRIBUTOR|TIMEOUT|TIMEOUT_STYLE|THEME|TERMINAL|TERMINAL_INPUT|TERMINAL_OUTPUT|GFXMODE|GFXPAYLOAD_LINUX|CMDLINE_LINUX_DEFAULT))=' "$G" | while read -r l; do log "  $l"; done
+  grep -E '^(GRUB_(DISTRIBUTOR|DISABLE_BOOTNEXT|TIMEOUT|TIMEOUT_STYLE|THEME|TERMINAL|TERMINAL_INPUT|TERMINAL_OUTPUT|GFXMODE|GFXPAYLOAD_LINUX|CMDLINE_LINUX_DEFAULT))=' "$G" | while read -r l; do log "  $l"; done
   [ -d /boot/grub/themes/heiss ] && { log "theme dir:"; ls /boot/grub/themes/heiss | while read -r l; do log "  $l"; done; }
 fi
 
