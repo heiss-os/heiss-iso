@@ -17,7 +17,7 @@ jobs:
     steps:
       - name: Install tools
         run: pacman -Syu --noconfirm shellcheck git
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Warnings and errors fail the job (notes are off in .shellcheckrc, Tier A skips are listed in the script)
@@ -32,7 +32,7 @@ jobs:
     steps:
       - name: Install tools
         run: pacman -Syu --noconfirm ruff mypy git
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: ruff (syntax errors, undefined names, unused imports and variables; ruff.toml)
@@ -48,7 +48,7 @@ jobs:
     steps:
       - name: Install tools
         run: pacman -Syu --noconfirm base-devel git python namcap
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Build the packages and run namcap on every PKGBUILD and package
@@ -67,7 +67,7 @@ jobs:
     steps:
       - name: Install tools
         run: pacman -Syu --noconfirm python pyside6 inter-font ttf-jetbrains-mono git
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Render every wizard and Control Center page offscreen (as an unprivileged user because the tool refuses root, fixture data, no network)

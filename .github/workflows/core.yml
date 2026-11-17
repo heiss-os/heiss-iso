@@ -13,7 +13,7 @@ jobs:
     name: heiss-core unit tests and manifest validation
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - run: python3 -m unittest discover -s core/tests -v
@@ -36,7 +36,7 @@ jobs:
     steps:
       - name: Install tools
         run: pacman -Syu --noconfirm python git
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - run: python3 scripts/check-packages.py
@@ -82,7 +82,7 @@ jobs:
     steps:
       - name: Install tools
         run: pacman -Syu --noconfirm qt6-declarative git
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: qmllint finds no error (a duplicate id keeps the whole window from loading)
@@ -101,7 +101,7 @@ jobs:
     steps:
       - name: Install tools
         run: pacman -Syu --noconfirm base-devel git python
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Build all packages with the build script as an unprivileged user
@@ -148,7 +148,7 @@ jobs:
     steps:
       - name: Install tools
         run: pacman -Syu --noconfirm python python-gobject dbus git
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Integration test (private bus, fake polkit and runner)
@@ -163,7 +163,7 @@ jobs:
     steps:
       - name: Install tools
         run: pacman -Syu --noconfirm python git zstd tar
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Download the Base apps and check their desktop files
