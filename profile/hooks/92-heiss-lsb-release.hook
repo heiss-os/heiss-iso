@@ -1,0 +1,10 @@
+[Trigger]
+Operation = Install
+Operation = Upgrade
+Type = Package
+Target = lsb-release
+
+[Action]
+Description = Restoring Heiss OS branding in lsb-release...
+When = PostTransaction
+Exec = /usr/bin/install -Dm644 /usr/share/heiss/lsb-release /etc/lsb-release
