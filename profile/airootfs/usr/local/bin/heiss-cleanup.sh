@@ -42,6 +42,7 @@ log "live-only packages (releng leftovers)"
 # Removed one by one: a package that other software needs just fails and is kept.
 LIVE_PKGS=(mkinitcpio-archiso mkinitcpio-nfs-utils cloud-init livecd-sounds archinstall
            clonezilla darkhttpd nbd nfs-utils syslinux memtest86+ memtest86+-efi edk2-shell
+           arch-install-scripts refind
            espeakup brltty gpm)
 # Guest tools: keep only the ones that match the hypervisor we are installed on.
 virt=$(systemd-detect-virt --vm 2>/dev/null || true)

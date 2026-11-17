@@ -221,6 +221,7 @@ class Checks(unittest.TestCase):
 
     def test_live_without_root_is_warn_and_live_session_is_warn(self):
         r = self.items(healthy(denied=["/etc/shadow"]))["live-leftovers"]
+        self.assertIn("sudo heiss check", r.detail)           # tells the user how to include the root-lock item
         self.assertEqual(r.status, ck.WARN)
         self.assertIn("root", r.detail)
         r = self.items(healthy(files={"/run/archiso/bootmnt": ""}))["live-leftovers"]

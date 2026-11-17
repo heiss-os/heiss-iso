@@ -284,7 +284,7 @@ def check_live(env):
         shadow = env.read("/etc/shadow")
     except PermissionError:
         shadow = None
-        note = "root lock not judged (run as root to read /etc/shadow)"
+        note = "root lock not judged (/etc/shadow is readable only by root: run `sudo heiss check` to include it)"
     if shadow is not None:
         root = [l.split(":") for l in shadow.splitlines() if l.startswith("root:")]
         if not root or not root[0][1].startswith(("!", "*")):
