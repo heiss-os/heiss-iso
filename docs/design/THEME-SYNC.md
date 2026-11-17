@@ -34,6 +34,8 @@ It does not write the color scheme, icons, widget style, Plasma style or splash 
 
 ## Not verified
 
-Everything runtime: that the path unit fires on a switch, that `busctl` can reach plasmashell, kded and the portal as written, the D-Bus names used for running Konsole sessions (`org.kde.konsole-<pid>`, `/Sessions/<n>`, `Session.setProfile`), that the profile name is the one `setProfile` expects, that kitty finds the `*.auto.conf` files in `/etc/xdg/kitty` and applies them, and Plasma's automatic light/dark switching. The logic is unit tested against a scripted desktop only.
+Everything runtime, including the `wallpaper` target (plasmashell `evaluateScript`, the `kscreenlockerrc` write, reading `plasma-org.kde.plasma.desktop-appletsrc` to decide whether the wallpaper is ours) and the `first-login` step (`plasma-apply-lookandfeel`, mark file): that the path unit fires on a switch, that `busctl` can reach plasmashell, kded and the portal as written, the D-Bus names used for running Konsole sessions (`org.kde.konsole-<pid>`, `/Sessions/<n>`, `Session.setProfile`), that the profile name is the one `setProfile` expects, that kitty finds the `*.auto.conf` files in `/etc/xdg/kitty` and applies them, and Plasma's automatic light/dark switching. The logic is unit tested against a scripted desktop only.
 
 Test in the VM: switch Heiss Dark -> Heiss Light in System Settings, then `journalctl --user -u heiss-theme-sync --no-pager | tail -20` and `cat ~/.local/state/heiss/theme-sync.log`; open a new Konsole window and one that was already open (the colors must match the theme); repeat Light -> Dark. Send the log and screenshots.
+
+After Dark -> Light also check that the desktop and lock screen wallpaper changed and `grep -E 'wallpaper|first-login' ~/.local/state/heiss/theme-sync.log` shows `theme-sync: wallpaper: changed`, then `...: ok` on a repeat run.

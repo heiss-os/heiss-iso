@@ -303,7 +303,10 @@ Added in round 23 PR 5. Each line is run in part 3 of `heiss-task-28.md` (read-o
 - [ ] Switch Dark to Light and back: wallpaper (desktop and lock screen), Konsole (new and open window) and GTK app follow; `tail ~/.local/state/heiss/theme-sync.log` shows `wallpaper: changed`, then `ok` on a repeat run.
 - [ ] Wallpaper covers the screen at 1280x720, 1920x1080, 2560x1440 (no giant crop); the light one looks like the dark one in a light palette.
 - [ ] Login and logout splash shows the Heiss glyph, no KDE text (light theme: light background); lock screen and logout screen have no KDE logo.
-- [ ] If a user started on Breeze: `grep first-login ~/.local/state/heiss/theme-sync.log` shows the one-time switch to Heiss Dark.
+- [ ] Force a Breeze start: `rm ~/.local/state/heiss/theme-first-login; plasma-apply-colorscheme BreezeDark; heiss theme sync`; expect `grep first-login ~/.local/state/heiss/theme-sync.log` shows `first-login: changed`, `kreadconfig6 --file kdeglobals --group General --key ColorScheme` prints `HeissDark`, the mark file exists; a second `heiss theme sync` adds no first-login line.
+- [ ] Custom scheme kept: `rm ~/.local/state/heiss/theme-first-login; plasma-apply-colorscheme Oxygen; heiss theme sync`; expect no `first-login: changed` line, the scheme stays Oxygen, the mark file is created (then switch back to Heiss Dark).
+- [ ] System Settings > Appearance > Automatic and the Dark Mode toggle apply only Heiss Dark and Heiss Light, never Breeze; `kreadconfig6 --file kdeglobals --group KDE --key AutomaticLookAndFeel` prints `false`.
+- [ ] Firefox UI and Thunar in Heiss Dark and Heiss Light (screenshots): expected to follow the theme; if not, record it (this PR does not claim it).
 
 ## Round 20, item 3a (2026-11-11): hardware choices applied
 
@@ -436,4 +439,4 @@ PR "fix/lsb-release-branding" (Tier A, label `design-approved`): `/etc/lsb-relea
 
 ## Round 25, PR A (2026-11-17): one consistent Heiss theme
 
-Branch `feat/heiss-global-theme`: Plasma defaults point Automatic/Dark Mode at the Heiss themes, previews for both global themes, light splash, light wallpaper regenerated from the dark one, sync targets `wallpaper` and `first-login`, tests. Not verified: see the Round 25 PR A lines in the FINAL VM TEST LIST.
+Branch `feat/heiss-global-theme`: Plasma defaults point Automatic/Dark Mode at the Heiss themes, previews for both global themes, light splash, light wallpaper regenerated from the dark one, sync targets `wallpaper` and `first-login`, tests. Tier A, label `design-approved`. Tests: `core/tests/test_themesync.py`, `core/tests/test_lnf_layout.py`. Not verified: see the Round 25 PR A lines in the FINAL VM TEST LIST.
