@@ -13,7 +13,6 @@ Manifests live in `profiles/*.toml` (one file per id, file name = id). They are 
 | addon-lts-kernel | addon | none | 1 | 155 / 156 MiB |
 | addon-cyber-extended | addon | cyber | 3 | 380 / 837 MiB |
 | addon-developer-extended | addon | developer | 3 | 443 / 750 MiB |
-| addon-office, addon-mail | addon | none | 1 | 148 / 422 and 82 / 303 MiB |
 
 Sizes come from `scripts/check-packages.py` (pacman sync database, 2026-11-09). They exclude dependencies, so real downloads are larger; not yet exact. Shared packages (gdb, podman, distrobox) are counted in each manifest that lists them.
 

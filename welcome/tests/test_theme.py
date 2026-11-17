@@ -81,7 +81,7 @@ class Wizard(unittest.TestCase):
             scr = vm.choose("appearance.theme", "dark")
             self.assertEqual(vm.screen()["note"], "Could not find theme")
             self.assertEqual(vm.screen()["error"], "")
-            self.assertEqual(vm.next()["id"], "privacy")
+            self.assertEqual(vm.next()["id"], "profile")
             self.assertEqual(vm.screen()["note"], "")           # shown on the appearance screen only
 
     def test_an_exception_in_the_switch_is_a_note(self):

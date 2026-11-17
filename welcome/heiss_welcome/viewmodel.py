@@ -9,7 +9,7 @@ from heiss_core import hardware as hw
 from heiss_core import wizard as wz
 from heiss_core.errors import HeissError
 
-from .strings import t
+from .strings import S as strings_S, t
 
 LEVELS = ("beginner", "confident", "advanced")
 # step -> [(path, label key prefix, label key of the question or None, values)]
@@ -22,14 +22,6 @@ CHOICES = {
     "software": [("software.flathub", "", "flathub", (True, False)),
                  ("software.update_policy", "upd.", "update_policy", ("notify", "download", "weekly"))],
 }
-
-
-# privacy items: (string key, implemented today, only for Confident/Advanced). Real today: the firewall (Essentials
-# ships and enables firewalld at every level), the Wi-Fi MAC address and the screen lock (applied with the level by
-# Apply, see heiss_core.privacy). Everything else is not applied by anything yet.
-PRIVACY_ITEMS = (("pv.firewall", True, False), ("pv.dns", False, False), ("pv.mac", True, False),
-                 ("pv.vpn", False, False), ("pv.bt", False, False), ("pv.lock", True, False),
-                 ("pv.hardened", False, True))
 
 
 def _get(answers, path):
@@ -182,9 +174,8 @@ class ViewModel:
         return out
 
     def _privacy_facts(self, lang):
-        adv = self.w.advanced_visible()
-        return [{"text": t(lang, k), "badge": t(lang, "pv.done" if done else "pv.soon")}
-                for k, done, only_adv in PRIVACY_ITEMS if adv or not only_adv]
+        # one plain line; what each level really writes is the hint of its option (core/heiss_core/privacy.py)
+        return [{"text": t(lang, "privacy.note"), "badge": ""}]
 
     @property
     def lang(self):
@@ -200,6 +191,12 @@ class ViewModel:
             return t(self.lang, "lang_" + v)
         return t(self.lang, prefix + v)
 
+    def _hint(self, prefix, v):
+        """Optional explanation under a choice: the string `<label key>.hint`, when there is one."""
+        if not prefix or isinstance(v, bool):
+            return ""
+        return strings_S[self.lang].get(prefix + v + ".hint", "")
+
     def _opt(self, path, value, label, hint=""):
         return {"path": path, "value": value, "label": label, "hint": hint,
                 "selected": _get(self.w.answers, path) == value}
@@ -214,7 +211,7 @@ class ViewModel:
         questions = []
         for path, prefix, qkey, values in CHOICES.get(sid, []):
             questions.append({"title": t(lang, qkey) if qkey else "", "kind": "choice", "path": path,
-                              "options": [self._opt(path, v, self._label(prefix, v)) for v in values]})
+                              "options": [self._opt(path, v, self._label(prefix, v), self._hint(prefix, v)) for v in values]})
         if sid == "profile":
             questions.append({"title": "", "kind": "choice", "path": "profile", "options": [
                 self._opt("profile", m.id, self._name(m.id), m.description.get(lang, "")) for m in self._cards("essential")]})
@@ -240,9 +237,11 @@ class ViewModel:
         lines, plan_ok = [], False
         if sid == wz.SUMMARY:
             a = w.final_answers()
-            lines = ["%s: %s" % (t(lang, "summary.profile"), self._name(a["profile"])),
-                     "%s: %s" % (t(lang, "summary.addons"),
-                                 ", ".join(self._name(i) for i in a["addons"]) or t(lang, "summary.none"))]
+            lines = ["%s: %s" % (t(lang, "summary.profile"), self._name(a["profile"]))]
+            if a["addons"]:   # one wrapped line per add-on, so a long list never runs off the screen
+                lines += ["%s:" % t(lang, "summary.addons")] + ["\u2022 " + self._name(i) for i in a["addons"]]
+            else:
+                lines.append("%s: %s" % (t(lang, "summary.addons"), t(lang, "summary.none")))
             if self.applier and self.hardware_ids():
                 lines.append("%s: %s" % (t(lang, "summary.hardware"), ", ".join(self.hardware_ids())))
             if self.applier and self.unconfirmed_ids():
@@ -258,7 +257,7 @@ class ViewModel:
             what_key = "done.skipped" if w.skipped else ("done.applied" if job["status"] == "ok" else "done.what")
         what = t(lang, what_key)
         return {"id": sid, "title": t(lang, sid + ".title") if sid != "done" else t(lang, "done.title_applied" if job["status"] == "ok" else "done.title"),
-                "facts": facts, "what": what, "whatLabel": t(lang, "what"), "lines": lines, "questions": questions,
+                "facts": facts, "what": what, "theme": w.answers["appearance"]["theme"], "lines": lines, "questions": questions,
                 "progressText": t(lang, "step_of") % (pos, total), "progress": pos / total,
                 "canBack": w.step > 0 and sid not in (wz.APPLYING, wz.DONE),
                 "canSkip": w.can_skip(), "isFirst": sid == "welcome", "isSummary": sid == wz.SUMMARY,

@@ -54,7 +54,7 @@ class Screens(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             vm, _ = vm_in(d)
             vm.choose("language", "ru")
-            vm.next()
+            vm.next(); vm.next()
             opts = vm.screen()["questions"][0]["options"]
             self.assertEqual({o["value"] for o in opts}, {"base", "cyber", "developer", "custom"})
             self.assertIn("Кибербезопасность", [o["label"] for o in opts])
@@ -62,7 +62,7 @@ class Screens(unittest.TestCase):
     def test_a_profile_card_is_preselected(self):
         with tempfile.TemporaryDirectory() as d:
             vm, _ = vm_in(d)
-            vm.next()
+            vm.next(); vm.next()
             self.assertEqual([o["value"] for o in vm.screen()["questions"][0]["options"] if o["selected"]], ["base"])
 
     def test_bad_value_shows_error_and_keeps_answers(self):
@@ -77,10 +77,10 @@ class Screens(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             vm, _ = vm_in(d)
             vm.w.step = wz.IDS.index("addons")
-            vm.toggle_addon("addon-office")
+            vm.toggle_addon("addon-thunar")
             sel = {o["value"] for o in vm.screen()["questions"][0]["options"] if o["selected"]}
-            self.assertEqual(sel, {"addon-office"})
-            vm.toggle_addon("addon-office")
+            self.assertEqual(sel, {"addon-thunar"})
+            vm.toggle_addon("addon-thunar")
             self.assertEqual(vm.w.answers["addons"], [])
 
     def test_back_skip_and_buttons_state(self):
@@ -88,7 +88,7 @@ class Screens(unittest.TestCase):
             vm, _ = vm_in(d)
             s = vm.screen()
             self.assertTrue(s["isFirst"] and not s["canBack"] and not s["canSkip"])
-            vm.next(); vm.choose("profile", "cyber"); vm.next()
+            vm.next(); vm.next(); vm.choose("profile", "cyber"); vm.next()
             s = vm.screen()
             self.assertEqual((s["id"], s["canSkip"], s["canBack"]), ("level", True, True))
             self.assertEqual(vm.skip()["id"], "addons")
@@ -99,18 +99,79 @@ class Screens(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             vm, _ = vm_in(d)
             vm.choose("profile", "developer")
-            vm.choose("addons", ["addon-office"])
+            vm.choose("addons", ["addon-thunar"])
             vm.w.step = wz.IDS.index("summary")
             lines = vm.screen()["lines"]
-            self.assertEqual(len(lines), 2)
+            self.assertEqual(len(lines), 3)       # profile, "Add-ons:", one wrapped line per add-on
             self.assertIn("Developer", lines[0])
+            self.assertEqual(lines[1], "Add-ons:")
+            self.assertTrue(lines[2].startswith("\u2022 "))
+
+
+class Order(unittest.TestCase):
+    def test_language_then_appearance_then_the_rest_and_the_screen_carries_the_theme(self):
+        with tempfile.TemporaryDirectory() as d:
+            vm, _ = vm_in(d)
+            self.assertEqual(vm.screen()["id"], "welcome")
+            self.assertEqual(vm.next()["id"], "appearance")
+            self.assertEqual(vm.choose("appearance.theme", "light")["theme"], "light")
+            self.assertEqual(vm.next()["id"], "profile")
+            self.assertEqual(vm.screen()["theme"], "light")      # every later page is drawn in the chosen theme
+
+    def test_a_resume_file_of_the_old_order_or_with_an_unknown_step_starts_over(self):
+        import json
+        for doc in ({"version": 1, "step": "hardware", "answers": {}, "extras": {}, "touched": [], "skipped": False},
+                    {"version": wz.STATE_VERSION, "step": "nowhere", "answers": {}, "extras": {}, "touched": [], "skipped": False}):
+            with tempfile.TemporaryDirectory() as d:
+                with open(os.path.join(d, "wizard-state.json"), "w", encoding="utf-8") as f:
+                    json.dump(doc, f)
+                vm, _ = vm_in(d)
+                self.assertEqual(vm.screen()["id"], "welcome")
+
+
+class Addons(unittest.TestCase):
+    def test_mail_and_office_are_gone_and_the_rest_stays(self):
+        with tempfile.TemporaryDirectory() as d:
+            vm, _ = vm_in(d)
+            vm.w.step = wz.IDS.index("addons")
+            ids = {o["value"] for o in vm.screen()["questions"][0]["options"]}
+            self.assertEqual(ids, {"addon-cyber-extended", "addon-developer-extended", "addon-kitty",
+                                   "addon-lts-kernel", "addon-thunar"})
+            self.assertFalse([o for o in vm.screen()["questions"][0]["options"] if o["selected"]])
+        for name in os.listdir(PROFILES):
+            with open(os.path.join(PROFILES, name), encoding="utf-8") as f:
+                text = f.read().lower()
+            self.assertNotIn("libreoffice", text)
+            self.assertNotIn("thunderbird", text)
+
+
+class Wording(unittest.TestCase):
+    def test_intros_have_no_what_will_change_prefix(self):
+        import re
+        for lang, d in strings.S.items():
+            for k, v in d.items():
+                if k.endswith(".what") or k.startswith("done."):
+                    self.assertNotRegex(v, r"^[^.]{0,40}: [A-ZА-Я]", k)
+        for lang in ("en", "ru"):
+            with tempfile.TemporaryDirectory() as d:
+                vm, _ = vm_in(d)
+                vm.choose("language", lang)
+                with open(os.path.join(REPO, "welcome", "heiss_welcome", "qml", "Main.qml"), encoding="utf-8") as f:
+                    self.assertNotIn("whatLabel", f.read())
+                self.assertNotIn("whatLabel", vm.screen())
+
+    def test_done_page_names_the_real_place_to_apply(self):
+        self.assertIn("Control Center", strings.S["en"]["done.what"])
+        self.assertIn("Apply saved actions now", strings.S["en"]["done.what"])
+        self.assertIn("Центр управления", strings.S["ru"]["done.what"])
+        self.assertNotIn("when", strings.S["en"]["done.what"].lower().split("control center")[0])
 
 
 class Persistence(unittest.TestCase):
     def test_state_is_saved_and_resumed(self):
         with tempfile.TemporaryDirectory() as d:
             vm, _ = vm_in(d)
-            vm.next(); vm.choose("profile", "cyber"); vm.next()
+            vm.next(); vm.next(); vm.choose("profile", "cyber"); vm.next()
             vm2, _ = vm_in(d)
             self.assertEqual(vm2.screen()["id"], "level")
             self.assertEqual(vm2.w.answers["profile"], "cyber")
@@ -304,19 +365,32 @@ class HardwareAndPrivacy(unittest.TestCase):
                 scr = vm.screen()
                 self.assertEqual(scr["questions"], [])
                 self.assertTrue(scr["facts"])
-                self.assertEqual(vm.next()["id"], "appearance")
+                self.assertEqual(vm.next()["id"], "privacy")
 
-    def test_privacy_marks_firewall_mac_and_lock_as_in_place(self):
+    def test_privacy_levels_are_explained_from_what_the_code_writes(self):
+        from heiss_core import privacy
         with tempfile.TemporaryDirectory() as d:
             vm, _ = build(d, PROFILES)
             vm.w.step = wz.IDS.index("privacy")
-            done = strings.S["en"]["pv.done"]
-            facts = vm.screen()["facts"]
-            self.assertEqual(sorted(f["text"] for f in facts if f["badge"] == done),
-                             sorted(strings.S["en"][k] for k in ("pv.firewall", "pv.mac", "pv.lock")))
-            n = len(facts)
-            vm.choose("level", "advanced")
-            self.assertEqual(len(vm.screen()["facts"]), n + 1)   # linux-hardened shows for Advanced only
+            scr = vm.screen()
+            self.assertEqual(len(scr["facts"]), 1)                       # the "can be changed later" line only
+            self.assertEqual(scr["facts"][0]["badge"], "")
+            hints = {o["value"]: o["hint"] for o in scr["questions"][0]["options"]}
+            self.assertEqual(set(hints), set(privacy.LEVELS))
+            for level, hint in hints.items():
+                self.assertIn("%s minute" % privacy._TABLE[level][2], hint)
+            self.assertIn("hardware address", hints["standard"])   # preserve
+            self.assertIn("differs from the hardware", hints["enhanced"])   # stable
+            self.assertIn("random", hints["maximum"])             # random
+            self.assertEqual(privacy._TABLE["standard"][0], "preserve")
+            self.assertEqual(privacy._TABLE["enhanced"][0], "stable")
+            self.assertEqual(privacy._TABLE["maximum"][0], "random")
+            vm.choose("language", "ru")
+            self.assertTrue(all(o["hint"] for o in vm.screen()["questions"][0]["options"]))
+
+    def test_no_list_of_works_today_or_coming_soon_on_privacy(self):
+        for lang in strings.S.values():
+            self.assertFalse([k for k in lang if k.startswith("pv.")])
 
 
 class QmlPlainText(unittest.TestCase):
@@ -324,13 +398,30 @@ class QmlPlainText(unittest.TestCase):
         # Text defaults to AutoText: a string from a file or a command that looks like HTML (a package name, an
         # error line, the apply log) would be rendered as rich text, and a remote <img> would fetch from the network
         import re
-        with open(os.path.join(REPO, "welcome", "heiss_welcome", "qml", "Main.qml"), encoding="utf-8") as f:
-            qml = f.read()
-        items = re.findall(r"(?<![A-Za-z])(Text|Label|TextEdit|TextArea)\s*\{([^\n]*)", qml)
-        self.assertGreater(len(items), 10)
-        for kind, line in items:
-            self.assertEqual(kind, "Text", "use Text with textFormat PlainText, not %s" % kind)
-            self.assertIn("textFormat: Text.PlainText", line)
+        qdir = os.path.join(REPO, "welcome", "heiss_welcome", "qml")
+        names = sorted(n for n in os.listdir(qdir) if n.endswith(".qml"))
+        self.assertIn("ChoiceRow.qml", names)
+        total = 0
+        for name in names:
+            with open(os.path.join(qdir, name), encoding="utf-8") as f:
+                qml = f.read()
+            items = re.findall(r"(?<![A-Za-z])(Text|Label|TextEdit|TextArea)\s*\{([^\n]*)", qml)
+            total += len(items)
+            for kind, line in items:
+                self.assertEqual(kind, "Text", "use Text with textFormat PlainText, not %s" % kind)
+                self.assertIn("textFormat: Text.PlainText", line, name)
+        self.assertGreater(total, 10)
+
+    def test_every_choice_list_uses_the_one_shared_row(self):
+        qdir = os.path.join(REPO, "welcome", "heiss_welcome", "qml")
+        with open(os.path.join(qdir, "Main.qml"), encoding="utf-8") as f:
+            main = f.read()
+        self.assertEqual(main.count("ChoiceRow {"), 1)           # one delegate for every list
+        self.assertNotIn("ItemDelegate", main)
+        with open(os.path.join(qdir, "ChoiceRow.qml"), encoding="utf-8") as f:
+            row = f.read()
+        self.assertNotRegex(row, r"selected \? row\.colors\.(button|panel)")   # the row background ignores `selected`
+        self.assertNotRegex(main + row, r'"#[0-9A-Fa-f]{6}"[^\n]*selected')
 
 
 if __name__ == "__main__":

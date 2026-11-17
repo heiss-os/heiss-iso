@@ -13,7 +13,7 @@ File: `profile/airootfs/etc/xdg/mimeapps.list` (XDG system-wide defaults). It re
 | Archives | `org.kde.ark.desktop` | ark | zip, tar and compressed tars, 7z, rar, gz, bz2, xz, zstd, lz4, cpio, deb |
 | Password databases | `org.keepassxc.KeePassXC.desktop` | keepassxc | KeePass 2 databases |
 
-Deliberately NOT set: `mailto:` (Base has no mail client; the mail add-on can set it later), terminal and file-manager alternatives (kitty and Thunar are add-ons and never the default), Office formats (the office suite is an add-on).
+Deliberately NOT set: `mailto:` (Base has no mail client and no mail add-on is shipped), terminal and file-manager alternatives (kitty and Thunar are add-ons and never the default), Office formats (no office suite is shipped).
 
 Where tools disagree on a type's name, both the alias and the canonical name are listed (for example `video/x-matroska` and `video/matroska`). Four candidate types do not exist in shared-mime-info and were dropped.
 
