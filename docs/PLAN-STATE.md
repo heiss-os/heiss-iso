@@ -353,9 +353,11 @@ Added in round 23 PR 5. Each line is run in part 3 of `heiss-task-28.md` (read-o
 
 ### Round 25, PR F: development quality
 - [ ] First run on GitHub: on the PR of this change the checks `shellcheck`, `python-lint` and `gui-renders` are green, `namcap` is green or yellow (informational); open the `gui-renders` artifact (Actions run, "Artifacts") and look at a wizard and a Control Center PNG; the artifact says it expires in 7 days.
-- [ ] Dependabot: Settings, Code security, "Dependabot" lists `github-actions` as a configured ecosystem without an error (a pull request with the title prefix `ci` may appear within a week; its checks must pass, including the pin test).
+- [ ] Dependabot: on GitHub, Insights, Dependency graph, Dependabot: `github-actions` is listed without an error; expect "Last checked" to be filled in within a few minutes (a pull request with the title prefix `ci` may follow within a week; its checks must pass, including the pin test).
 - [ ] Packager: after the next `bash scripts/heiss-packages-build.sh`, `pacman -Qip ~/localrepo/heiss-core-*.pkg.tar.zst | grep Packager` prints `Packager        : Heiss OS`.
-- [ ] Image audit on the next built image: `bash scripts/audit-image.sh ~/heiss-iso/out/heiss-*.iso | tail -3`; expected last line `N OK, 2 WARN, 0 FAIL` (the WARNs are `refind` and `arch-install-scripts`, gone after the PR E cleanup is in the image: then 0 WARN), and `ls /var/tmp | grep -c heiss-audit` prints `0`.
+- [ ] Image audit on the next built image: `bash scripts/audit-image.sh ~/heiss-iso/out/heiss-*.iso | tail -3`; expected last line `N OK, 2 WARN, 0 FAIL` (the 2 WARNs are `refind` and `arch-install-scripts`: they stay in the live image by design, the cleanup removes them only from the installed system, so 2 WARN is the expected result, not 0), and `ls /var/tmp | grep -c heiss-audit` prints `0`.
+- [ ] Audit on a UEFI-built image (the 2026-11-17 image was inspected, UEFI boot files included only as files): same command; expect the boot-menu line `OK    boot menus (loader, GRUB, syslinux): no Arch in titles` and no `boot files could not be read` WARN.
+- [ ] `branding-auditor`: in a new session on this repo with an ISO newer than the last change to `profile/` and `packages/`, ask for the agent; expect it to run `scripts/audit-image.sh`, repeat the OK/WARN/FAIL lines and the counts line, say the 2 WARNs are expected, end with a `Verdict:` line and leave no `/var/tmp/heiss-audit.*` behind; with an older ISO it says first that the image is older than the PR.
 
 ## Round 20, item 3a (2026-11-11): hardware choices applied
 
