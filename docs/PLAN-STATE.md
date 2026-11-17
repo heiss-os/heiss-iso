@@ -6,11 +6,11 @@ Last updated: 2026-11-17
 
 ## Done
 
-See the phase and round sections below. Phases 0 to 7 are merged; round 23 (pre-build audit) PRs 1 to 4 are merged.
+See the phase and round sections below. Phases 0 to 7 are merged; round 23 (pre-build audit) PRs 1 to 5 are merged.
 
 ## In progress
 
-- Round 23 PR 5: documents and small leftovers (this PR). Then part 3 of `heiss-task-28.md`: the first ISO build (the owner runs the commands; the log is read and the image is inspected without booting it).
+- PR "fix/lsb-release-branding" (Tier A, label `design-approved`): `/etc/lsb-release` says Heiss OS through a pacman hook (found in the first image inspection). After it is merged: one rebuild of the ISO (`bash scripts/heiss-packages-build.sh`, then `bash scripts/heiss-build.sh`), then the owner's VM run of the FINAL VM TEST LIST.
 
 ## Next
 
@@ -265,6 +265,7 @@ Owner's rule (2026-11-11): no ISO build and no VM check until the whole master p
 - [ ] No outgoing calls at boot (round 23 PR 2): boot the live ISO in a VM with network, wait two minutes, then `nmcli networking connectivity` / expect `unknown` (the probe is off; `full` means it still ran) and `nmcli general` / expect `connected`; `journalctl -b -u NetworkManager | grep -ci ping.archlinux` / expect `0`; `ss -ltn` / expect no `:22`; `systemctl status sshd cloud-init.target` / expect `inactive` or `not found`; `timedatectl timesync-status` / expect a `pool.ntp.org` server and no `arch.pool`; `resolvectl status | grep -E 'MulticastDNS|LLMNR'` / expect `no` for the live session; in Firefox open `about:policies` / expect `DisableTelemetry` and `DisableFirefoxStudies` listed as active and `about:telemetry` saying upload is disabled; optional on a laptop with a captive-portal Wi-Fi: Plasma shows no portal notice (accepted cost), the browser still opens the portal page. Repeat `nmcli general` and `timesync-status` on the installed system after Calamares.
 - [ ] Installer without network calls (round 23 PR 3): boot the live ISO with network, run `sudo tcpdump -ni any -w /tmp/cal.pcap` (or `ss -tnp | grep calamares` every few seconds) and start the installer / expect the welcome page to show the requirement rows for storage, RAM, power, root and screen (no "internet" row and no spinner for it), the locale page to open on Europe/Moscow without a pause, and `tcpdump -nr /tmp/cal.pcap 'tcp port 80 or tcp port 443'` to print no packet while the installer runs (or no calamares socket in `ss`; the live system's NTP and DNS are on other ports); in `~/.cache/calamares/session.log` expect no `GeoIP` request line and no `internetCheckUrl`. Then finish an installation / expect the same success as before (the YAML of the four edited files is parsed by Calamares only there).
 - [ ] Safe-graphics entry with a separate `/boot` (round 23 PR 4): in a VM install with Calamares using manual partitioning with `/boot` on its own partition (ext4, 1 GiB) and `/` on another / expect `findmnt -no SOURCE /boot` to print the separate partition (not the root device), then after the first boot `sudo grub-mkconfig -o /boot/grub/grub.cfg` to print "Found safe graphics kernel: /boot/vmlinuz-linux", `grep -A8 'safe graphics' /boot/grub/grub.cfg` to show `linux	/vmlinuz-linux root=UUID=... nomodeset ...` and `initrd	/initramfs-linux.img` (no `/boot/` prefix, no `//`), and the entry to boot to a login with `cat /proc/cmdline` containing `nomodeset`. Run it once in BIOS mode (the VirtualBox default); UEFI with a separate `/boot` stays unverified until a UEFI VM. The test uses a stub that returns the empty string; a real `grub-mkrelpath` was never run.
+- [ ] lsb-release branding (hook `92-heiss-lsb-release.hook`): on the new image `cat /etc/lsb-release` and `lsb_release -a` / expect `Heiss` and `Heiss OS` (no Arch); on the installed system the same; after `sudo pacman -S lsb-release` (reinstall) `cat /etc/lsb-release` / expect still `Heiss OS`; `/etc/default/grub` `GRUB_DISTRIBUTOR` on the installed system is checked in the same run.
 
 ### Static checks on the built image (no boot, no root: unpack the squashfs into a `mktemp` directory)
 Added in round 23 PR 5. Each line is run in part 3 of `heiss-task-28.md` (read-only inspection of the unpacked image) and then ticked here with the evidence; what a static look cannot show stays an item for the VM run above.
