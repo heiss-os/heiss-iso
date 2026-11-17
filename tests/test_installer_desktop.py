@@ -25,6 +25,7 @@ class Wallpaper(unittest.TestCase):
         sh = read(AIR, "usr/local/bin/heiss-set-wallpaper.sh")
         self.assertIn('URL="file:///usr/share/wallpapers/$ID/"', sh)
         self.assertNotIn('writeConfig("Image", "\'"$ID"\'")', sh)
+        self.assertIn('grep -qsx "Image=$URL"', sh)          # only the URL form is "in place"; a bare id is rewritten
 
     def test_wallpaper_packages_exist_for_both_ids(self):
         for wall in ("Heiss-Everyday", "Heiss-Everyday-Light"):

@@ -65,7 +65,7 @@ adf2ecb46060e590e69ff5b6b843847bf1c600f66c15f80f604839d21f6b8008  profile/airoot
 5edaea9ca651fdb0e195140eb91d8202eb0c7572488961d80cd5b2b57946df2b  profile/airootfs/etc/sddm.conf.d/autologin.conf
 2d78ead7990c46f52e92c45426d5a465440ddb72fc5a4048b1a49319fc0cce9e  profile/airootfs/etc/sddm.conf.d/heiss-theme.conf
 47eaf60e6bc26602edd5916fa39567e516edc95e55bd030c26ef254fe38aee28  profile/airootfs/usr/local/bin/heiss-boot-branding.sh
-837f78cf2e192cb52d65e9e7eccd70b688132725b8930ff9a9bffdeb4e587e25  profile/airootfs/usr/local/bin/heiss-cleanup.sh
+f1f0071705c6652074cbfb9d5a328033aae51fa5e15ea23efb12af39d7e53a05  profile/airootfs/usr/local/bin/heiss-cleanup.sh
 64d2e4526f9505027026989e1920bfa6ba3ce2dcea9c11ad695b10bef9eeb099  profile/airootfs/usr/local/bin/heiss-setup-dock.sh
 0b93653f185046b434f3244d8a58a1dac745e70599c605deb04d66ed77eb516c  profile/airootfs/usr/share/calamares/branding/heiss/banner.png
 1b44cdf6ccc3fcf7bb2617adfa30d6320cc8cdb4aa995baf162811722167fe78  profile/airootfs/usr/share/calamares/branding/heiss/banner.png.license
@@ -86,7 +86,7 @@ c937b6494c01fc1291dfe1ec1a391f04921ee071778d065f295fb735d74c9911  profile/airoot
 8748590de8af6b8cc00557e8c27f1a8563156d8bfefbd5f1fb371f22620f91fc  profile/airootfs/usr/share/calamares/branding/heiss/languages.png.license
 097d35f57dcdc60c74ed2b895e3036d5e2c83f1e23934157c01e6b9e061cb6a4  profile/airootfs/usr/share/calamares/branding/heiss/logo-bg.png
 6db396ba0d70a7b1557afe1f583a44bb4ef755fd8bf9504d962eed4d3f6e28ab  profile/airootfs/usr/share/calamares/branding/heiss/show.qml
-9b8bcf0da69c271b8ee37df4fd1c5d6d85efeeb4b69ae8bf2dacde0779001006  profile/airootfs/usr/share/calamares/branding/heiss/stylesheet.qss
+611a9866ee3fa24c3fa33b02ca8cd5839b29adf7a9ea54c836075b67380f442b  profile/airootfs/usr/share/calamares/branding/heiss/stylesheet.qss
 9ce6b55e0ac489e43db141f338564480aa59dd61c2e4885e694816a47dc0b723  profile/airootfs/usr/share/calamares/branding/heiss/usersq.qml
 b29c72d9cb15a249a23bdc6961f946d843c26c37889feafc5d716e62d97b5419  profile/airootfs/usr/share/color-schemes/HeissDark.colors
 b2f580a583de7d3416ec6c12a4281ff0fdcdb4937f4fca18ae6299abfe3512cb  profile/airootfs/usr/share/color-schemes/HeissLight.colors
@@ -117,14 +117,14 @@ a5b9a7ed6f6f327e2029f6e4661e037ebc5617b6a4a5e7b492e17036aa0ae709  profile/airoot
 0d1e90c96db1a15c520f80355316f80b527b9056ecacc8db13aed6b8155a4771  profile/airootfs/usr/share/libalpm/hooks/91-heiss-stock-wallpapers.hook
 06c53f96149cedf22e19f2b0d9147b25622b4716543e2ff955be28edb119c8bb  profile/airootfs/usr/share/libalpm/hooks/92-heiss-lsb-release.hook
 d2e40f0c064a854a9ed330f780fc7edc12c1f01403739b45c7d3b488225dd13e  profile/airootfs/usr/share/plasma/look-and-feel/org.heiss.dark.desktop/contents/defaults
-b8cc4d5bb2a9f2fb5a5dded736fef1292e81567b688c1c739a8b179c9d56424c  profile/airootfs/usr/share/plasma/look-and-feel/org.heiss.dark.desktop/contents/layouts/org.kde.plasma.desktop-layout.js
+a99cee27b204a6698f0ae61365860dae873de6fe0b2490a9661573361e07d293  profile/airootfs/usr/share/plasma/look-and-feel/org.heiss.dark.desktop/contents/layouts/org.kde.plasma.desktop-layout.js
 5863cce78f5a2cc0bb5639bdb6c14a19222eec91eed43673cc166c4c7e7855fe  profile/airootfs/usr/share/plasma/look-and-feel/org.heiss.dark.desktop/contents/previews/fullscreenpreview.jpg
 1ba2d8143f78a2238e16d4b5eacdf1dd9aa143fd0069aa528962350dad81979e  profile/airootfs/usr/share/plasma/look-and-feel/org.heiss.dark.desktop/contents/previews/preview.png
 18f18736d30dcc9ff6d15ea929cfa70aa1d30708206df55ae28fbbbd1b084dd6  profile/airootfs/usr/share/plasma/look-and-feel/org.heiss.dark.desktop/contents/splash/Splash.qml
 fca4af61c7e82da7614307b6c8de7aa335504e493e1bf763adf2d85cda55f3c9  profile/airootfs/usr/share/plasma/look-and-feel/org.heiss.dark.desktop/contents/splash/images/heiss-glyph.svg
 f4e1e4027b670de918cf505a04bfd8fb41ec27f7eb7c01d546af77fecb452f70  profile/airootfs/usr/share/plasma/look-and-feel/org.heiss.dark.desktop/metadata.json
 9284a68a4e546f033b7871c8eeec9af20ae45a7c1abcf471c4d2e56166066c8b  profile/airootfs/usr/share/plasma/look-and-feel/org.heiss.light.desktop/contents/defaults
-41ad274657d8835651e4c3928137dd8ccab89a5e59ade714e6f3160c134e1f6d  profile/airootfs/usr/share/plasma/look-and-feel/org.heiss.light.desktop/contents/layouts/org.kde.plasma.desktop-layout.js
+018c80a328918147d9892b22a1d0dba49b5fbac4b81d8b22b8bd10749f86e511  profile/airootfs/usr/share/plasma/look-and-feel/org.heiss.light.desktop/contents/layouts/org.kde.plasma.desktop-layout.js
 59c042baf58054cdf4db4739f4b1328a8982c2496258692ca1a4b76300774238  profile/airootfs/usr/share/plasma/look-and-feel/org.heiss.light.desktop/contents/previews/fullscreenpreview.jpg
 fc6b21c881b7965ef97fc1ab305de908b241eefda49acf9ec8965a2f53f235bb  profile/airootfs/usr/share/plasma/look-and-feel/org.heiss.light.desktop/contents/previews/preview.png
 6e754c20a0b768d03f540f696c678a7e5abc96218d87dcc8f23959e828d7dbf4  profile/airootfs/usr/share/plasma/look-and-feel/org.heiss.light.desktop/contents/splash/Splash.qml

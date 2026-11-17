@@ -342,6 +342,8 @@ Added in round 23 PR 5. Each line is run in part 3 of `heiss-task-28.md` (read-o
 - [ ] Calamares finish page: the text after "All done." is normal weight and upright (the heading may stay bold).
 - [ ] VirtualBox, live and installed: `pacman -Q virtualbox-guest-utils` prints a version and `pacman -Q virtualbox-guest-utils-nox` fails; `pgrep -a VBoxClient` lists processes; resize the VM window: the guest screen follows (no scroll bars) and the Dock is visible at 1280x720, 1920x1080 and 2560x1440.
 - [ ] Hardware step in the wizard on VirtualBox: "VirtualBox guest tools" is listed and ticked; Apply finishes without a package conflict; `systemctl is-enabled vboxservice` prints `enabled`.
+- [ ] Live ISO booted on a non-VirtualBox hypervisor or host (QEMU or VMware, if available; otherwise n/a): the desktop starts normally with the full guest tools package present (`VBoxClient-all` exits quietly: `pgrep -a VBoxClient` prints nothing).
+- [ ] The old-image case (n/a for fresh installs): a home directory with `Image=Heiss-Everyday` in `plasma-org.kde.plasma.desktop-appletsrc`: `heiss theme sync` then shows `wallpaper: changed` and the file holds the URL.
 - [ ] Session type and clipboard: `echo $XDG_SESSION_TYPE` (expected `wayland`), copy text on the host and paste in the VM and back; say if either direction fails.
 
 ## Round 20, item 3a (2026-11-11): hardware choices applied

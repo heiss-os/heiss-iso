@@ -1,6 +1,6 @@
 #!/bin/sh
 # Heiss OS: FALLBACK only. The default wallpaper is set from the first frame by the
-# look-and-feel defaults and layout script (package id Heiss-Everyday for Heiss Dark,
+# look-and-feel defaults and layout script (package Heiss-Everyday for Heiss Dark,
 # Heiss-Everyday-Light for Heiss Light; two plain packages, no dynamic light/dark mechanism). This script applies it
 # only if the desktop did not end up with it. It sets the package as a directory URL
 # (file:///usr/share/wallpapers/<id>/, the form Plasma stores) through the shell scripting API
@@ -19,9 +19,9 @@ for i in $(seq 1 40); do
   sleep 1
 done
 sleep 5
-# defaults worked: nothing to do
+# defaults worked (only the URL form counts; a bare id from an older image is rewritten below): nothing to do
 URL="file:///usr/share/wallpapers/$ID/"
-if grep -qsE "^Image=(file://)?(/usr/share/wallpapers/)?$ID/?\$" "$HOME/.config/plasma-org.kde.plasma.desktop-appletsrc"; then
+if grep -qsx "Image=$URL" "$HOME/.config/plasma-org.kde.plasma.desktop-appletsrc"; then
   mkdir -p "$HOME/.config"; touch "$MARK"; exit 0
 fi
 QDBUS=$(command -v qdbus6 || command -v qdbus)

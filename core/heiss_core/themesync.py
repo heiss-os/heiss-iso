@@ -252,16 +252,19 @@ def target_wallpaper(env, theme, dry):
         return Result("wallpaper", "skipped", "wallpaper package %s is missing" % pid)
     ours = set(WALLPAPER.values())
     text = env.read_text(os.path.join(env.home, APPLETSRC)) or ""
-    images = [_wallpaper_id(i) for i in _desktop_images(text)]
+    raw_images = [i.strip() for i in _desktop_images(text)]
+    images = [_wallpaper_id(i) for i in raw_images]
+    want = WALLPAPER_URL % pid
     lock_file, lock_groups, lock_key = LOCKSCREEN
-    lock_now = env.kde_read_nested(lock_file, lock_groups, lock_key)
-    lock_now = _wallpaper_id(lock_now) if lock_now else lock_now
+    lock_raw = env.kde_read_nested(lock_file, lock_groups, lock_key)
+    lock_now = _wallpaper_id(lock_raw) if lock_raw else lock_raw
     desktop_custom = any(i not in ours for i in images)
     lock_custom = lock_now not in (None, "") and lock_now not in ours
     changes = []
-    if not desktop_custom and (not images or any(i != pid for i in images)):
+    # only the URL form counts as in place: a bare id (what the first image wrote) is rewritten
+    if not desktop_custom and (not raw_images or any(i != want for i in raw_images)):
         changes.append("desktop")
-    if not lock_custom and lock_now != pid:
+    if not lock_custom and lock_raw != want:
         changes.append("lock screen")
     custom = [n for n, c in (("desktop", desktop_custom), ("lock screen", lock_custom)) if c]
     note = " (custom %s wallpaper left alone)" % " and ".join(custom) if custom else ""
