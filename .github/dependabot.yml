@@ -1,0 +1,16 @@
+# Weekly update pull requests for the GitHub Actions used by the workflows, all actions in one group.
+# Every action stays pinned to a full commit SHA with a version comment (core/tests/test_workflows.py);
+# Dependabot keeps both in step when it raises a version.
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: "ci"
+    open-pull-requests-limit: 5

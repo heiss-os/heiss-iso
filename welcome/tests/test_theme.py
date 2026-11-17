@@ -78,7 +78,7 @@ class Wizard(unittest.TestCase):
     def test_a_failed_switch_is_a_note_and_never_blocks(self):
         with tempfile.TemporaryDirectory() as d:
             vm = self.vm(d, lambda t: (False, "Could not find theme"))
-            scr = vm.choose("appearance.theme", "dark")
+            vm.choose("appearance.theme", "dark")
             self.assertEqual(vm.screen()["note"], "Could not find theme")
             self.assertEqual(vm.screen()["error"], "")
             self.assertEqual(vm.next()["id"], "profile")

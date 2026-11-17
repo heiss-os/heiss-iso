@@ -12,7 +12,6 @@ applied by the Heiss engine, not by the package.
 """
 import json
 import os
-import shutil
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

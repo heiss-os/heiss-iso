@@ -5,8 +5,12 @@
 # Not part of the GRUB theme and not wired through the installer. Modelled on /etc/grub.d/10_linux.
 set -e
 
+# grub-mkconfig_lib (sourced below) reads these three variables
+# shellcheck disable=SC2034
 prefix="/usr"
+# shellcheck disable=SC2034
 exec_prefix="/usr"
+# shellcheck disable=SC2034
 datarootdir="/usr/share"
 : "${pkgdatadir:=/usr/share/grub}"
 boot_dir="/boot"

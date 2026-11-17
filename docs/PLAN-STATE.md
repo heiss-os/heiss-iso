@@ -10,7 +10,7 @@ See the phase and round sections below. Phases 0 to 7 are merged; round 23 (pre-
 
 ## In progress
 
-- Round 25 PR E (package review, branch `feat/package-review-round25`, Tier A: `heiss-cleanup.sh`): `docs/PACKAGE-REVIEW.md`, refind and arch-install-scripts out, `sudo heiss check` hint. PR A to D are merged (#116 to #119).
+- Round 25 PR F (development quality, branch `build/dev-quality-round25`): shellcheck, ruff and mypy as blocking checks, namcap and GUI renders as artifacts, Dependabot for Actions, `PACKAGER`, i18n parity test, `scripts/audit-image.sh` with the `branding-auditor` agent. PR A to E are merged (#116 to #120).
 
 
 
@@ -351,6 +351,12 @@ Added in round 23 PR 5. Each line is run in part 3 of `heiss-task-28.md` (read-o
 - [ ] `/etc/lsb-release`: on VirtualBox or QEMU `ls /etc/lsb-release` fails (the file is not there, this is expected); on VMware it says Heiss OS.
 - [ ] Installed size (for the review numbers): `pacman -Qq | wc -l` and `pacman -Qi | awk '/^Installed Size/ {s+=$4} END {print s/1024 " MiB"}'` (the review estimates about 877 packages and 4875 MiB; send both numbers).
 
+### Round 25, PR F: development quality
+- [ ] First run on GitHub: on the PR of this change the checks `shellcheck`, `python-lint` and `gui-renders` are green, `namcap` is green or yellow (informational); open the `gui-renders` artifact (Actions run, "Artifacts") and look at a wizard and a Control Center PNG; the artifact says it expires in 7 days.
+- [ ] Dependabot: Settings, Code security, "Dependabot" lists `github-actions` as a configured ecosystem without an error (a pull request with the title prefix `ci` may appear within a week; its checks must pass, including the pin test).
+- [ ] Packager: after the next `bash scripts/heiss-packages-build.sh`, `pacman -Qip ~/localrepo/heiss-core-*.pkg.tar.zst | grep Packager` prints `Packager        : Heiss OS`.
+- [ ] Image audit on the next built image: `bash scripts/audit-image.sh ~/heiss-iso/out/heiss-*.iso | tail -3`; expected last line `N OK, 2 WARN, 0 FAIL` (the WARNs are `refind` and `arch-install-scripts`, gone after the PR E cleanup is in the image: then 0 WARN), and `ls /var/tmp | grep -c heiss-audit` prints `0`.
+
 ## Round 20, item 3a (2026-11-11): hardware choices applied
 
 PR "feat/apply-hardware-choices": `--hardware` on `heiss profile apply|diff`, resolver support with the sticky rule, wizard passes the ticked proposals, strings updated, tests (`core/tests/test_hardware_apply.py`, `welcome/tests/test_apply.py`). Not verified: see the new Phase 5 line in the FINAL VM TEST LIST. Next: 3b theme, 3c privacy level (MAC randomization, screen lock), then Phase 6.
@@ -499,3 +505,7 @@ Branch `feat/installer-desktop-round25`. Tests: `tests/test_installer_desktop.py
 ## Round 25, PR E (2026-11-17): package review
 
 Branch `feat/package-review-round25`. Tests: `tests/test_package_review.py`, `core/tests/test_check.py`. Four owner questions are open in `docs/PACKAGE-REVIEW.md`. Not verified: see the Round 25 PR E lines in the FINAL VM TEST LIST.
+
+## Round 25, PR F (2026-11-17): development quality
+
+Branch `build/dev-quality-round25`. Tests: `tests/test_dev_quality.py`, `tests/test_i18n_parity.py`, `tests/test_audit_image.py`, `core/tests/test_agents.py`. Docs: `docs/IMAGE-AUDIT.md`. Not verified: see the Round 25 PR F lines in the FINAL VM TEST LIST.

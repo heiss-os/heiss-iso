@@ -8,6 +8,8 @@ set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 LOCALREPO="${LOCALREPO:-$HOME/localrepo}"
+# pacman -Si shows "Unknown Packager" otherwise; makepkg takes the value from the environment
+export PACKAGER="Heiss OS"
 [[ $EUID -ne 0 ]] || { echo "Run as a normal user, makepkg refuses root" >&2; exit 1; }
 
 echo "==> Checking generated package files are up to date"

@@ -6,7 +6,6 @@ defaults so an unset key reads as the default) and the firewall state (`systemct
 Nothing is changed. Data only: `{"id", "status", "code", "data"}`; the model turns it into text.
 """
 import re
-import subprocess
 
 from heiss_core import privacy as pv
 

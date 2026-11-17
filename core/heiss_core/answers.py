@@ -1,5 +1,4 @@
 """Versioned answers document (TOML). System part: /etc/heiss/profile.toml."""
-import os
 import tomllib
 
 from .errors import ValidationError
@@ -24,7 +23,7 @@ DEFAULTS = {
 }
 
 # version N -> function(doc) returning a document of version N+1
-MIGRATIONS = {}
+MIGRATIONS: dict = {}
 
 
 def migrate(doc, migrations=None):

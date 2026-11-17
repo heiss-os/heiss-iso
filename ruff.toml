@@ -1,0 +1,7 @@
+# Minimal lint config: real errors only (syntax errors, undefined names, unused imports and variables).
+# Style rules are not enabled on purpose; the code base is not formatted by a tool.
+target-version = "py311"
+extend-exclude = ["profile/airootfs", "packages"]
+
+[lint]
+select = ["E9", "F"]

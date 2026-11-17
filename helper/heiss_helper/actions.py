@@ -206,7 +206,7 @@ def build_remove_hardware(ctx, profile_id):
     """Remove one hardware profile. Only the profile id comes from the client; packages, services, drop-ins and
     post actions come from the root-owned catalog and are cut down by heiss_core.hwremove (only what Heiss
     installed, nothing still wanted, the LTS kernel stays)."""
-    trusted = ctx.trusted()          # checks that the catalog directories are root-owned
+    ctx.trusted()          # checks that the catalog directories are root-owned
     if not isinstance(profile_id, str) or not mf.ID_RE.fullmatch(profile_id):
         raise invalid("invalid hardware profile id")
     catalog = hw.load_profiles(ctx.hardware_dir)
