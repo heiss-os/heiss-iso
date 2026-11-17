@@ -12,9 +12,7 @@ See the phase and round sections below. Phases 0 to 7 are merged; round 23 (pre-
 
 - Round 25 PR D (installer and desktop, branch `feat/installer-desktop-round25`, Tier A): wallpaper as a package URL, finish page style, full VirtualBox guest tools. PR A to C are merged (#116 to #118).
 
-- Round 25 PR C (boot look, branch `feat/boot-look-round25`, Tier A: `usr/share/heiss/`): GRUB fonts and layout, no BootNext lines, live menu. PR A (#116) and PR B (#117) are merged.
 
-- Round 25 PR B (wizard UI, branch `feat/wizard-ui-round25`, not Tier A): shared choice row, summary scroll and wrap, privacy texts, step order, add-ons, intros, saved-answers text. PR A (#116) is merged.
 
 - Round 25 (`heiss-task-30.md`): PR A one consistent Heiss theme (branch `feat/heiss-global-theme`, Tier A). Then PR B welcome wizard UI, PR C boot look, PR D installer and desktop, PR E package review, PR F CI and agents; one PR at a time.
 
@@ -340,9 +338,9 @@ Added in round 23 PR 5. Each line is run in part 3 of `heiss-task-28.md` (read-o
 - [ ] Live session (UEFI or BIOS): the desktop behind the installer shows the Heiss wallpaper, not a plain dark colour. In the live terminal: `grep -h '^Image=' ~/.config/plasma-org.kde.plasma.desktop-appletsrc` prints `file:///usr/share/wallpapers/Heiss-Everyday/`.
 - [ ] Installed system, first login: same wallpaper; Dark to Light and back (Quick Settings) changes it; the lock screen shows the matching one.
 - [ ] Calamares finish page: the text after "All done." is normal weight and upright (the heading may stay bold).
-- [ ] VirtualBox, live and installed: `pacman -Q virtualbox-guest-utils` prints a version and `pacman -Q virtualbox-guest-utils-nox` fails; `pgrep -a VBoxClient` lists processes; resize the VM window: the guest screen follows (no scroll bars) and the Dock is visible at 1280x720, 1920x1080 and 2560x1440.
+- [ ] VirtualBox, live and installed: `pacman -Q virtualbox-guest-utils` prints a version and `pacman -Q virtualbox-guest-utils-nox` fails; `pgrep -a VBoxClient` lists processes; resize the VM window: the guest screen follows (no scroll bars) and the Dock is visible at 1280x720, 1920x1080 and 2560x1440. If the guest screen does not follow the window on Wayland, say so: that is the open question in DECISIONS.md.
 - [ ] Hardware step in the wizard on VirtualBox: "VirtualBox guest tools" is listed and ticked; Apply finishes without a package conflict; `systemctl is-enabled vboxservice` prints `enabled`.
-- [ ] Live ISO booted on a non-VirtualBox hypervisor or host (QEMU or VMware, if available; otherwise n/a): the desktop starts normally with the full guest tools package present (`VBoxClient-all` exits quietly: `pgrep -a VBoxClient` prints nothing).
+- [ ] Live ISO booted on a non-VirtualBox hypervisor or host (QEMU or VMware, if available; otherwise n/a): the desktop starts normally; the full guest tools package is in the live image but is removed by the cleanup of an installed system on any other hypervisor: on the live ISO `pgrep -a VBoxClient` prints nothing (it exits without /dev/vboxguest), and after an install on that hypervisor `pacman -Q virtualbox-guest-utils` fails.
 - [ ] The old-image case (n/a for fresh installs): a home directory with `Image=Heiss-Everyday` in `plasma-org.kde.plasma.desktop-appletsrc`: `heiss theme sync` then shows `wallpaper: changed` and the file holds the URL.
 - [ ] Session type and clipboard: `echo $XDG_SESSION_TYPE` (expected `wayland`), copy text on the host and paste in the VM and back; say if either direction fails.
 
