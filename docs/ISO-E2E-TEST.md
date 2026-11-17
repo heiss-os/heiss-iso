@@ -10,13 +10,39 @@ Size: NOT measured with the current package list. The last ISO built (2026-11-04
 
 ## Build
 
+Run on the build VM as the normal user (no root: the ISO script calls `sudo` itself and asks for the password). The repository must be on `main`, up to date and clean: the packages are built from git HEAD.
+
 ```bash
-cd ~/heiss-iso            # the repository, on the branch to test, changes committed
-bash scripts/heiss-packages-build.sh      # builds heiss-core, heiss-helper, heiss-profile-* from git HEAD into ~/localrepo
-HEISS_FAST=1 bash scripts/heiss-build.sh  # then the ISO as usual
+cd ~/heiss-iso
+git checkout main
+git pull
+git status --short
 ```
 
-If the ISO build says a `heiss-*` package is not found, the first step was skipped.
+1. Calamares (only if `~/localrepo/calamares-*.pkg.tar.zst` is missing or you want the pinned AUR build; the one from 2026-11-01 is enough for a first build). It asks pacman questions, answer them:
+   ```bash
+   bash scripts/heiss-calamares-build.sh
+   ```
+2. The Heiss packages (the log is also saved for reading):
+   ```bash
+   bash scripts/heiss-packages-build.sh 2>&1 | tee ~/share/heiss-packages.log
+   ```
+   Expect `==> Building from commit <hash>` (the hash of `git log -1`) and `Done. Now build the ISO.`
+3. The ISO (15-40 minutes; `sudo` asks for your password once; on a `[Y/n]` question press Enter):
+   ```bash
+   HEISS_FAST=1 bash scripts/heiss-build.sh 2>&1 | tee ~/share/heiss-build-script.log
+   ```
+   `HEISS_FAST=1` uses zstd for the squashfs: quicker, ISO bigger (not the final size). Leave it out for the release-size image.
+4. After it ends, whatever the result, copy the full mkarchiso log (the script writes it to `~/build.log`, not to the share):
+   ```bash
+   cp ~/build.log ~/share/heiss-build.log
+   ```
+
+Where things end up: the ISO in `~/heiss-iso/out/heiss-*.iso` and, copied with a checksum, in `~/share/` (the script then prints `sha256 OK`); the logs in `~/share/heiss-packages.log`, `~/share/heiss-build-script.log` and `~/share/heiss-build.log`. If the ISO build says a `heiss-*` package is not found, step 2 was skipped or failed. To see what the script would do without building: `bash scripts/heiss-build.sh --dry-run`.
+
+The script deletes the old `~/archiso-work` and `out/*.iso` first and removes `~/share/heiss-*.iso` before copying the new one. It does not touch other files in the share.
+
+After a successful build the image is inspected without booting it (see "Static checks on the built image" in `docs/PLAN-STATE.md`); the VM install test is the owner's step after that.
 
 ## In the live session (optional, quick)
 
