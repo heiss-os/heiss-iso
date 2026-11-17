@@ -211,6 +211,12 @@ class Sync(unittest.TestCase):
         self.assertEqual((r["first-login"].status, rc), ("failed", 1))
         self.assertEqual(env.touched, [])
 
+    def test_first_login_leaves_a_custom_scheme_alone(self):
+        env = FakeEnv(scheme="MyOwnScheme", first_login_done=False)
+        r, _, _ = run(env)
+        self.assertEqual((env.lnf_applied, len(env.touched)), ([], 1))
+        self.assertNotIn("first-login", r)
+
     def test_first_login_is_skipped_by_dry_run(self):
         env = FakeEnv(scheme="BreezeDark", first_login_done=False)
         run(env, dry_run=True)

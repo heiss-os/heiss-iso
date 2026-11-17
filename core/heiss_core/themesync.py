@@ -359,13 +359,13 @@ assert tuple(n for n, _ in TARGETS) == TARGETS_ORDER
 
 def _first_login(env, scheme, out, sleep):
     """Once per user: a fresh account must start on Heiss Dark. System defaults (/etc/xdg/kdeglobals) normally do
-    that; if the desktop still started on another global theme (Plasma's own default is Breeze), apply Heiss Dark
+    that; if the desktop still started on a Breeze scheme (Plasma's own default), apply Heiss Dark
     one time. The mark is written either way, so a theme the user picks later is never overridden. Returns the
     color scheme to continue with."""
     mark = os.path.join(env.home, FIRST_LOGIN_MARK)
     if env.exists(mark):
         return scheme
-    if scheme not in THEME_OF:
+    if scheme not in THEME_OF and scheme.startswith("Breeze"):    # a custom scheme the user chose is never replaced
         if env.apply_lnf(FIRST_LOGIN_LNF):
             sleep(2)    # the switch writes kdeglobals several times
             now = env.kde_read("kdeglobals", "General", "ColorScheme")
