@@ -70,6 +70,7 @@ class Audit(unittest.TestCase):
             ("keyring fingerprint wrong", lambda: put(self.root, "usr/share/pacman/keyrings/heiss-trusted", "0000:4:\n")),
             ("heiss package missing", lambda: shutil.rmtree(os.path.join(self.root, "var/lib/pacman/local/heiss-core-1.0-1"))),
             ("safe graphics script not executable", lambda: os.chmod(os.path.join(self.root, "etc/grub.d/41_heiss_safe"), 0o644)),
+            ("shadow is a symlink", lambda: (os.remove(os.path.join(self.root, "etc/shadow")), os.symlink("/etc/passwd", os.path.join(self.root, "etc/shadow")))),
             ("world-writable file", lambda: put(self.root, "etc/leak.conf", "x", 0o666)),
         ]
         for name, change in cases:

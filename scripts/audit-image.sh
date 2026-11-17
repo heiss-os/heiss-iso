@@ -59,7 +59,9 @@ if [[ -n $ISO ]]; then
     fi
     sfs="$WORK/airootfs.sfs"
     bsdtar -xf "$ISO" -C "$WORK" --include 'arch/x86_64/airootfs.sfs' 2>/dev/null
-    mv -f "$WORK/arch/x86_64/airootfs.sfs" "$sfs" 2>/dev/null || { fail "arch/x86_64/airootfs.sfs not found in the ISO"; exit 1; }
+    [[ -f $WORK/arch/x86_64/airootfs.sfs && ! -L $WORK/arch/x86_64/airootfs.sfs ]] \
+        && mv -f "$WORK/arch/x86_64/airootfs.sfs" "$sfs" 2>/dev/null \
+        || { fail "arch/x86_64/airootfs.sfs is not a regular file in the ISO"; exit 1; }
     info "airootfs.sfs: $(stat -c %s -- "$sfs" | awk '{printf "%.0f MiB", $1 / 1048576}')"
     # only what the checks read; -no-xattrs and -ig because a normal user cannot create device nodes or set owners
     unsquashfs -f -no-xattrs -ig -d "$ROOT" "$sfs" etc usr/lib/os-release usr/share/heiss usr/share/applications \
@@ -69,13 +71,23 @@ if [[ -n $ISO ]]; then
 fi
 [[ -d $ROOT ]] || { echo "no such directory: $ROOT" >&2; exit 2; }
 
-r() { printf '%s/%s' "$ROOT" "$1"; }
+# A hostile image could plant a symlink to a host file where a check reads: such a path is never followed.
+r() {
+    if [[ -L $ROOT/$1 ]]; then printf '%s/.symlink-refused' "$ROOT"; else printf '%s/%s' "$ROOT" "$1"; fi
+}
 mode() { stat -c %a -- "$1" 2>/dev/null; }
+
+for f in etc usr/lib/os-release etc/issue etc/motd etc/shadow etc/gshadow etc/pacman.conf etc/grub.d/41_heiss_safe \
+         etc/NetworkManager/conf.d/20-connectivity.conf etc/calamares/settings.conf etc/calamares/modules/tracking.conf \
+         usr/share/pacman/keyrings/heiss.gpg usr/share/pacman/keyrings/heiss-trusted usr/local/bin/heiss-cleanup.sh; do
+    [[ -L $ROOT/$f ]] && fail "$f is a symbolic link in the image (not followed)"
+done
+[[ -L $ROOT/etc ]] && exit 1
 
 # ---- identity: nothing a user sees may say Arch Linux --------------------------------------------------------
 section() { printf '\n== %s\n' "$*"; }
 section "identity"
-osr="$(r usr/lib/os-release)"; [[ -f $osr ]] || osr="$(r etc/os-release)"
+osr="$(r usr/lib/os-release)"  # etc/os-release is a normal relative link to it, so it is not read separately
 if [[ -f $osr ]]; then
     name="$(grep -E '^(NAME|PRETTY_NAME)=' "$osr" || true)"
     if grep -qi 'arch' <<<"$name"; then fail "os-release NAME/PRETTY_NAME mentions Arch: $name"; else ok "os-release names Heiss OS ($(grep -E '^PRETTY_NAME=' "$osr" | head -1))"; fi
