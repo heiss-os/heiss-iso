@@ -12,8 +12,6 @@ See the phase and round sections below. Phases 0 to 7 are merged; round 23 (pre-
 
 - Round 25 PR E (package review, branch `feat/package-review-round25`, Tier A: `heiss-cleanup.sh`): `docs/PACKAGE-REVIEW.md`, refind and arch-install-scripts out, `sudo heiss check` hint. PR A to D are merged (#116 to #119).
 
-- Round 25 PR D (installer and desktop, branch `feat/installer-desktop-round25`, Tier A): wallpaper as a package URL, finish page style, full VirtualBox guest tools. PR A to C are merged (#116 to #118).
-
 
 
 - Round 25 (`heiss-task-30.md`): PR A one consistent Heiss theme (branch `feat/heiss-global-theme`, Tier A). Then PR B welcome wizard UI, PR C boot look, PR D installer and desktop, PR E package review, PR F CI and agents; one PR at a time.
@@ -348,7 +346,7 @@ Added in round 23 PR 5. Each line is run in part 3 of `heiss-task-28.md` (read-o
 
 ### Round 25, PR E: package review
 - [ ] Installed system: `pacman -Q arch-install-scripts refind archinstall` fails for all three; `systemctl --failed` is empty; `sudo heiss check` shows live-leftovers OK; `heiss check` (no sudo) shows live-leftovers WARN with the text "run `sudo heiss check`".
-- [ ] No reflector at all: `systemctl list-unit-files | grep -c reflector` shows `reflector.service` and `reflector.timer` as `disabled`, `systemctl list-timers | grep -c reflector` prints 0.
+- [ ] No reflector at all: `systemctl list-unit-files 'reflector*'` shows `reflector.service` and `reflector.timer` both `disabled`; `systemctl list-timers --all | grep -c reflector` prints 0.
 - [ ] No telemetry: System Settings, "Feedback" page: all kinds of data collection are off; `ls ~/.config | grep -i feedback` shows nothing that is switched on; `ss -tnp` right after login shows no connection except the ones you started.
 - [ ] `/etc/lsb-release`: on VirtualBox or QEMU `ls /etc/lsb-release` fails (the file is not there, this is expected); on VMware it says Heiss OS.
 - [ ] Installed size (for the review numbers): `pacman -Qq | wc -l` and `pacman -Qi | awk '/^Installed Size/ {s+=$4} END {print s/1024 " MiB"}'` (the review estimates about 877 packages and 4875 MiB; send both numbers).
