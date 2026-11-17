@@ -11,7 +11,6 @@ Usage: check-shortcuts.py ROOT [ROOT ...]
 """
 import glob
 import os
-import re
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

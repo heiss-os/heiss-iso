@@ -14,7 +14,7 @@ if [ -n "$READ" ] && [ "$("$READ" --file kdeglobals --group General --key ColorS
   ID=Heiss-Everyday-Light; COLOR='#F7F5F1'
 fi
 [ -d "/usr/share/wallpapers/$ID" ] || exit 0
-for i in $(seq 1 40); do
+for _ in $(seq 1 40); do
   pgrep -x plasmashell >/dev/null && break
   sleep 1
 done

@@ -4,7 +4,7 @@ import unittest
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 DIR = os.path.join(REPO, ".claude", "agents")
-EXPECTED = {"reviewer", "security-reviewer", "qa-verifier", "docs-keeper"}
+EXPECTED = {"reviewer", "security-reviewer", "qa-verifier", "docs-keeper", "branding-auditor"}
 READ_ONLY_TOOLS = {"Read", "Grep", "Glob", "Bash"}
 
 

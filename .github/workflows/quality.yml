@@ -1,0 +1,86 @@
+name: quality
+
+# Development quality checks (round 25 PR F). Not Tier A: guards.yml stays as it is.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  shellcheck:
+    name: shellcheck on every shell script (blocking)
+    runs-on: ubuntu-latest
+    container: archlinux:latest
+    steps:
+      - name: Install tools
+        run: pacman -Syu --noconfirm shellcheck git
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - name: Warnings and errors fail the job (notes are off in .shellcheckrc, Tier A skips are listed in the script)
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          bash scripts/check-shell.sh
+
+  python-lint:
+    name: ruff and mypy on core, helper and the tools (blocking)
+    runs-on: ubuntu-latest
+    container: archlinux:latest
+    steps:
+      - name: Install tools
+        run: pacman -Syu --noconfirm ruff mypy git
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - name: ruff (syntax errors, undefined names, unused imports and variables; ruff.toml)
+        run: ruff check .
+      - name: mypy (light, mypy.ini)
+        run: mypy core/heiss_core helper/heiss_helper
+
+  namcap:
+    name: namcap on the built packages (informational)
+    runs-on: ubuntu-latest
+    container: archlinux:latest
+    continue-on-error: true
+    steps:
+      - name: Install tools
+        run: pacman -Syu --noconfirm base-devel git python namcap
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - name: Build the packages and run namcap on every PKGBUILD and package
+        run: |
+          useradd -m builder
+          cp -r "$GITHUB_WORKSPACE" /home/builder/src
+          chown -R builder /home/builder/src
+          su builder -c 'cd /home/builder/src && git config --global --add safe.directory /home/builder/src && LOCALREPO=/home/builder/localrepo bash scripts/heiss-packages-build.sh'
+          for f in /home/builder/src/packages/heiss-*/PKGBUILD; do echo "=== $f"; namcap "$f" || true; done
+          for p in /home/builder/localrepo/heiss-*.pkg.tar.zst; do echo "=== $p"; namcap "$p" || true; done
+
+  gui-renders:
+    name: GUI renders (every page, dark and light, ru and en) as an artifact
+    runs-on: ubuntu-latest
+    container: archlinux:latest
+    steps:
+      - name: Install tools
+        run: pacman -Syu --noconfirm python pyside6 inter-font ttf-jetbrains-mono git
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - name: Render every wizard and Control Center page offscreen (as an unprivileged user because the tool refuses root, fixture data, no network)
+        run: |
+          useradd -m builder
+          cp -r "$GITHUB_WORKSPACE" /home/builder/src
+          chown -R builder /home/builder/src
+          su builder -c 'cd /home/builder/src && python3 scripts/render-gui.py --out /home/builder/gui-renders'
+      - name: Upload the PNG files (7 days, nothing is committed)
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: gui-renders
+          path: /home/builder/gui-renders/*.png
+          retention-days: 7
+          if-no-files-found: warn

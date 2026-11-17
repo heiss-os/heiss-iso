@@ -182,7 +182,6 @@ def welcome_pages(out, lang, theme, shots):
 
 def control_pages(out, lang, theme, shots):
     from heiss_core import answers as ans
-    from heiss_core import hardware as hw
     from heiss_core import wizard as wz
     from heiss_control import hardware_view as hwv
     from heiss_control import model as m
@@ -425,7 +424,7 @@ def main():
             WARNINGS.append((kind.name, msg))
 
     qInstallMessageHandler(handler)
-    app = QGuiApplication(["render-gui"])
+    _app = QGuiApplication(["render-gui"])   # keeps the Qt application alive
     shots = []
     for lang in a.lang.split(","):
         for theme in a.theme.split(","):

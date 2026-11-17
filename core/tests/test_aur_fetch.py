@@ -4,7 +4,6 @@ Runs against local git repositories (no network). The Calamares build script's p
 """
 import hashlib
 import os
-import re
 import subprocess
 import tempfile
 import unittest

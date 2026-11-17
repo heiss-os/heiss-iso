@@ -10,7 +10,6 @@ sys.path.insert(0, os.path.dirname(HERE))
 from heiss_core import manifest as mf, wizard as wz  # noqa: E402
 from heiss_welcome import strings  # noqa: E402
 from heiss_welcome.app import build  # noqa: E402
-from heiss_welcome.viewmodel import ViewModel  # noqa: E402
 
 PROFILES = os.path.join(REPO, "profiles")
 MANIFESTS = mf.load_dir(PROFILES)
@@ -147,7 +146,6 @@ class Addons(unittest.TestCase):
 
 class Wording(unittest.TestCase):
     def test_intros_have_no_what_will_change_prefix(self):
-        import re
         for lang, d in strings.S.items():
             for k, v in d.items():
                 if k.endswith(".what") or k.startswith("done."):

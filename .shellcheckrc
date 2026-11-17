@@ -1,0 +1,6 @@
+# Project-wide shellcheck choices (info-level style notes only; warnings and errors stay on).
+# SC2012 ls in a pipeline: names here are our own fixed file names, never user input.
+# SC2016 single quotes without expansion: intended (text for another shell, jq/awk programs, JS for plasmashell).
+# SC2015 A && B || C: used as best-effort "try, otherwise carry on" in the cleanup scripts, C never matters.
+# SC1091 sourced file not followed: grub-mkconfig_lib and /etc files exist only on the target system.
+disable=SC2012,SC2016,SC2015,SC1091

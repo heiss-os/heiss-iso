@@ -1,7 +1,6 @@
 """The installer makes no network request of its own: no "internet" requirement check, no GeoIP,
 no sample conditions from the stock welcome.conf (stdlib text checks; PyYAML is not in CI)."""
 import os
-import re
 import unittest
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
