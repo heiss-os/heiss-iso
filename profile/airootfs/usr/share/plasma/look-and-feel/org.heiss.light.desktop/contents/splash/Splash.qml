@@ -9,7 +9,7 @@ import QtQuick
 
 Rectangle {
     id: root
-    color: "#1E1F21"
+    color: "#F5F3EF"
 
     property int stage
     readonly property bool animated: true

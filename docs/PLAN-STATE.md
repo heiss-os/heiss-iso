@@ -10,6 +10,8 @@ See the phase and round sections below. Phases 0 to 7 are merged; round 23 (pre-
 
 ## In progress
 
+- Round 25 (`heiss-task-30.md`): PR A one consistent Heiss theme (branch `feat/heiss-global-theme`, Tier A). Then PR B welcome wizard UI, PR C boot look, PR D installer and desktop, PR E package review, PR F CI and agents; one PR at a time.
+
 - Round 23 PR 5: documents and small leftovers (merged, #113). Part 3 of `heiss-task-28.md`, step 1: the build steps in `docs/ISO-E2E-TEST.md` (this PR). Then the first ISO build: the owner runs the commands; the log is read and the image is inspected without booting it.
 - PR "fix/lsb-release-branding" (Tier A, label `design-approved`): `/etc/lsb-release` says Heiss OS through a pacman hook (found in the first image inspection). After it is merged: one rebuild of the ISO (`bash scripts/heiss-packages-build.sh`, then `bash scripts/heiss-build.sh`), then the owner's VM run of the FINAL VM TEST LIST.
 
@@ -295,6 +297,17 @@ Added in round 23 PR 5. Each line is run in part 3 of `heiss-task-28.md` (read-o
 - [ ] In a new Claude Code session run `/agents`: `reviewer`, `security-reviewer`, `qa-verifier` and `docs-keeper` are listed; invoke each on a small diff and expect a findings list and a `Verdict:` line, and `git status` stays clean afterwards (they must not change files).
 - [ ] After the first merged PR that follows the new rules: the final report carries the line `агенты: reviewer ok, security ok, qa ok, docs ok` (`n/a` for an agent that PR did not need) and the PR text has an "automated review" block that lists each agent's result and which findings were fixed.
 
+### Round 25, PR A: Heiss theme
+- [ ] New user, first login: `heiss check` shows theme-sync OK; `kreadconfig6 --file kdeglobals --group General --key ColorScheme` prints `HeissDark`.
+- [ ] System Settings > Appearance and the Quick Settings theme list show "Heiss Dark" and "Heiss Light" with previews; Breeze entries are never selected. Dark Mode toggle switches exactly between them.
+- [ ] Switch Dark to Light and back: wallpaper (desktop and lock screen), Konsole (new and open window) and GTK app follow; `tail ~/.local/state/heiss/theme-sync.log` shows `wallpaper: changed`, then `ok` on a repeat run.
+- [ ] Wallpaper covers the screen at 1280x720, 1920x1080, 2560x1440 (no giant crop); the light one looks like the dark one in a light palette.
+- [ ] Login and logout splash shows the Heiss glyph, no KDE text (light theme: light background); lock screen and logout screen have no KDE logo.
+- [ ] Force a Breeze start: `rm ~/.local/state/heiss/theme-first-login; plasma-apply-colorscheme BreezeDark; heiss theme sync`; expect `grep first-login ~/.local/state/heiss/theme-sync.log` shows `first-login: changed`, `kreadconfig6 --file kdeglobals --group General --key ColorScheme` prints `HeissDark`, the mark file exists; a second `heiss theme sync` adds no first-login line.
+- [ ] Custom scheme kept: `rm ~/.local/state/heiss/theme-first-login; plasma-apply-colorscheme Oxygen; heiss theme sync`; expect no `first-login: changed` line, the scheme stays Oxygen, the mark file is created (then switch back to Heiss Dark).
+- [ ] System Settings > Appearance > Automatic and the Dark Mode toggle apply only Heiss Dark and Heiss Light, never Breeze; `kreadconfig6 --file kdeglobals --group KDE --key AutomaticLookAndFeel` prints `false`.
+- [ ] Firefox UI and Thunar in Heiss Dark and Heiss Light (screenshots): expected to follow the theme; if not, record it (this PR does not claim it).
+
 ## Round 20, item 3a (2026-11-11): hardware choices applied
 
 PR "feat/apply-hardware-choices": `--hardware` on `heiss profile apply|diff`, resolver support with the sticky rule, wizard passes the ticked proposals, strings updated, tests (`core/tests/test_hardware_apply.py`, `welcome/tests/test_apply.py`). Not verified: see the new Phase 5 line in the FINAL VM TEST LIST. Next: 3b theme, 3c privacy level (MAC randomization, screen lock), then Phase 6.
@@ -423,3 +436,7 @@ PR "docs/iso-build-steps" (round 23, part 3, step 1): `docs/ISO-E2E-TEST.md` "Bu
 
 PR "fix/lsb-release-branding" (Tier A, label `design-approved`): `/etc/lsb-release` says Heiss OS through the pacman hook `92-heiss-lsb-release.hook` (build copy in `profile/hooks/`, installed copy in `usr/share/libalpm/hooks/`, content in `usr/share/heiss/lsb-release`). `lsb-release` is in the image only as a dependency of `open-vm-tools`. Test: `core/tests/test_lsb_release.py`. Not verified: see the VM item "lsb-release branding" and the static item "lsb-release"; the `GRUB_DISTRIBUTOR` check is the owner's, in the VM.
 
+
+## Round 25, PR A (2026-11-17): one consistent Heiss theme
+
+Branch `feat/heiss-global-theme`: Plasma defaults point Automatic/Dark Mode at the Heiss themes, previews for both global themes, light splash, light wallpaper regenerated from the dark one, sync targets `wallpaper` and `first-login`, tests. Tier A, label `design-approved`. Tests: `core/tests/test_themesync.py`, `core/tests/test_lnf_layout.py`. Not verified: see the Round 25 PR A lines in the FINAL VM TEST LIST.

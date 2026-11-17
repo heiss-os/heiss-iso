@@ -19,7 +19,8 @@ class FakeEnv:
     """Scripted desktop. `kde` maps (file, group, key) -> value."""
 
     def __init__(self, scheme="HeissDark", commands=("konsole", "kitty"), files=None, kde=None, gsettings="prefer-dark",
-                 portal=1, kded_modules="as 2 gtkconfig foo", konsole_services=(), locked=False, plasma_ok=True):
+                 portal=1, kded_modules="as 2 gtkconfig foo", konsole_services=(), locked=False, plasma_ok=True,
+                 first_login_done=True, appletsrc=None, lnf_ok=True, touch_ok=True):
         self.kde = {("kdeglobals", "General", "ColorScheme"): scheme}
         self.kde.update(kde or {})
         self.commands, self.files = set(commands), set(files if files is not None else [
@@ -29,12 +30,38 @@ class FakeEnv:
         self.konsole_services, self.locked, self.plasma_ok = list(konsole_services), locked, plasma_ok
         self.writes, self.evals, self.calls, self.logged = [], [], [], []
         self.running = True
+        self.home = "/home/test"
+        self.touch_ok = touch_ok
+        self.appletsrc, self.lnf_ok, self.lnf_applied, self.touched = appletsrc, lnf_ok, [], []
+        if first_login_done:
+            self.files.add("/home/test/" + ts.FIRST_LOGIN_MARK)
 
     def kde_read(self, file, group, key): return self.kde.get((file, group, key))
 
+    def kde_read_nested(self, file, groups, key): return self.kde.get((file, tuple(groups), key))
+
     def kde_write(self, file, group, key, value):
+        group = group if isinstance(group, str) else tuple(group)
         self.writes.append((file, group, key, value))
         self.kde[(file, group, key)] = value
+        return True
+
+    def apply_lnf(self, package):
+        self.lnf_applied.append(package)
+        if self.lnf_ok:
+            self.kde[("kdeglobals", "General", "ColorScheme")] = "HeissDark"
+            self.kde.update(lnf_kde("dark"))
+        return self.lnf_ok
+
+    def unmark(self, path):
+        self.files.discard(path)
+        self.touched = [t for t in self.touched if t != path]
+
+    def touch(self, path):
+        if not self.touch_ok:
+            return False
+        self.touched.append(path)
+        self.files.add(path)
         return True
 
     def plasma_eval(self, script):
@@ -56,12 +83,14 @@ class FakeEnv:
     def gsettings(self, schema, key): return self.gs
     def process_running(self, name): return self.running
     def command_exists(self, name): return name in self.commands
-    def exists(self, path): return path in self.files
+    def exists(self, path): return path in self.files or path.startswith(ts.WALLPAPER_DIR)
 
     def read_text(self, path):
         for t, pkg in ts.LNF_PACKAGE.items():
             if path.endswith("%s/contents/defaults" % pkg):
                 return LNF[t]
+        if path.endswith(ts.APPLETSRC):
+            return self.appletsrc
         return None
 
     def append_log(self, line): self.logged.append(line)
@@ -95,16 +124,22 @@ class Sync(unittest.TestCase):
         results, rc, _ = run(env)
         self.assertEqual(rc, 0)
         self.assertEqual({t: r.status for t, r in results.items()},
-                         {"launcher-icon": "ok", "konsole": "changed", "plasma-consistency": "ok", "gtk": "ok", "portal": "ok", "kitty": "ok"})
+                         {"launcher-icon": "ok", "wallpaper": "changed", "konsole": "changed", "plasma-consistency": "ok",
+                          "gtk": "ok", "portal": "ok", "kitty": "ok"})
         self.assertIn("heiss-launcher-sand'", env.evals[0])
-        self.assertEqual(env.writes, [("konsolerc", "Desktop Entry", "DefaultProfile", "Heiss-Dark.profile")])
+        self.assertIn("'Heiss-Everyday'", env.evals[1])
+        self.assertIn("FillMode', 2", env.evals[1])
+        self.assertEqual(env.writes, [ts.LOCKSCREEN[:1] + (ts.LOCKSCREEN[1], ts.LOCKSCREEN[2], "Heiss-Everyday"),
+                                      ("konsolerc", "Desktop Entry", "DefaultProfile", "Heiss-Dark.profile")])
 
     def test_light_uses_light_values(self):
         env = FakeEnv(scheme="HeissLight", kde=lnf_kde("light"), gsettings="default", portal=2)
         results, rc, _ = run(env)
         self.assertEqual(rc, 0)
         self.assertIn("heiss-launcher-sand-light", env.evals[0])
-        self.assertEqual(env.writes[0][3], "Heiss-Light.profile")
+        self.assertEqual(env.writes[0][3], "Heiss-Everyday-Light")      # lock screen
+        self.assertEqual(env.writes[-1][3], "Heiss-Light.profile")
+        self.assertIn("'Heiss-Everyday-Light'", env.evals[1])
         self.assertEqual(results["portal"].status, "ok")
 
     def test_idempotent_second_run_changes_nothing(self):
@@ -114,6 +149,101 @@ class Sync(unittest.TestCase):
         results, _, _ = run(env)
         self.assertEqual(env.writes, [])
         self.assertEqual(results["konsole"].status, "ok")
+
+    def test_switch_changes_scheme_wallpaper_and_konsole_together_and_back(self):
+        env = FakeEnv(scheme="HeissLight", kde=lnf_kde("light"), gsettings="default", portal=2,
+                      appletsrc="[C][1][Wallpaper][org.kde.image][General]\nImage=Heiss-Everyday-Light\n")
+        env.kde[ts.LOCKSCREEN[:1] + (ts.LOCKSCREEN[1], ts.LOCKSCREEN[2])] = "Heiss-Everyday-Light"
+        r, _, _ = run(env)
+        self.assertEqual(r["wallpaper"].status, "ok")       # already light: nothing to do
+        env.kde[("kdeglobals", "General", "ColorScheme")] = "HeissDark"
+        env.kde.update(lnf_kde("dark"))
+        env.gs, env.portal = "prefer-dark", 1
+        r, rc, _ = run(env)
+        self.assertEqual((rc, r["wallpaper"].status, r["konsole"].status), (0, "changed", "changed"))
+        self.assertIn("'Heiss-Everyday'", env.evals[-1])
+        self.assertEqual(env.kde[ts.LOCKSCREEN[:1] + (ts.LOCKSCREEN[1], ts.LOCKSCREEN[2])], "Heiss-Everyday")
+        self.assertEqual(env.kde[("konsolerc", "Desktop Entry", "DefaultProfile")], "Heiss-Dark.profile")
+
+    def test_sync_is_idempotent_for_wallpaper_too(self):
+        env = FakeEnv(kde=lnf_kde("dark"), appletsrc="[C][1][Wallpaper][org.kde.image][General]\nImage=Heiss-Everyday\n")
+        env.kde[ts.LOCKSCREEN[:1] + (ts.LOCKSCREEN[1], ts.LOCKSCREEN[2])] = "Heiss-Everyday"
+        run(env)
+        env.writes.clear()
+        env.evals.clear()
+        r, _, _ = run(env)
+        self.assertEqual((r["wallpaper"].status, r["konsole"].status), ("ok", "ok"))
+        self.assertEqual(env.writes, [])
+        self.assertFalse([e for e in env.evals if "writeConfig('Image'" in e])
+
+    def test_a_wallpaper_the_user_chose_is_left_alone(self):
+        env = FakeEnv(kde=lnf_kde("dark"), appletsrc="[C][1][Wallpaper][org.kde.image][General]\nImage=file:///home/u/me.jpg\n")
+        env.kde[ts.LOCKSCREEN[:1] + (ts.LOCKSCREEN[1], ts.LOCKSCREEN[2])] = "/home/u/lock.png"
+        r, _, _ = run(env)
+        self.assertEqual(r["wallpaper"].status, "skipped")
+        self.assertFalse([e for e in env.evals if "writeConfig('Image'" in e])
+        self.assertFalse([w for w in env.writes if w[0] == "kscreenlockerrc"])
+
+    def test_wallpaper_dry_run_and_plasma_refusal(self):
+        env = FakeEnv(kde=lnf_kde("dark"))
+        r, _, _ = run(env, dry_run=True)
+        self.assertEqual((r["wallpaper"].status, env.writes, env.evals), ("changed", [], []))
+        r, rc, _ = run(FakeEnv(kde=lnf_kde("dark"), plasma_ok=False))
+        self.assertEqual((r["wallpaper"].status, rc), ("failed", 1))
+
+    def test_first_login_on_another_theme_applies_heiss_dark_once(self):
+        env = FakeEnv(scheme="BreezeDark", first_login_done=False)
+        r, rc, lines = run(env)
+        self.assertEqual(env.lnf_applied, ["org.heiss.dark.desktop"])
+        self.assertEqual((r["first-login"].status, rc), ("changed", 0))
+        self.assertIn("BreezeDark", r["first-login"].detail)
+        self.assertEqual(r["konsole"].status, "changed")     # then the normal targets ran on Heiss Dark
+        self.assertEqual(env.touched, ["/home/test/" + ts.FIRST_LOGIN_MARK])
+        env.kde[("kdeglobals", "General", "ColorScheme")] = "BreezeDark"      # the user picks Breeze later
+        env.lnf_applied.clear()
+        r, _, _ = run(env)
+        self.assertEqual(env.lnf_applied, [])
+        self.assertNotIn("first-login", r)
+
+    def test_first_login_already_heiss_only_writes_the_mark(self):
+        env = FakeEnv(kde=lnf_kde("dark"), first_login_done=False)
+        r, _, _ = run(env)
+        self.assertEqual(env.lnf_applied, [])
+        self.assertNotIn("first-login", r)
+        self.assertEqual(len(env.touched), 1)
+
+    def test_first_login_failure_is_visible_and_retried_next_login(self):
+        env = FakeEnv(scheme="BreezeDark", first_login_done=False, lnf_ok=False)
+        r, rc, _ = run(env)
+        self.assertEqual((r["first-login"].status, rc), ("failed", 1))
+        self.assertEqual(env.touched, [])
+
+    def test_first_login_leaves_a_custom_scheme_alone(self):
+        env = FakeEnv(scheme="MyOwnScheme", first_login_done=False)
+        r, _, _ = run(env)
+        self.assertEqual((env.lnf_applied, len(env.touched)), ([], 1))
+        self.assertNotIn("first-login", r)
+
+    def test_first_login_without_a_writable_mark_does_not_switch(self):
+        env = FakeEnv(scheme="BreezeDark", first_login_done=False, touch_ok=False)
+        r, rc, _ = run(env)
+        self.assertEqual((env.lnf_applied, r["first-login"].status, rc), ([], "warn", 0))
+
+    def test_wallpaper_ids_are_normalised_and_other_applets_ignored(self):
+        lock = ts.LOCKSCREEN[:1] + (ts.LOCKSCREEN[1], ts.LOCKSCREEN[2])
+        env = FakeEnv(kde=lnf_kde("dark"), appletsrc="[A][1]\nImage=/pic/frame.png\n[C][1][Wallpaper][org.kde.image][General]\n"
+                      "Image=file:///usr/share/wallpapers/Heiss-Everyday/\n")
+        env.kde[lock] = "file:///usr/share/wallpapers/Heiss-Everyday/"
+        r, _, _ = run(env)
+        self.assertEqual(r["wallpaper"].status, "ok")
+        env = FakeEnv(kde=lnf_kde("dark"), appletsrc="[C][1][Wallpaper][org.kde.image][General]\nImage = Heiss-Everyday-Light\n")
+        r, _, _ = run(env)
+        self.assertEqual(r["wallpaper"].status, "changed")
+
+    def test_first_login_is_skipped_by_dry_run(self):
+        env = FakeEnv(scheme="BreezeDark", first_login_done=False)
+        run(env, dry_run=True)
+        self.assertEqual((env.lnf_applied, env.touched), ([], []))
 
     def test_custom_scheme_is_left_alone(self):
         env = FakeEnv(scheme="BreezeDark")
@@ -254,7 +384,7 @@ class Targets(unittest.TestCase):
         env = FakeEnv(kde=lnf_kde("dark"), files=[])
         r, _, _ = run(env)
         self.assertEqual(r["konsole"].status, "skipped")
-        self.assertEqual(env.writes, [])
+        self.assertEqual([w for w in env.writes if w[0] == "konsolerc"], [])
 
     def test_konsole_not_installed(self):
         r, _, _ = run(FakeEnv(kde=lnf_kde("dark"), commands=()))

@@ -10,6 +10,11 @@ fixed=JetBrains Mono,10,-1,5,400,0,0,0,0,0,0,0,0,0,0,1
 [KDE]
 widgetStyle=Breeze
 LookAndFeelPackage=org.heiss.dark.desktop
+# Plasma 6.8 "Automatic" and the Dark Mode toggle pick the global theme from these two keys; their built-in
+# defaults are Breeze and Breeze Dark, which is how a new user ended up on BreezeDark. Only Heiss themes.
+DefaultLightLookAndFeel=org.heiss.light.desktop
+DefaultDarkLookAndFeel=org.heiss.dark.desktop
+AutomaticLookAndFeel=false
 
 [Icons]
 Theme=breeze-dark
