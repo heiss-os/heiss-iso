@@ -22,10 +22,12 @@ class ShellCheck(unittest.TestCase):
         script = read("scripts/check-shell.sh")
         skip = re.search(r"SKIP=\((.*?)\)", script, re.S).group(1).split()
         protected = read("docs/design/protected-paths.txt").split()
-        self.assertTrue(skip)
-        for f in skip:
+        for f in skip:                                     # the list is empty now; a new entry must be justified
             self.assertTrue(os.path.isfile(os.path.join(REPO, f)), f)
             self.assertIn(f, protected, "%s is skipped but is not Tier A: fix it instead" % f)
+
+    def test_no_tier_a_script_is_skipped_any_more(self):
+        self.assertEqual(re.search(r"(?m)^SKIP=\((.*?)\)", read("scripts/check-shell.sh"), re.S).group(1).strip(), "")
 
     def test_script_is_valid_bash(self):
         subprocess.run(["bash", "-n", os.path.join(REPO, "scripts/check-shell.sh")], check=True)

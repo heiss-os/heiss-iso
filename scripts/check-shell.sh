@@ -5,14 +5,9 @@
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 
-# Tier A files (docs/design/protected-paths.txt) with a finding that is justified, not hidden. Changing them
-# needs the design-approved label; take them off this list in the same change that fixes them.
-#   heiss-setup-dock.sh       SC2034: the loop counter "i" of a bounded wait loop is not used
-#   heiss-calamares-build.sh  SC2155: "export MAKEFLAGS=-j$(nproc)" masks the exit status of nproc, harmless
-SKIP=(
-    profile/airootfs/usr/local/bin/heiss-setup-dock.sh
-    scripts/heiss-calamares-build.sh
-)
+# Tier A files (docs/design/protected-paths.txt) with a finding that is justified, not hidden may be listed here;
+# changing them needs the design-approved label. Empty since round 25: every finding is fixed.
+SKIP=()
 
 command -v shellcheck >/dev/null || { echo "shellcheck is not installed" >&2; exit 2; }
 

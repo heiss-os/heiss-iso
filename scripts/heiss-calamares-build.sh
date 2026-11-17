@@ -3,7 +3,8 @@
 # Запускать в виртуалке heiss-build под обычным пользователем (не root).
 set -euo pipefail
 
-export MAKEFLAGS="-j$(nproc)"
+MAKEFLAGS="-j$(nproc)"
+export MAKEFLAGS
 mkdir -p ~/aur ~/localrepo
 cd ~/aur
 

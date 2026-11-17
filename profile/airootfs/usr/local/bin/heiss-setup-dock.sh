@@ -38,7 +38,7 @@ evaljs() {
 }
 
 ready=false
-for i in $(seq 1 60); do
+for _ in $(seq 1 60); do
   if pgrep -x plasmashell >/dev/null && [ -n "$(evaljs 'print(panels().length)')" ]; then ready=true; break; fi
   sleep 1
 done
