@@ -6,22 +6,19 @@ Last updated: 2026-11-17
 
 ## Done
 
-- Phase 0 documents written on branch `docs/phase-0-aduit` (docs only, no code, no Tier A file touched):
-  `DECISIONS.md`, `docs/ARCHITECTURE.md`, `docs/design/AUDIT.md`, `docs/apps/RESEARCH.md`,
-  `docs/infra/REPOSITORY.md` (hosted repository + owner checklist), `docs/infra/SCREENSHOTS.md`.
+See the phase and round sections below. Phases 0 to 7 are merged; round 23 (pre-build audit) PRs 1 to 4 are merged.
 
 ## In progress
 
-- Waiting for the owner's answers to the Phase 0 questions (see the end of the Phase 0 report; defaults are listed in `docs/apps/RESEARCH.md`, section 9).
+- Round 23 PR 5: documents and small leftovers (this PR). Then part 3 of `heiss-task-28.md`: the first ISO build (the owner runs the commands; the log is read and the image is inspected without booting it).
 
 ## Next
 
-- Phase 1a: hosted repository, signing design, CI skeleton (needs owner actions from `docs/infra/REPOSITORY.md`).
-- Phase 1b: `feat/design-tokens-and-guards` (tokens, generators, contrast tests, `protected-paths` job, checksums).
+- First ISO build and static inspection of the image, then the owner's VM run of the FINAL VM TEST LIST. Later: Btrfs and snapshots, new neutral wallpapers.
 
 ## Open questions
 
-See `docs/apps/RESEARCH.md`, section 9 (numbered, each with a recommended default).
+None open. The Phase 0 questions (`docs/apps/RESEARCH.md`, section 9) were answered earlier and recorded in `DECISIONS.md`.
 
 ## Not verified so far (honest list)
 
@@ -182,7 +179,7 @@ Owner's rule (2026-11-11): no ISO build and no VM check until the whole master p
 - [ ] Plasma shortcut list (`~/.config/kglobalshortcutsrc`, or System Settings, Shortcuts) from the VM compared with `docs/design/SHORTCUTS.md`; no `/etc/xdg/kglobalshortcutsrc` change before that list exists.
 - [ ] "Open terminal here" behaviour per `docs/apps/TERMINAL-HERE.md`.
 - [ ] After the 37 removed packages (PR 49): ISO boots, installs, `systemctl --failed` is empty.
-- [ ] Not done: Dolphin Places defaults, kitty and Thunar terminal configuration.
+- Not done (no check possible, nothing is built): Dolphin Places defaults, kitty and Thunar terminal configuration.
 
 ### Phase 5: Welcome wizard, repository in the installed system
 - [ ] Helper unit hardening: on an installed system run a real Apply that installs and removes a package (with a hook, for example a font or icon package), a snapper snapshot and `grub-mkconfig` through the Control Center / expect each to finish as before; `systemctl status heiss-helper` and `journalctl -u heiss-helper` show no `Operation not permitted` or `Address family not supported`; `systemd-analyze security heiss-helper.service` shows the new options as set; also try a hook that starts bwrap or unshare, if any package in the profiles has one (to decide on `RestrictNamespaces`). `[multilib]` stays unsupported. The same run covers `PrivateTmp` and `ProtectHome` (a hook must not fail on `/tmp` or `/home`). If an operation fails, drop the option named in the journal and record it in DECISIONS.
@@ -231,7 +228,6 @@ Owner's rule (2026-11-11): no ISO build and no VM check until the whole master p
 - [ ] Control Center search: typing "wireguard" lists Network and privacy; "брандмауэр" in ru lists the Security Center; an empty result shows the "nothing found" text.
 - [ ] Overview, pending actions: put one entry in the pending queue ("Save answers, apply later" in the wizard), open the Control Center / expect the pending-actions card to show 1 and "1 waiting".
 - [ ] Overview on an installed system after Apply: profile and privacy level match what the wizard applied; `plasmashell --version` is parsed on the real Plasma.
-
 - [ ] Control Center, Updates and snapshots: open "Updates and snapshots" / expect four cards (updates waiting, last system update, restart, snapshots); compare with `pacman -Qu | wc -l`, the last `starting full system upgrade` line of `/var/log/pacman.log` and `findmnt -n -o FSTYPE /`; on the ext4 install expect "no snapshots" as information, not a warning; in Russian all texts are Russian.
 - [ ] Control Center, Updates and snapshots, restart: `sudo pacman -Syu` with a new kernel, click "Check again" before rebooting / expect the restart card "Look at this"; after a reboot expect OK (never run: the check is `/usr/lib/modules/$(uname -r)` missing).
 - [ ] Control Center, Updates and snapshots, waiting: with updates waiting expect the count and advice; after `sudo pacman -Syu` and "Check again" expect "none"; the page must make no network request (compare with `ss`/a firewall log while opening it).
@@ -270,10 +266,20 @@ Owner's rule (2026-11-11): no ISO build and no VM check until the whole master p
 - [ ] Installer without network calls (round 23 PR 3): boot the live ISO with network, run `sudo tcpdump -ni any -w /tmp/cal.pcap` (or `ss -tnp | grep calamares` every few seconds) and start the installer / expect the welcome page to show the requirement rows for storage, RAM, power, root and screen (no "internet" row and no spinner for it), the locale page to open on Europe/Moscow without a pause, and `tcpdump -nr /tmp/cal.pcap 'tcp port 80 or tcp port 443'` to print no packet while the installer runs (or no calamares socket in `ss`; the live system's NTP and DNS are on other ports); in `~/.cache/calamares/session.log` expect no `GeoIP` request line and no `internetCheckUrl`. Then finish an installation / expect the same success as before (the YAML of the four edited files is parsed by Calamares only there).
 - [ ] Safe-graphics entry with a separate `/boot` (round 23 PR 4): in a VM install with Calamares using manual partitioning with `/boot` on its own partition (ext4, 1 GiB) and `/` on another / expect `findmnt -no SOURCE /boot` to print the separate partition (not the root device), then after the first boot `sudo grub-mkconfig -o /boot/grub/grub.cfg` to print "Found safe graphics kernel: /boot/vmlinuz-linux", `grep -A8 'safe graphics' /boot/grub/grub.cfg` to show `linux	/vmlinuz-linux root=UUID=... nomodeset ...` and `initrd	/initramfs-linux.img` (no `/boot/` prefix, no `//`), and the entry to boot to a login with `cat /proc/cmdline` containing `nomodeset`. Run it once in BIOS mode (the VirtualBox default); UEFI with a separate `/boot` stays unverified until a UEFI VM. The test uses a stub that returns the empty string; a real `grub-mkrelpath` was never run.
 
+### Static checks on the built image (no boot, no root: unpack the squashfs into a `mktemp` directory)
+Added in round 23 PR 5. Each line is run in part 3 of `heiss-task-28.md` (read-only inspection of the unpacked image) and then ticked here with the evidence; what a static look cannot show stays an item for the VM run above.
+- [ ] ISO size: `ls -l out/*.iso` / record the number (the 2.55 GiB figure predates the Heiss packages, `pyside6` and `inter-font`).
+- [ ] Branding: `grep -rIil arch <unpacked>/etc/os-release <unpacked>/etc/issue <unpacked>/etc/motd <unpacked>/usr/share/heiss/os-release` and the boot menu files (`syslinux/`, `loader/`, `efiboot`) / expect no Arch name or logo in user-visible text (package names and URLs of the Arch repositories excepted); `usr/lib/os-release` carries `NAME="Heiss OS"` (the pacman hook ran).
+- [ ] Repository and keyring: `grep -n '^\[' <unpacked>/etc/pacman.conf` / the live image has `[core]`, `[extra]` and `[heiss-local]` (the `[heiss]` section is written into the INSTALLED system by `heiss-cleanup.sh`, so it is not expected here: read lines 83 to 130 of that script instead, and see the VM item for the installed system); `ls <unpacked>/usr/share/pacman/keyrings/` / expect `heiss.gpg`, `heiss-trusted`, `heiss-revoked`.
+- [ ] Root locked: `grep '^root:' <unpacked>/etc/shadow` / the live image keeps archiso's own state; the check that matters is `heiss-cleanup.sh` (VM item "Cleanup fails closed" above); here only read that the script is present and executable.
+- [ ] Units: `find <unpacked>/etc/systemd -type l` compared with `core/tests/test_live_units.py` / expect no `sshd`, `cloud-init`, `reflector`, `pkgstats` or timer that calls out.
+- [ ] Permissions: `stat -c '%a %U:%G %n'` on `etc/shadow` and `etc/gshadow` (expect `400 root:root`), `usr/lib/systemd/system/heiss-helper.service`, `usr/share/dbus-1/system.d/org.heiss.Helper1.conf`, `usr/share/polkit-1/actions/org.heiss.helper.policy` (these three are data files: expect `644 root:root`, and no file under them writable by group or others), `usr/local/bin/heiss-cleanup.sh`, `heiss-theme-sync.sh`, `heiss-boot-branding.sh`, `heiss-start-installer.sh`, `heiss-open-link` (expect `755`; `heiss-set-wallpaper.sh` and `heiss-setup-dock.sh` have no `file_permissions` entry and show `644`, which is fine because their autostart entries run them as `sh /usr/local/bin/...`: record it), `etc/sudoers.d/g_wheel` (`440`).
+- [ ] Safe graphics: `stat -c '%a %n' <unpacked>/etc/grub.d/41_heiss_safe` / expect `755`.
+
 ### Tooling (not a product phase)
 - [ ] guards.yml without a stored token: after the merge open the first `guards` run on main, expand "Run actions/checkout" in both jobs / expect `persist-credentials: false` under `with:` and both jobs green (tokens and protected-paths). Optional: a throwaway PR step `git config --get-all http.https://github.com/.extraheader` / expect no output. No VM step applies.
 - [ ] Publish with the token in the environment: after the merge, at the next push to `main` that changes a package (the `Publish to heiss-repo` step only runs when `changed == 'true'`), open the `publish-repo` run / expect the step green, a new commit on `gh-pages` by "Heiss OS CI", and no token in the log (it is masked). If the push is rejected with an authentication error, the environment form did not reach git: report the exact error. If no package changed the step is skipped: trigger it with a change under `packages/` (for example a pkgrel bump in a later PR); a skip is not a pass. Only the masked log is checked, `ps` exposure is not measured. Not run here (needs the real secret).
-- [ ] Calamares build with the pin: in the build VM run `scripts/heiss-calamares-build.sh` / expect "==> https://aur.archlinux.org/calamares.git at 167151be..., PKGBUILD sha256 8ea0869d...: as reviewed", then the layout-patch step printing a `grep -n` line with `heiss-layout.patch` inside `build()` (the anchor `local _pkgsrc_dir=` was read in the pinned PKGBUILD but the patch was never applied or built here; if the step prints nothing and the script stops, the anchor is missing: a failure), then a pacman prompt before build dependencies (no `--noconfirm`), and the package in `~/localrepo`.
+- [ ] Calamares build with the pin: in the build VM run `bash scripts/heiss-calamares-build.sh` / expect "==> https://aur.archlinux.org/calamares.git at 167151be..., PKGBUILD sha256 8ea0869d...: as reviewed", then the layout-patch step printing a `grep -n` line with `heiss-layout.patch` inside `build()` (the anchor `local _pkgsrc_dir=` was read in the pinned PKGBUILD but the patch was never applied or built here; if the step prints nothing and the script stops, the anchor is missing: a failure), then a pacman prompt before build dependencies (no `--noconfirm`), and the package in `~/localrepo`.
 - [ ] Installer from that package: boot the ISO built with it in the VM / expect the Calamares sidebar narrow (56 px) and Back/Next/Cancel evenly spaced, as before.
 - [ ] Pin failure path: in a copy of the script change one hex digit of `CALAMARES_AUR_COMMIT` / expect "not in ... (rewritten history?): do not build", exit 1 and no `~/aur/calamares`; restore it, change one digit of `CALAMARES_PKGBUILD_SHA256` / expect "PKGBUILD sha256 is <real>, expected <changed>", exit 1 and no `~/aur/calamares`.
 - [ ] Unattended build: in a throwaway VM run the script with `HEISS_NONINTERACTIVE=1` / expect no pacman prompt.
@@ -406,4 +412,6 @@ PR "fix/no-outgoing-calls" (round 23 PR 2, MEDIUM 4-7 and LOW 13; owner answers 
 PR "fix/calamares-no-network" (round 23 PR 3, MEDIUM 8; owner answer 6 A, Tier A, label `design-approved`): `welcome.conf`/`welcomeq.conf` lose the `internet` check, its URL and the stock sample conditions, `locale.conf`/`localeq.conf` set GeoIP to `none` with an empty URL (the welcome GeoIP block loses its URL too); test `core/tests/test_calamares_quiet.py` (7 tests, core 356); `protected.sha256` regenerated. Not verified: a Calamares run with the edited YAML (see the FINAL VM TEST LIST line "Installer without network calls").
 
 PR "fix/safe-graphics-separate-boot" (round 23 PR 4, MEDIUM 9): `41_heiss_safe` accepts the empty or `/` relative boot path of a separate `/boot` partition and builds `/vmlinuz-...` from it; a boot path with an unusable character now prints a message instead of skipping silently; new test in `core/tests/test_safe_graphics.py` (26 tests in that file, core 358), `heiss-safe-graphics` pkgrel 3 (PKGBUILD checksum and `packages/pkgrel.json`). Not verified: a real `grub-mkconfig` with a separate `/boot` (see the FINAL VM TEST LIST line).
+
+PR "docs/build-commands-and-leftovers" (round 23 PR 5, HIGH 3, MEDIUM 10, LOW 12, LOW 17): build commands as `bash scripts/...` in the docs, outdated documents corrected, `/etc/gshadow` 0400 and the publisher URL in `profile/profiledef.sh`, test `core/tests/test_profiledef.py` (3 tests, core 361), new FINAL VM TEST LIST section "Static checks on the built image". Not verified: that mkarchiso applies the new `gshadow` entry (read from the unpacked image in part 3).
 

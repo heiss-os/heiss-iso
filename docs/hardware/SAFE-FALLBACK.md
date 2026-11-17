@@ -13,7 +13,7 @@ A bad GPU driver can leave the user with a black screen and no way back. Today:
   `/etc/snapper/configs/root` exist (`helper/heiss_helper/actions.py`). The installer creates ext4 today
   (`docs/PLAN-STATE.md`, Phase 6 note: Btrfs and snapshots are a separate Tier A item), so on a fresh install
   there is **no snapshot** and the only rollback is removing the packages the state file recorded.
-- No second kernel is installed (`profile/packages.x86_64` has `linux` only).
+- No second kernel is installed (`profile/packages.x86_64` has `linux` only). (Changed in step 4a: `linux-lts` comes with the NVIDIA driver, still not in the ISO.)
 
 ## What would be built
 

@@ -28,7 +28,7 @@ Profiles are metapackages. `[heiss-local]` is a `file://` directory on the build
 
 1. Создайте на GitHub в организации `heiss-os` новый пустой репозиторий `heiss-repo` (Public). Ничего в него не добавляйте.
 2. В `heiss-repo` откройте Settings -> Pages. Source: «Deploy from a branch», ветка `gh-pages`, папка `/ (root)`. Сохраните. Запишите адрес сайта.
-3. На своём компьютере (не в виртуалке Claude) создайте ключ подписи. Выполните и ответьте на вопросы (имя «Heiss OS Repo», почту любую рабочую, срок 2 года):
+3. На своём компьютере (не в виртуалке сборки) создайте ключ подписи. Выполните и ответьте на вопросы (имя «Heiss OS Repo», почту любую рабочую, срок 2 года):
    `gpg --full-generate-key`
 4. Посмотрите номер ключа: `gpg --list-secret-keys --keyid-format LONG`. Запишите длинный номер (после `rsa4096/`).
 5. Экспортируйте закрытый ключ в текстовый файл: `gpg --armor --export-secret-keys НОМЕР > heiss-private.asc`. Этот файл никому не показывайте и не кладите в репозиторий.
@@ -69,4 +69,4 @@ Profiles are metapackages. `[heiss-local]` is a `file://` directory on the build
 - Already published package files are never replaced (makepkg output is not reproducible: timestamps and build info differ; assumed, not measured); a bump of `pkgrel` in `packages/pkgrel.json` is what publishes a new version. Files of versions that are no longer built are removed. If nothing is new, nothing is pushed, so changed content without a `pkgrel` bump is never republished.
 - NOT VERIFIED: a run against the real `heiss-repo` and GitHub Pages serving `heiss.db` over HTTPS to a real pacman (the dry run only reads `file://`).
 
-- **Build order for the next ISO:** `heiss-keyring` comes only from `[heiss-local]`: run `scripts/heiss-packages-build.sh` before `heiss-build.sh`, otherwise mkarchiso fails with "target not found".
+- **Build order for the next ISO:** `heiss-keyring` comes only from `[heiss-local]`: run `bash scripts/heiss-packages-build.sh` before `bash scripts/heiss-build.sh`, otherwise mkarchiso fails with "target not found".

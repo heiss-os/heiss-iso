@@ -3,7 +3,7 @@
 
 iso_name="heiss"
 iso_label="HEISS_$(date +%Y%m)"
-iso_publisher="Heiss OS <https:/github.com/heiss-os>"
+iso_publisher="Heiss OS <https://github.com/heiss-os>"
 iso_application="Heiss OS Live"
 iso_version="$(date --date="@${SOURCE_DATE_EPOCH:-$(date +%s)}" +%Y.%m.%d)"
 install_dir="arch"
@@ -25,6 +25,7 @@ file_permissions=(
   ["/home/liveuser"]="1000:1000:750"
   ["/etc/sudoers.d/g_wheel"]="0:0:440"
   ["/etc/shadow"]="0:0:400"
+  ["/etc/gshadow"]="0:0:400"
   ["/root"]="0:0:750"
   ["/root/.automated_script.sh"]="0:0:755"
   ["/root/.gnupg"]="0:0:700"

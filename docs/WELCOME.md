@@ -1,6 +1,6 @@
 # Heiss Welcome (first-run wizard): plan and state
 
-Master plan section 7. Stack as in `docs/ARCHITECTURE.md`: PySide6 + QML (Kirigami), official packages (`pyside6` 6.12.0, `kirigami` 6.31.0, `qt6-declarative` 6.12.0 exist in the repositories; installed size of pyside6 52 MiB, not yet added to any package list).
+Master plan section 7. Stack as in `docs/ARCHITECTURE.md`: PySide6 + QML (Kirigami), official packages (`pyside6` 6.12.0, `kirigami` 6.31.0, `qt6-declarative` 6.12.0 exist in the repositories; installed size of pyside6 52 MiB; `pyside6` is a dependency of `heiss-welcome` and `heiss-control`, both in `profile/packages.x86_64`).
 
 ## Split into PRs
 
@@ -10,13 +10,13 @@ Master plan section 7. Stack as in `docs/ARCHITECTURE.md`: PySide6 + QML (Kiriga
 | 5b | `heiss-welcome` PySide6/QML app drawing the model; screens 0-11, en/ru strings, keyboard control | no (UI), but offline-only without it | this PR (see below) |
 | 5c | hardware screen wired to `heiss hw detect`, privacy screen items marked implemented / "coming soon" | no | this PR |
 | 5d | `heiss-welcome` package with an autostart entry for the installed system only (this PR); no `heiss-cleanup.sh` step needed | autostart: no; Apply of a non-Base profile: yes | package built locally, never run |
-| 5e | applying screen through the helper (this PR); pending queue run from the Control Center (done, Phase 6 step 6) | yes (profiles other than the ISO's Base come from `[heiss]`) | repository exists; applying written, never run |
+| 5e | applying screen through the helper (this PR); pending queue run from the Control Center (done, Phase 6 step 6) | yes (profiles other than the ISO's Base come from `[heiss]`) | repository exists; applying runs through the helper (Phase 5e, later isolated in a child process); never run on a real installed system |
 
 ## Model (5a)
 
 - Steps in order: welcome, profile, level, addons, hardware, appearance, privacy, software, backups, summary, applying, done. `skip` is allowed on level..backups; welcome, profile and summary are not skippable. Skipping the whole wizard gives Base with all defaults.
 - `set(path, value)` validates through `answers.validate`; a bad value changes nothing. Choosing a profile sets that profile's defaults (Cyber: privacy `enhanced`) only for answers the user did not choose.
-- **Answers vs extras.** Only keys of the answers schema (`/etc/heiss/profile.toml`) are real answers. Accent, density, font scale, hardware toggles and the backups choice are `extras`: saved and resumable, **not applied by anything yet**. Their application is added together with the screens that need them.
+- **Answers vs extras.** Only keys of the answers schema (`/etc/heiss/profile.toml`) are real answers. Accent, density, font scale, hardware toggles, hardware confirmations and the backups choice are `extras`: saved and resumable. Of these, only the hardware toggles and confirmations are applied (`--hardware`, `--confirm-hardware`; see Round 20 item 3a and Phase 7 step 3b in `docs/PLAN-STATE.md`); accent, density, font scale and the backups choice are **not applied by anything yet**.
 - Resume: `~/.config/heiss/wizard-state.json` (written after each step by the front end). An interrupted "applying" resumes at the summary, because the plan is recomputed against the real system. A corrupt or foreign file is ignored.
 - Done marker `~/.config/heiss/welcome-done`; saved answers `~/.config/heiss/answers.toml`.
 - **Pending queue** `~/.config/heiss/pending.json`: only the kind `apply-profile` with `{profile, addons}`. Items are validated when added and again when read (a hand-edited file is rejected; ids are matched in full, so a trailing newline is refused). Every load-modify-save is under an exclusive lock (`pending.json.lock`), and `run` merges its result into the file as it is after the run, so an item added or removed meanwhile is respected. Offline nothing runs; a failure stops the run, keeps the item as `failed` with the message; the user retries or removes it. The queue holds no commands and no package names, so it cannot widen what the helper allows.
