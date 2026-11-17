@@ -117,14 +117,14 @@ a5b9a7ed6f6f327e2029f6e4661e037ebc5617b6a4a5e7b492e17036aa0ae709  profile/airoot
 0d1e90c96db1a15c520f80355316f80b527b9056ecacc8db13aed6b8155a4771  profile/airootfs/usr/share/libalpm/hooks/91-heiss-stock-wallpapers.hook
 06c53f96149cedf22e19f2b0d9147b25622b4716543e2ff955be28edb119c8bb  profile/airootfs/usr/share/libalpm/hooks/92-heiss-lsb-release.hook
 d2e40f0c064a854a9ed330f780fc7edc12c1f01403739b45c7d3b488225dd13e  profile/airootfs/usr/share/plasma/look-and-feel/org.heiss.dark.desktop/contents/defaults
-a99cee27b204a6698f0ae61365860dae873de6fe0b2490a9661573361e07d293  profile/airootfs/usr/share/plasma/look-and-feel/org.heiss.dark.desktop/contents/layouts/org.kde.plasma.desktop-layout.js
+8a240590bd82055dee229b479d84676c9729e43139d744a7a71f7fa4339dab0e  profile/airootfs/usr/share/plasma/look-and-feel/org.heiss.dark.desktop/contents/layouts/org.kde.plasma.desktop-layout.js
 5863cce78f5a2cc0bb5639bdb6c14a19222eec91eed43673cc166c4c7e7855fe  profile/airootfs/usr/share/plasma/look-and-feel/org.heiss.dark.desktop/contents/previews/fullscreenpreview.jpg
 1ba2d8143f78a2238e16d4b5eacdf1dd9aa143fd0069aa528962350dad81979e  profile/airootfs/usr/share/plasma/look-and-feel/org.heiss.dark.desktop/contents/previews/preview.png
 18f18736d30dcc9ff6d15ea929cfa70aa1d30708206df55ae28fbbbd1b084dd6  profile/airootfs/usr/share/plasma/look-and-feel/org.heiss.dark.desktop/contents/splash/Splash.qml
 fca4af61c7e82da7614307b6c8de7aa335504e493e1bf763adf2d85cda55f3c9  profile/airootfs/usr/share/plasma/look-and-feel/org.heiss.dark.desktop/contents/splash/images/heiss-glyph.svg
 f4e1e4027b670de918cf505a04bfd8fb41ec27f7eb7c01d546af77fecb452f70  profile/airootfs/usr/share/plasma/look-and-feel/org.heiss.dark.desktop/metadata.json
 9284a68a4e546f033b7871c8eeec9af20ae45a7c1abcf471c4d2e56166066c8b  profile/airootfs/usr/share/plasma/look-and-feel/org.heiss.light.desktop/contents/defaults
-018c80a328918147d9892b22a1d0dba49b5fbac4b81d8b22b8bd10749f86e511  profile/airootfs/usr/share/plasma/look-and-feel/org.heiss.light.desktop/contents/layouts/org.kde.plasma.desktop-layout.js
+56b4d7010f346ddbf1f8caa5dafff84d02af6dc58bae216949e0e54d04c17534  profile/airootfs/usr/share/plasma/look-and-feel/org.heiss.light.desktop/contents/layouts/org.kde.plasma.desktop-layout.js
 59c042baf58054cdf4db4739f4b1328a8982c2496258692ca1a4b76300774238  profile/airootfs/usr/share/plasma/look-and-feel/org.heiss.light.desktop/contents/previews/fullscreenpreview.jpg
 fc6b21c881b7965ef97fc1ab305de908b241eefda49acf9ec8965a2f53f235bb  profile/airootfs/usr/share/plasma/look-and-feel/org.heiss.light.desktop/contents/previews/preview.png
 6e754c20a0b768d03f540f696c678a7e5abc96218d87dcc8f23959e828d7dbf4  profile/airootfs/usr/share/plasma/look-and-feel/org.heiss.light.desktop/contents/splash/Splash.qml

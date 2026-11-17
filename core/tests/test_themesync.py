@@ -153,7 +153,7 @@ class Sync(unittest.TestCase):
     def test_switch_changes_scheme_wallpaper_and_konsole_together_and_back(self):
         env = FakeEnv(scheme="HeissLight", kde=lnf_kde("light"), gsettings="default", portal=2,
                       appletsrc="[C][1][Wallpaper][org.kde.image][General]\nImage=file:///usr/share/wallpapers/Heiss-Everyday-Light/\n")
-        env.kde[ts.LOCKSCREEN[:1] + (ts.LOCKSCREEN[1], ts.LOCKSCREEN[2])] = "Heiss-Everyday-Light"
+        env.kde[ts.LOCKSCREEN[:1] + (ts.LOCKSCREEN[1], ts.LOCKSCREEN[2])] = "file:///usr/share/wallpapers/Heiss-Everyday-Light/"
         r, _, _ = run(env)
         self.assertEqual(r["wallpaper"].status, "ok")       # already light: nothing to do
         env.kde[("kdeglobals", "General", "ColorScheme")] = "HeissDark"
@@ -167,7 +167,7 @@ class Sync(unittest.TestCase):
 
     def test_sync_is_idempotent_for_wallpaper_too(self):
         env = FakeEnv(kde=lnf_kde("dark"), appletsrc="[C][1][Wallpaper][org.kde.image][General]\nImage=file:///usr/share/wallpapers/Heiss-Everyday/\n")
-        env.kde[ts.LOCKSCREEN[:1] + (ts.LOCKSCREEN[1], ts.LOCKSCREEN[2])] = "Heiss-Everyday"
+        env.kde[ts.LOCKSCREEN[:1] + (ts.LOCKSCREEN[1], ts.LOCKSCREEN[2])] = "file:///usr/share/wallpapers/Heiss-Everyday/"
         run(env)
         env.writes.clear()
         env.evals.clear()
