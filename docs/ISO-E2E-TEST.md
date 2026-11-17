@@ -2,18 +2,18 @@
 
 Goal: the next ISO build proves (or breaks) the chain `heiss` CLI -> D-Bus -> polkit -> helper -> pacman/systemd on a real installed system. Nothing below has been run yet: everything is "not verified" until you send the results.
 
-## What the ISO now contains
+## What the ISO contains
 
-`profile/packages.x86_64` gains `heiss-core`, `heiss-helper` and `heiss-profile-base` (which pulls Essentials and the default apps: delivery option (a), Base in the ISO). The packages are built into `[heiss-local]`.
+`profile/packages.x86_64` lists the Heiss packages `heiss-core`, `heiss-helper`, `heiss-profile-base` (pulls Essentials and the default apps: Base is in the ISO), `heiss-theme`, `heiss-keyring`, `heiss-welcome`, `heiss-control` and `heiss-safe-graphics`, plus `inter-font`. All of them are built into `[heiss-local]` (`~/localrepo`) by `scripts/heiss-packages-build.sh`; Calamares comes from `scripts/heiss-calamares-build.sh`.
 
-Size: the existing ISO (built 2026-11-04) is 2.55 GiB. NOT measured after the change (an ISO build needs sudo here). The 35 directly added packages weigh 288 MiB installed / 83 MiB download, but several (plasma-workspace, kwin, powerdevil, ...) are already dependencies of plasma-desktop, and their new dependencies are not counted, so the real growth is smaller than that and needs a measured build.
+Size: NOT measured with the current package list. The last ISO built (2026-11-04, `~/share/hhhheiss-2026.11.04-x86_64.iso`) is 2.55 GiB and predates the Heiss packages, `pyside6` and `inter-font`; `linux-lts` and `nvidia-open-lts` are not in the ISO (they come with the NVIDIA driver). The real size is read from the first build of round 23, part 3.
 
 ## Build
 
 ```bash
 cd ~/heiss-iso            # the repository, on the branch to test, changes committed
-scripts/heiss-packages-build.sh      # builds heiss-core, heiss-helper, heiss-profile-* from git HEAD into ~/localrepo
-HEISS_FAST=1 scripts/heiss-build.sh  # then the ISO as usual
+bash scripts/heiss-packages-build.sh      # builds heiss-core, heiss-helper, heiss-profile-* from git HEAD into ~/localrepo
+HEISS_FAST=1 bash scripts/heiss-build.sh  # then the ISO as usual
 ```
 
 If the ISO build says a `heiss-*` package is not found, the first step was skipped.
