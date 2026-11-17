@@ -87,6 +87,12 @@ class RealEnv:
     def apply_lnf(self, package):
         return self._run(["plasma-apply-lookandfeel", "--apply", package], timeout=60)[0] == 0
 
+    def unmark(self, path):
+        try:
+            os.unlink(path)
+        except OSError:
+            pass
+
     def touch(self, path):
         try:
             os.makedirs(os.path.dirname(path), mode=0o700, exist_ok=True)
@@ -213,6 +219,31 @@ for (var p of panels()) {
     return Result("launcher-icon", "failed", "plasmashell did not accept the script (is it running?)")
 
 
+def _wallpaper_id(value):
+    """`Heiss-Everyday`, `file:///usr/share/wallpapers/Heiss-Everyday/` and `/usr/share/wallpapers/Heiss-Everyday` are
+    the same package; anything else is returned unchanged."""
+    v = value.strip()
+    if v.startswith("file://"):
+        v = v[len("file://"):]
+    if v.startswith(WALLPAPER_DIR + "/"):
+        v = v[len(WALLPAPER_DIR) + 1:].strip("/")
+    return v
+
+
+def _desktop_images(text):
+    """`Image=` values of the desktop wallpaper groups only (not another applet's picture)."""
+    out, in_wall = [], False
+    for raw in text.splitlines():
+        line = raw.strip()
+        if line.startswith("["):
+            in_wall = line.endswith("[Wallpaper][org.kde.image][General]")
+        elif in_wall:
+            m = re.fullmatch(r"Image\s*=\s*(.*)", line)
+            if m and m.group(1).strip():
+                out.append(m.group(1))
+    return out
+
+
 def target_wallpaper(env, theme, dry):
     """Desktop and lock-screen wallpaper follow the theme. A wallpaper the user chose is never replaced."""
     pid = WALLPAPER[theme]
@@ -220,9 +251,10 @@ def target_wallpaper(env, theme, dry):
         return Result("wallpaper", "skipped", "wallpaper package %s is missing" % pid)
     ours = set(WALLPAPER.values())
     text = env.read_text(os.path.join(env.home, APPLETSRC)) or ""
-    images = [i.strip() for i in re.findall(r"^Image=(.*)$", text, re.M)]
+    images = [_wallpaper_id(i) for i in _desktop_images(text)]
     lock_file, lock_groups, lock_key = LOCKSCREEN
     lock_now = env.kde_read_nested(lock_file, lock_groups, lock_key)
+    lock_now = _wallpaper_id(lock_now) if lock_now else lock_now
     desktop_custom = any(i not in ours for i in images)
     lock_custom = lock_now not in (None, "") and lock_now not in ours
     changes = []
@@ -366,6 +398,10 @@ def _first_login(env, scheme, out, sleep):
     if env.exists(mark):
         return scheme
     if scheme not in THEME_OF and scheme.startswith("Breeze"):    # a custom scheme the user chose is never replaced
+        if not env.touch(mark):
+            # without the mark the switch would repeat at every login and override a later choice
+            out.append(Result("first-login", "warn", "cannot write %s: not switching the theme" % mark))
+            return scheme
         if env.apply_lnf(FIRST_LOGIN_LNF):
             sleep(2)    # the switch writes kdeglobals several times
             now = env.kde_read("kdeglobals", "General", "ColorScheme")
@@ -374,8 +410,10 @@ def _first_login(env, scheme, out, sleep):
         else:
             out.append(Result("first-login", "failed", "started on color scheme %s and plasma-apply-lookandfeel could not apply %s"
                               % (scheme, FIRST_LOGIN_LNF)))
-            return scheme       # no mark: try again at the next login
-    env.touch(mark)
+            env.unmark(mark)    # no mark: try again at the next login
+            return scheme
+    elif not env.touch(mark):
+        pass                    # harmless: nothing was changed, the check repeats
     return scheme
 
 
