@@ -6,11 +6,11 @@ Last updated: 2026-11-17
 
 ## Done
 
-See the phase and round sections below. Phases 0 to 7 are merged; round 23 (pre-build audit) PRs 1 to 4 are merged.
+See the phase and round sections below. Phases 0 to 7 are merged; round 23 (pre-build audit) PRs 1 to 5 are merged.
 
 ## In progress
 
-- Round 23 PR 5: documents and small leftovers (this PR). Then part 3 of `heiss-task-28.md`: the first ISO build (the owner runs the commands; the log is read and the image is inspected without booting it).
+- Round 23 PR 5: documents and small leftovers (merged, #113). Part 3 of `heiss-task-28.md`, step 1: the build steps in `docs/ISO-E2E-TEST.md` (this PR). Then the first ISO build: the owner runs the commands; the log is read and the image is inspected without booting it.
 
 ## Next
 
@@ -275,6 +275,7 @@ Added in round 23 PR 5. Each line is run in part 3 of `heiss-task-28.md` (read-o
 - [ ] Units: `find <unpacked>/etc/systemd -type l` compared with `core/tests/test_live_units.py` / expect no `sshd`, `cloud-init`, `reflector`, `pkgstats` or timer that calls out.
 - [ ] Permissions: `stat -c '%a %U:%G %n'` on `etc/shadow` and `etc/gshadow` (expect `400 root:root`), `usr/lib/systemd/system/heiss-helper.service`, `usr/share/dbus-1/system.d/org.heiss.Helper1.conf`, `usr/share/polkit-1/actions/org.heiss.helper.policy` (these three are data files: expect `644 root:root`, and no file under them writable by group or others), `usr/local/bin/heiss-cleanup.sh`, `heiss-theme-sync.sh`, `heiss-boot-branding.sh`, `heiss-start-installer.sh`, `heiss-open-link` (expect `755`; `heiss-set-wallpaper.sh` and `heiss-setup-dock.sh` have no `file_permissions` entry and show `644`, which is fine because their autostart entries run them as `sh /usr/local/bin/...`: record it), `etc/sudoers.d/g_wheel` (`440`).
 - [ ] Safe graphics: `stat -c '%a %n' <unpacked>/etc/grub.d/41_heiss_safe` / expect `755`.
+- [ ] Build steps in `docs/ISO-E2E-TEST.md` "Build" (PR "docs/iso-build-steps"): run steps 2 to 4 on the build VM / expect `==> Building from commit <hash of git log -1>` and `Done. Now build the ISO.` in `~/heiss-packages.log`, `sha256 OK` at the end of `~/heiss-build-script.log`, `ls -l ~/share/*.log` listing `heiss-packages.log`, `heiss-build-script.log` and `build.log`, and `ls ~/share/heiss-*.iso` showing the new ISO. If the script stops before mkarchiso, `build.log` is missing or old: record that and read the script log instead.
 
 ### Tooling (not a product phase)
 - [ ] guards.yml without a stored token: after the merge open the first `guards` run on main, expand "Run actions/checkout" in both jobs / expect `persist-credentials: false` under `with:` and both jobs green (tokens and protected-paths). Optional: a throwaway PR step `git config --get-all http.https://github.com/.extraheader` / expect no output. No VM step applies.
@@ -414,4 +415,6 @@ PR "fix/calamares-no-network" (round 23 PR 3, MEDIUM 8; owner answer 6 A, Tier A
 PR "fix/safe-graphics-separate-boot" (round 23 PR 4, MEDIUM 9): `41_heiss_safe` accepts the empty or `/` relative boot path of a separate `/boot` partition and builds `/vmlinuz-...` from it; a boot path with an unusable character now prints a message instead of skipping silently; new test in `core/tests/test_safe_graphics.py` (26 tests in that file, core 358), `heiss-safe-graphics` pkgrel 3 (PKGBUILD checksum and `packages/pkgrel.json`). Not verified: a real `grub-mkconfig` with a separate `/boot` (see the FINAL VM TEST LIST line).
 
 PR "docs/build-commands-and-leftovers" (round 23 PR 5, HIGH 3, MEDIUM 10, LOW 12, LOW 17): build commands as `bash scripts/...` in the docs, outdated documents corrected, `/etc/gshadow` 0400 and the publisher URL in `profile/profiledef.sh`, test `core/tests/test_profiledef.py` (3 tests, core 361), new FINAL VM TEST LIST section "Static checks on the built image". Not verified: that mkarchiso applies the new `gshadow` entry (read from the unpacked image in part 3).
+
+PR "docs/iso-build-steps" (round 23, part 3, step 1): `docs/ISO-E2E-TEST.md` "Build" section matches the real scripts (`bash scripts/...`, the mkarchiso log is `~/build.log`; it and the teed script logs are written to the home directory and copied to `~/share` by hand, because the share is mounted only at the end of the script). Not verified: that the commands run to the end (no build was run yet); the Calamares package in `~/localrepo` dates from 2026-11-01 (before the AUR pin) and is used as is for the first build, the pinned rebuild stays a VM item (see the Tooling line "Calamares build with the pin" and the new line under "Static checks on the built image").
 
