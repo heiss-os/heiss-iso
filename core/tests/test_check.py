@@ -219,8 +219,16 @@ class Checks(unittest.TestCase):
         for word in ("liveuser", "cloud-init", "not locked"):
             self.assertIn(word, r.detail)
 
+    def test_refind_and_arch_install_scripts_count_as_leftovers(self):
+        env = healthy(packages=("konsole", "refind", "arch-install-scripts"))
+        r = self.items(env)["live-leftovers"]
+        self.assertEqual(r.status, ck.FAIL)
+        for word in ("refind", "arch-install-scripts"):
+            self.assertIn(word, r.detail)
+
     def test_live_without_root_is_warn_and_live_session_is_warn(self):
         r = self.items(healthy(denied=["/etc/shadow"]))["live-leftovers"]
+        self.assertIn("sudo heiss check", r.detail)           # tells the user how to include the root-lock item
         self.assertEqual(r.status, ck.WARN)
         self.assertIn("root", r.detail)
         r = self.items(healthy(files={"/run/archiso/bootmnt": ""}))["live-leftovers"]

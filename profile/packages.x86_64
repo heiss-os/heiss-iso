@@ -64,7 +64,6 @@ pcsclite
 ppp
 pv
 qemu-guest-agent
-refind
 reflector
 rsync
 rxvt-unicode-terminfo

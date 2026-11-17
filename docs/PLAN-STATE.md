@@ -10,7 +10,7 @@ See the phase and round sections below. Phases 0 to 7 are merged; round 23 (pre-
 
 ## In progress
 
-- Round 25 PR D (installer and desktop, branch `feat/installer-desktop-round25`, Tier A): wallpaper as a package URL, finish page style, full VirtualBox guest tools. PR A to C are merged (#116 to #118).
+- Round 25 PR E (package review, branch `feat/package-review-round25`, Tier A: `heiss-cleanup.sh`): `docs/PACKAGE-REVIEW.md`, refind and arch-install-scripts out, `sudo heiss check` hint. PR A to D are merged (#116 to #119).
 
 
 
@@ -344,6 +344,13 @@ Added in round 23 PR 5. Each line is run in part 3 of `heiss-task-28.md` (read-o
 - [ ] The old-image case (n/a for fresh installs): a home directory with `Image=Heiss-Everyday` in `plasma-org.kde.plasma.desktop-appletsrc`: `heiss theme sync` then shows `wallpaper: changed` and the file holds the URL.
 - [ ] Session type and clipboard: `echo $XDG_SESSION_TYPE` (expected `wayland`), copy text on the host and paste in the VM and back; say if either direction fails.
 
+### Round 25, PR E: package review
+- [ ] Installed system: `pacman -Q arch-install-scripts refind archinstall` fails for all three; `systemctl --failed` is empty; `sudo heiss check` shows live-leftovers OK; `heiss check` (no sudo) shows live-leftovers WARN with the text "run `sudo heiss check`".
+- [ ] No reflector at all: `systemctl list-unit-files 'reflector*'` shows `reflector.service` and `reflector.timer` both `disabled`; `systemctl list-timers --all | grep -c reflector` prints 0.
+- [ ] No telemetry: System Settings, "Feedback" page: all kinds of data collection are off; `ls ~/.config | grep -i feedback` shows nothing that is switched on; `ss -tnp` right after login shows no connection except the ones you started.
+- [ ] `/etc/lsb-release`: on VirtualBox or QEMU `ls /etc/lsb-release` fails (the file is not there, this is expected); on VMware it says Heiss OS.
+- [ ] Installed size (for the review numbers): `pacman -Qq | wc -l` and `pacman -Qi | awk '/^Installed Size/ {s+=$4} END {print s/1024 " MiB"}'` (the review estimates about 877 packages and 4875 MiB; send both numbers).
+
 ## Round 20, item 3a (2026-11-11): hardware choices applied
 
 PR "feat/apply-hardware-choices": `--hardware` on `heiss profile apply|diff`, resolver support with the sticky rule, wizard passes the ticked proposals, strings updated, tests (`core/tests/test_hardware_apply.py`, `welcome/tests/test_apply.py`). Not verified: see the new Phase 5 line in the FINAL VM TEST LIST. Next: 3b theme, 3c privacy level (MAC randomization, screen lock), then Phase 6.
@@ -488,3 +495,7 @@ Branch `feat/boot-look-round25`. Tests: `tests/test_boot_look.py`. Not verified:
 ## Round 25, PR D (2026-11-17): installer and desktop
 
 Branch `feat/installer-desktop-round25`. Tests: `tests/test_installer_desktop.py`, `core/tests/test_themesync.py`, `core/tests/test_lnf_layout.py`. Not verified: see the Round 25 PR D lines in the FINAL VM TEST LIST.
+
+## Round 25, PR E (2026-11-17): package review
+
+Branch `feat/package-review-round25`. Tests: `tests/test_package_review.py`, `core/tests/test_check.py`. Four owner questions are open in `docs/PACKAGE-REVIEW.md`. Not verified: see the Round 25 PR E lines in the FINAL VM TEST LIST.

@@ -34,7 +34,8 @@ APP_DIRS = ("/usr/local/share/applications", "/usr/share/applications")
 HELPER_FILES = ("/usr/share/polkit-1/actions/org.heiss.helper.policy",
                 "/usr/share/dbus-1/system.d/org.heiss.Helper1.conf",
                 "/usr/share/dbus-1/system-services/org.heiss.Helper1.service")
-LIVE_PACKAGES = ("archiso", "mkinitcpio-archiso", "mkinitcpio-nfs-utils", "cloud-init", "livecd-sounds", "archinstall")
+LIVE_PACKAGES = ("archiso", "mkinitcpio-archiso", "mkinitcpio-nfs-utils", "cloud-init", "livecd-sounds", "archinstall",
+                 "arch-install-scripts", "refind")
 PROFILES_DIR = "/usr/share/heiss/profiles"
 ETC_PROFILE = "/etc/heiss/profile.toml"
 STATE_FILE = "/var/lib/heiss/state.json"
@@ -284,7 +285,7 @@ def check_live(env):
         shadow = env.read("/etc/shadow")
     except PermissionError:
         shadow = None
-        note = "root lock not judged (run as root to read /etc/shadow)"
+        note = "root lock not judged (/etc/shadow is readable only by root: run `sudo heiss check` to include it)"
     if shadow is not None:
         root = [l.split(":") for l in shadow.splitlines() if l.startswith("root:")]
         if not root or not root[0][1].startswith(("!", "*")):
