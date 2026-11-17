@@ -127,9 +127,9 @@ class Sync(unittest.TestCase):
                          {"launcher-icon": "ok", "wallpaper": "changed", "konsole": "changed", "plasma-consistency": "ok",
                           "gtk": "ok", "portal": "ok", "kitty": "ok"})
         self.assertIn("heiss-launcher-sand'", env.evals[0])
-        self.assertIn("'Heiss-Everyday'", env.evals[1])
+        self.assertIn("'file:///usr/share/wallpapers/Heiss-Everyday/'", env.evals[1])     # a package URL, not a bare id
         self.assertIn("FillMode', 2", env.evals[1])
-        self.assertEqual(env.writes, [ts.LOCKSCREEN[:1] + (ts.LOCKSCREEN[1], ts.LOCKSCREEN[2], "Heiss-Everyday"),
+        self.assertEqual(env.writes, [ts.LOCKSCREEN[:1] + (ts.LOCKSCREEN[1], ts.LOCKSCREEN[2], "file:///usr/share/wallpapers/Heiss-Everyday/"),
                                       ("konsolerc", "Desktop Entry", "DefaultProfile", "Heiss-Dark.profile")])
 
     def test_light_uses_light_values(self):
@@ -137,9 +137,9 @@ class Sync(unittest.TestCase):
         results, rc, _ = run(env)
         self.assertEqual(rc, 0)
         self.assertIn("heiss-launcher-sand-light", env.evals[0])
-        self.assertEqual(env.writes[0][3], "Heiss-Everyday-Light")      # lock screen
+        self.assertEqual(env.writes[0][3], "file:///usr/share/wallpapers/Heiss-Everyday-Light/")      # lock screen
         self.assertEqual(env.writes[-1][3], "Heiss-Light.profile")
-        self.assertIn("'Heiss-Everyday-Light'", env.evals[1])
+        self.assertIn("'file:///usr/share/wallpapers/Heiss-Everyday-Light/'", env.evals[1])
         self.assertEqual(results["portal"].status, "ok")
 
     def test_idempotent_second_run_changes_nothing(self):
@@ -161,8 +161,8 @@ class Sync(unittest.TestCase):
         env.gs, env.portal = "prefer-dark", 1
         r, rc, _ = run(env)
         self.assertEqual((rc, r["wallpaper"].status, r["konsole"].status), (0, "changed", "changed"))
-        self.assertIn("'Heiss-Everyday'", env.evals[-1])
-        self.assertEqual(env.kde[ts.LOCKSCREEN[:1] + (ts.LOCKSCREEN[1], ts.LOCKSCREEN[2])], "Heiss-Everyday")
+        self.assertIn("'file:///usr/share/wallpapers/Heiss-Everyday/'", env.evals[-1])
+        self.assertEqual(env.kde[ts.LOCKSCREEN[:1] + (ts.LOCKSCREEN[1], ts.LOCKSCREEN[2])], "file:///usr/share/wallpapers/Heiss-Everyday/")
         self.assertEqual(env.kde[("konsolerc", "Desktop Entry", "DefaultProfile")], "Heiss-Dark.profile")
 
     def test_sync_is_idempotent_for_wallpaper_too(self):

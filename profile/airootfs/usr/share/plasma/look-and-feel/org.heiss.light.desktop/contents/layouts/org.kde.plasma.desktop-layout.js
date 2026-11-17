@@ -45,12 +45,14 @@ clock.writeConfig("dateFormat", "shortDate");
 var desktopsArray = desktopsForActivity(currentActivity());
 for (var j = 0; j < desktopsArray.length; j++) {
     desktopsArray[j].wallpaperPlugin = "org.kde.image";
-    // Reference the wallpaper PACKAGE id (never a file path: a path shows up as a second
-    // "3840x2160" entry in the Wallpaper dialog). Each theme has its own plain package, no
+    // Reference the wallpaper PACKAGE as a directory URL with a trailing slash, the form Plasma itself stores
+    // ("file:///usr/share/wallpapers/Next/"). A bare id is not a URL and does not resolve (the desktop stayed
+    // on the plain Color below in the first real install); a path to one image file shows up as a second
+    // "3840x2160" entry in the Wallpaper dialog. Each theme has its own plain package, no
     // dependence on the "dynamic wallpaper" light/dark mechanism. Color is what Plasma paints
     // when the image fails to load, so a failure shows the theme background, not white.
     desktopsArray[j].currentConfigGroup = ["Wallpaper", "org.kde.image", "General"];
-    desktopsArray[j].writeConfig("Image", "Heiss-Everyday-Light");
+    desktopsArray[j].writeConfig("Image", "file:///usr/share/wallpapers/Heiss-Everyday-Light/");
     desktopsArray[j].writeConfig("FillMode", 2);   // PreserveAspectCrop: always covers the screen
     desktopsArray[j].writeConfig("Color", "#F7F5F1");
 }

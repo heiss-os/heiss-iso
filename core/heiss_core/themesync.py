@@ -31,6 +31,7 @@ CHECKED_KEYS = {("kdeglobals", "General", "ColorScheme"), ("kdeglobals", "Icons"
                 ("ksplashrc", "KSplash", "Theme")}
 WALLPAPER = {"dark": "Heiss-Everyday", "light": "Heiss-Everyday-Light"}   # plain wallpaper packages, one per theme
 WALLPAPER_DIR = "/usr/share/wallpapers"
+WALLPAPER_URL = "file://" + WALLPAPER_DIR + "/%s/"   # how Plasma stores a wallpaper package; a bare id does not resolve
 FILL_MODE_CROP = "2"        # Image.PreserveAspectCrop: always covers the screen, never letterboxed
 APPLETSRC = ".config/plasma-org.kde.plasma.desktop-appletsrc"
 LOCKSCREEN = ("kscreenlockerrc", ("Greeter", "Wallpaper", "org.kde.image", "General"), "Image")
@@ -276,10 +277,10 @@ for (var d of desktops()) {
   d.currentConfigGroup = ['Wallpaper', 'org.kde.image', 'General'];
   d.writeConfig('Image', '%s');
   d.writeConfig('FillMode', %s);
-}""" % (pid, FILL_MODE_CROP)
+}""" % (WALLPAPER_URL % pid, FILL_MODE_CROP)
         if not env.plasma_eval(script):
             return Result("wallpaper", "failed", "plasmashell did not accept the wallpaper script (is it running?)")
-    if "lock screen" in changes and not env.kde_write(lock_file, lock_groups, lock_key, pid):
+    if "lock screen" in changes and not env.kde_write(lock_file, lock_groups, lock_key, WALLPAPER_URL % pid):
         return Result("wallpaper", "failed", "could not write the lock screen wallpaper")
     return Result("wallpaper", "changed", "set %s on the %s%s" % (pid, " and ".join(changes), note))
 

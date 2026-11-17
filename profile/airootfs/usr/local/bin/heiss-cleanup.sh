@@ -48,12 +48,12 @@ virt=$(systemd-detect-virt --vm 2>/dev/null || true)
 log "virtualization: ${virt:-none}"
 keep=""
 case "$virt" in
-  oracle)    keep=virtualbox-guest-utils-nox ;;
+  oracle)    keep=virtualbox-guest-utils ;;     # the full package: VBoxClient (clipboard, resizing) is in it, the -nox one lacks it
   vmware)    keep=open-vm-tools ;;
   kvm|qemu)  keep=qemu-guest-agent ;;
   microsoft) keep=hyperv ;;
 esac
-for g in virtualbox-guest-utils-nox open-vm-tools qemu-guest-agent hyperv; do
+for g in virtualbox-guest-utils virtualbox-guest-utils-nox open-vm-tools qemu-guest-agent hyperv; do
   [ "$g" = "$keep" ] || LIVE_PKGS+=("$g")
 done
 for pkg in "${LIVE_PKGS[@]}"; do

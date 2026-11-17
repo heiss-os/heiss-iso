@@ -140,6 +140,14 @@ QPushButton {
     font-style: italic;
 }
 
+/* The finish page puts its whole text ("All done. Heiss OS has been installed ...") in #mainText, so the accent
+ * rule above made a paragraph bold italic. Here it is normal weight and upright; the "All done." heading keeps
+ * the bold of its own <h1>. */
+FinishedPage #mainText, FinishedPage QLabel {
+    font-weight: 400;
+    font-style: normal;
+}
+
 /* [switch: nav-buttons] Back / Next / Cancel: identical size and padding on every page.
  * Object names come from Calamares (CalamaresWindow.cpp). The gaps between the buttons are
  * made equal by scripts/patches/calamares-heiss-layout.patch (removes the extra 12 px before Cancel). */

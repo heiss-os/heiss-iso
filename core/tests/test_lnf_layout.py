@@ -31,7 +31,8 @@ class Lnf(unittest.TestCase):
             self.assertIn("ColorScheme=" + scheme, d)
             self.assertIn("Image=" + wall, d)
             self.assertIn("Theme=" + pid, d)                   # splash
-            self.assertIn('writeConfig("Image", "%s")' % wall, read(base, "contents/layouts/org.kde.plasma.desktop-layout.js"))
+            self.assertIn('writeConfig("Image", "file:///usr/share/wallpapers/%s/")' % wall,
+                          read(base, "contents/layouts/org.kde.plasma.desktop-layout.js"))
             self.assertIn("FillMode", read(base, "contents/layouts/org.kde.plasma.desktop-layout.js"))
 
     def test_previews_are_real_images(self):
@@ -53,6 +54,7 @@ class Lnf(unittest.TestCase):
                      "DefaultDarkLookAndFeel=org.heiss.dark.desktop", "DefaultLightLookAndFeel=org.heiss.light.desktop",
                      "AutomaticLookAndFeel=false"):
             self.assertRegex(k, r"(?m)^%s$" % re.escape(line))
+        self.assertIn("Image=file:///usr/share/wallpapers/Heiss-Everyday/", read(AIR, "etc/xdg/kscreenlockerrc"))
         self.assertEqual(read(AIR, "etc/xdg/ksplashrc").count("Theme=org.heiss.dark.desktop"), 1)
 
     def test_light_wallpaper_is_light_and_dark_is_dark(self):
