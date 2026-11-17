@@ -25,12 +25,12 @@ def walk_to(w, step_id):
 
 class Navigation(unittest.TestCase):
     def test_step_order_matches_the_master_plan(self):
-        self.assertEqual(IDS, ["welcome", "profile", "level", "addons", "hardware", "appearance", "privacy",
+        self.assertEqual(IDS, ["welcome", "appearance", "profile", "level", "addons", "hardware", "privacy",
                                "software", "backups", "summary", "applying", "done"])
 
     def test_profile_must_be_chosen_to_leave_the_profile_step(self):
         w = wz.Wizard(MANIFESTS)
-        w.next()
+        w.next(); w.next()
         self.assertEqual(w.step_id, "profile")
         w.answers["profile"] = "nonexistent"
         with self.assertRaises(ValidationError):
@@ -38,7 +38,7 @@ class Navigation(unittest.TestCase):
 
     def test_back_keeps_answers_and_skip_keeps_defaults(self):
         w = wz.Wizard(MANIFESTS)
-        w.next(); w.set("profile", "cyber"); w.next()
+        w.next(); w.next(); w.set("profile", "cyber"); w.next()
         w.set("level", "advanced")
         w.next()
         self.assertEqual(w.step_id, "addons")

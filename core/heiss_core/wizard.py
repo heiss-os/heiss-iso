@@ -23,10 +23,11 @@ from . import resolver
 from .errors import HeissError, ValidationError
 from .state import atomic_write
 
-STATE_VERSION = 1
-# (id, skippable). Order is the screen order of the master plan (section 7).
-STEPS = (("welcome", False), ("profile", False), ("level", True), ("addons", True), ("hardware", True),
-         ("appearance", True), ("privacy", True), ("software", True), ("backups", True),
+# 2: the step order changed (language, appearance first); a version-1 resume file is ignored and the wizard starts over
+STATE_VERSION = 2
+# (id, skippable). Language first, then Appearance, so the whole wizard is in the chosen theme from step 2 (round 25).
+STEPS = (("welcome", False), ("appearance", True), ("profile", False), ("level", True), ("addons", True),
+         ("hardware", True), ("privacy", True), ("software", True), ("backups", True),
          ("summary", False), ("applying", False), ("done", False))
 SUMMARY, APPLYING, DONE = "summary", "applying", "done"
 IDS = [i for i, _ in STEPS]

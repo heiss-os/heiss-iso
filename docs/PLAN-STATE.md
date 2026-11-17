@@ -10,6 +10,8 @@ See the phase and round sections below. Phases 0 to 7 are merged; round 23 (pre-
 
 ## In progress
 
+- Round 25 PR B (wizard UI, branch `feat/wizard-ui-round25`, not Tier A): shared choice row, summary scroll and wrap, privacy texts, step order, add-ons, intros, saved-answers text. PR A (#116) is merged.
+
 - Round 25 (`heiss-task-30.md`): PR A one consistent Heiss theme (branch `feat/heiss-global-theme`, Tier A). Then PR B welcome wizard UI, PR C boot look, PR D installer and desktop, PR E package review, PR F CI and agents; one PR at a time.
 
 - Round 23 PR 5: documents and small leftovers (merged, #113). Part 3 of `heiss-task-28.md`, step 1: the build steps in `docs/ISO-E2E-TEST.md` (this PR). Then the first ISO build: the owner runs the commands; the log is read and the image is inspected without booting it.
@@ -308,6 +310,15 @@ Added in round 23 PR 5. Each line is run in part 3 of `heiss-task-28.md` (read-o
 - [ ] System Settings > Appearance > Automatic and the Dark Mode toggle apply only Heiss Dark and Heiss Light, never Breeze; `kreadconfig6 --file kdeglobals --group KDE --key AutomaticLookAndFeel` prints `false`.
 - [ ] Firefox UI and Thunar in Heiss Dark and Heiss Light (screenshots): expected to follow the theme; if not, record it (this PR does not claim it).
 
+### Round 25, PR B: welcome wizard UI
+- [ ] Start the wizard (`heiss-welcome --force`): step 2 is Appearance; pick Light, the wizard itself turns light at once and stays light on every page; pick Dark, it turns dark.
+- [ ] Every choice list (language, appearance, profile, level, add-ons, hardware, privacy, software): ticking or selecting changes only the marker (round / square with tick), the row keeps its background; Tab shows a thin outline, the mouse a faint tint.
+- [ ] Summary at 800x600 with all five add-ons ticked: text wraps, add-ons are a list, the page scrolls, Back and Apply stay visible.
+- [ ] Privacy page: three levels with a short text each and one line that it can be changed later; no "works today / coming soon" list.
+- [ ] Add-ons page has Cyber extended, Developer extended, Kitty, LTS kernel, Thunar only (no LibreOffice, no Thunderbird); nothing is ticked.
+- [ ] Old resume file: `echo '{"version":1,"step":"hardware"}' > ~/.config/heiss/wizard-state.json`, start the wizard: it opens at the welcome page, no error.
+- [ ] After "Save answers, apply later" the last page names the Control Center page "Profiles and software" and the button "Apply saved actions now"; that button exists there.
+
 ## Round 20, item 3a (2026-11-11): hardware choices applied
 
 PR "feat/apply-hardware-choices": `--hardware` on `heiss profile apply|diff`, resolver support with the sticky rule, wizard passes the ticked proposals, strings updated, tests (`core/tests/test_hardware_apply.py`, `welcome/tests/test_apply.py`). Not verified: see the new Phase 5 line in the FINAL VM TEST LIST. Next: 3b theme, 3c privacy level (MAC randomization, screen lock), then Phase 6.
@@ -440,3 +451,7 @@ PR "fix/lsb-release-branding" (Tier A, label `design-approved`): `/etc/lsb-relea
 ## Round 25, PR A (2026-11-17): one consistent Heiss theme
 
 Branch `feat/heiss-global-theme`: Plasma defaults point Automatic/Dark Mode at the Heiss themes, previews for both global themes, light splash, light wallpaper regenerated from the dark one, sync targets `wallpaper` and `first-login`, tests. Tier A, label `design-approved`. Tests: `core/tests/test_themesync.py`, `core/tests/test_lnf_layout.py`. Not verified: see the Round 25 PR A lines in the FINAL VM TEST LIST.
+
+## Round 25, PR B (2026-11-17): welcome wizard UI
+
+Branch `feat/wizard-ui-round25`. Tests: `welcome/tests/test_viewmodel.py`, `core/tests/test_wizard.py`. Not verified: see the Round 25 PR B lines in the FINAL VM TEST LIST.

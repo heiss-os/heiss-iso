@@ -11,7 +11,8 @@ ApplicationWindow {
     color: pal.window
 
     readonly property var s: wizard.screen
-    readonly property bool dark: Qt.styleHints.colorScheme !== Qt.Light
+    // the wizard is drawn in the theme chosen on step 2 at once; "auto" follows the desktop
+    readonly property bool dark: s.theme === "dark" ? true : (s.theme === "light" ? false : Qt.styleHints.colorScheme !== Qt.Light)
     QtObject {
         id: pal
         readonly property color window: win.dark ? "#26282B" : "#F5F3EF"
@@ -70,26 +71,8 @@ ApplicationWindow {
         Bar { Layout.fillWidth: true; value: s.progress; Accessible.name: s.progressText }
         Text { textFormat: Text.PlainText; text: s.title; color: pal.text; font.pixelSize: 32; font.bold: true; wrapMode: Text.WordWrap
                Layout.fillWidth: true; Accessible.role: Accessible.Heading }
-        Text { textFormat: Text.PlainText; text: s.whatLabel + ": " + s.what; color: pal.dim; font.pixelSize: 16; wrapMode: Text.WordWrap
+        Text { textFormat: Text.PlainText; text: s.what; color: pal.dim; font.pixelSize: 16; wrapMode: Text.WordWrap
                Layout.fillWidth: true }
-        ColumnLayout {
-            Layout.fillWidth: true
-            spacing: 6   // short info lines sit close together so more of the list below fits on a small screen
-            Repeater {
-                model: s.facts
-                delegate: RowLayout {
-                    required property var modelData
-                    Layout.fillWidth: true
-                    spacing: 12
-                    Text { textFormat: Text.PlainText; text: parent.modelData.text; color: pal.text; font.pixelSize: 16; wrapMode: Text.WordWrap
-                           Layout.fillWidth: true }
-                    Text { textFormat: Text.PlainText; visible: parent.modelData.badge !== ""; text: parent.modelData.badge; color: pal.accent
-                           font.pixelSize: 14; font.bold: true }
-                }
-            }
-        }
-        Repeater { model: s.lines; Text { textFormat: Text.PlainText; text: modelData; color: pal.text; font.pixelSize: 18 } }
-
         Item {
             id: listArea
             Layout.fillWidth: true
@@ -108,6 +91,28 @@ ApplicationWindow {
             ColumnLayout {
                 width: parent.width
                 spacing: 12
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 6   // short info lines sit close together
+                    Repeater {
+                        model: s.facts
+                        delegate: RowLayout {
+                            required property var modelData
+                            Layout.fillWidth: true
+                            spacing: 12
+                            Text { textFormat: Text.PlainText; text: parent.modelData.text; color: pal.text; font.pixelSize: 16; wrapMode: Text.WordWrap
+                                   Layout.fillWidth: true }
+                            Text { textFormat: Text.PlainText; visible: parent.modelData.badge !== ""; text: parent.modelData.badge; color: pal.accent
+                                   font.pixelSize: 14; font.bold: true }
+                        }
+                    }
+                }
+                // summary lines wrap inside the window and scroll with the rest; the buttons below stay on screen
+                Repeater {
+                    model: s.lines
+                    delegate: Text { required property string modelData; Layout.fillWidth: true; textFormat: Text.PlainText; text: modelData
+                                     color: pal.text; font.pixelSize: 18; wrapMode: Text.WordWrap }
+                }
                 Repeater {
                     model: s.questions
                     delegate: ColumnLayout {
@@ -115,52 +120,22 @@ ApplicationWindow {
                         required property var modelData
                         Layout.fillWidth: true
                         spacing: 6
-                        Text { textFormat: Text.PlainText; visible: text !== ""; text: q.modelData.title; color: pal.accent; font.pixelSize: 16; font.bold: true }
+                        Text { textFormat: Text.PlainText; visible: text !== ""; text: q.modelData.title; color: pal.accent; font.pixelSize: 16; font.bold: true
+                               wrapMode: Text.WordWrap; Layout.fillWidth: true }
                         Repeater {
                             model: q.modelData.options
-                            delegate: ItemDelegate {
-                                id: opt
+                            delegate: ChoiceRow {
                                 required property var modelData
-                                Layout.fillWidth: true
-                                focusPolicy: Qt.StrongFocus
-                                Accessible.name: modelData.label + (modelData.hint ? ". " + modelData.hint : "")
-                                Accessible.checkable: true
-                                Accessible.checked: modelData.selected
+                                colors: pal
+                                label: modelData.label
+                                hint: modelData.hint
+                                selected: modelData.selected
+                                multi: q.modelData.kind === "multi"
                                 onClicked: {
                                     if (q.modelData.kind !== "multi") wizard.choose(modelData.path, modelData.value)
                                     else if (modelData.path === "hardware") wizard.toggleHardware(modelData.value)
                                     else wizard.toggleAddon(modelData.value)
                                 }
-                                contentItem: ColumnLayout {
-                                    RowLayout {
-                                        spacing: 10
-                                        // a square box with a tick for "several can be ticked", a round dot for "choose one"
-                                        Rectangle {
-                                            readonly property bool multi: q.modelData.kind === "multi"
-                                            implicitWidth: 20; implicitHeight: 20
-                                            radius: multi ? 4 : 10
-                                            color: multi && opt.modelData.selected ? pal.accent : "transparent"
-                                            border.width: 2; border.color: opt.modelData.selected ? pal.accent : pal.dim
-                                            Rectangle {   // round: the inner dot
-                                                visible: !parent.multi && opt.modelData.selected
-                                                anchors.centerIn: parent; width: 8; height: 8; radius: 4; color: pal.accent
-                                            }
-                                            Item {   // square: the tick, two bars
-                                                visible: parent.multi && opt.modelData.selected
-                                                anchors.fill: parent
-                                                Rectangle { x: 3; y: 9; width: 7; height: 2.5; radius: 1; rotation: 45; color: pal.textOnAccent }
-                                                Rectangle { x: 6; y: 8; width: 11; height: 2.5; radius: 1; rotation: -50; color: pal.textOnAccent }
-                                            }
-                                        }
-                                        Text { textFormat: Text.PlainText; text: opt.modelData.label; color: pal.text; font.pixelSize: 18
-                                               Layout.fillWidth: true; wrapMode: Text.WordWrap }
-                                    }
-                                    Text { textFormat: Text.PlainText; visible: opt.modelData.hint !== ""; text: opt.modelData.hint; color: pal.dim
-                                           font.pixelSize: 14; wrapMode: Text.WordWrap; Layout.fillWidth: true; Layout.leftMargin: 30 }
-                                }
-                                background: Rectangle { radius: 8; color: opt.modelData.selected ? pal.button : pal.panel
-                                                        border.width: opt.activeFocus ? 2 : (opt.modelData.selected ? 1 : 0)
-                                                        border.color: opt.activeFocus ? pal.text : pal.accent }
                             }
                         }
                     }

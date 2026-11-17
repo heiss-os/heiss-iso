@@ -19,6 +19,7 @@ import argparse
 import json
 import os
 import sys
+import shutil
 import tempfile
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -128,15 +129,21 @@ def welcome_pages(out, lang, theme, shots):
     if engine is None:
         return
     win = engine.rootObjects()[0]
-    set_size(win, 1280, 800)
+    set_size(win, 1280, 720)
     seen = 0
     while True:
         sid = vm.w.step_id
+        if sid == "addons":   # one ticked box, to see the marker (the row itself must look like the others)
+            vm.w.set("addons", ["addon-kitty"])
+            bridge._set(vm.screen())
         shot(win, bridge, "%02d-%s" % (seen, sid))
+        set_size(win, 800, 600)
+        shot(win, bridge, "%02d-%s-800x600" % (seen, sid))
+        set_size(win, 1280, 720)
         if sid == "hardware":   # a laptop-sized window: the list must scroll, with a visible sign of it
             set_size(win, 1024, 600)
             shot(win, bridge, "%02d-%s-small-window" % (seen, sid))
-            set_size(win, 1280, 800)
+            set_size(win, 1280, 720)
             # the same machine without the safe graphics boot entry: the NVIDIA tick box is replaced by one line
             keep = (vm.detector, vm._report, vm._detected)
             vm.detector, vm._detected = (lambda: hw.detect(facts, profiles, set())), False
@@ -146,6 +153,12 @@ def welcome_pages(out, lang, theme, shots):
             bridge._set(vm.screen())
         seen += 1
         if sid == wz.SUMMARY:
+            # a long add-on list, the case that used to run off the screen
+            vm.w.set("addons", sorted(m for m, x in manifests.items() if x.kind == "addon"))
+            bridge._set(vm.screen())
+            set_size(win, 800, 600)
+            shot(win, bridge, "%02d-%s-long-addons-800x600" % (seen, sid))
+            set_size(win, 1280, 720)
             break
         bridge.next()
     # the applying screen while running (nothing finishes: spawn does nothing), after a failure, then done
@@ -181,7 +194,7 @@ def control_pages(out, lang, theme, shots):
         f.write('NAME="Heiss OS"\nPRETTY_NAME="Heiss OS"\nBUILD_ID=rolling\nHOME_URL="https://example.org/home"\n'
                 'DOCUMENTATION_URL="https://example.org/docs"\nBUG_REPORT_URL="https://example.org/bugs"\n'
                 'SUPPORT_URL="https://example.org/support"\n')
-    answers = dict(ans.DEFAULTS, profile="cyber", addons=["addon-kitty", "addon-mail"])
+    answers = dict(ans.DEFAULTS, profile="cyber", addons=["addon-kitty", "addon-thunar"])
     ans.save(os.path.join(scratch, "profile.toml"), answers)
     state = {"schema_version": 1, "applied": {"profile": "cyber", "addons": []},
              "packages": ["pkg-%03d" % i for i in range(40)], "services": ["firewalld.service"], "flatpaks": []}
@@ -335,6 +348,9 @@ def qml_for_theme(out, app, theme):
     dst = os.path.join(d, "Main.qml")
     with open(dst, "w", encoding="utf-8") as f:
         f.write(text.replace(SCHEME_TEST, "true" if theme == "dark" else "false"))
+    for name in os.listdir(os.path.dirname(src)):   # shared components next to Main.qml (ChoiceRow.qml)
+        if name.endswith(".qml") and name != "Main.qml":
+            shutil.copy(os.path.join(os.path.dirname(src), name), os.path.join(d, name))
     return dst
 
 
