@@ -10,7 +10,7 @@ See the phase and round sections below. Phases 0 to 7 are merged; round 23 (pre-
 
 ## In progress
 
-- Round 25 PR F (development quality, branch `build/dev-quality-round25`): shellcheck, ruff and mypy as blocking checks, namcap and GUI renders as artifacts, Dependabot for Actions, `PACKAGER`, i18n parity test, `scripts/audit-image.sh` with the `branding-auditor` agent. PR A to E are merged (#116 to #120).
+- Round 25, shellcheck in the two Tier A scripts (branch `fix/shellcheck-tier-a-round25`, Tier A: `heiss-setup-dock.sh`, `heiss-calamares-build.sh`). PR A to F are merged (#116 to #121). Next: final rebuild checklist, then the `heiss-welcome` dependency finding from namcap.
 
 
 
@@ -359,6 +359,10 @@ Added in round 23 PR 5. Each line is run in part 3 of `heiss-task-28.md` (read-o
 - [ ] Audit on a UEFI-built image (the 2026-11-17 image was inspected, UEFI boot files included only as files): same command; expect the boot-menu line `OK    boot menus (loader, GRUB, syslinux): no Arch in titles` and no `boot files could not be read` WARN.
 - [ ] `branding-auditor`: in a new session on this repo with an ISO newer than the last change to `profile/` and `packages/`, ask for the agent; expect it to run `scripts/audit-image.sh`, repeat the OK/WARN/FAIL lines and the counts line, say the 2 WARNs are expected, end with a `Verdict:` line and leave no `/var/tmp/heiss-audit.*` behind; with an older ISO it says first that the image is older than the PR.
 
+### Round 25, shellcheck findings in the Tier A scripts
+- [ ] After the next rebuild, a fresh live session: the Dock appears within about a minute of the desktop (`heiss-setup-dock.sh` wait loop changed from `i` to `_`, nothing else); Judge by looking at the screen and say if the Dock is missing.
+- [ ] The next `bash scripts/heiss-calamares-build.sh` on the build VM runs as before (`MAKEFLAGS` is still `-jN`; it prints the pinned AUR commit check and ends with the package in `~/localrepo`).
+
 ## Round 20, item 3a (2026-11-11): hardware choices applied
 
 PR "feat/apply-hardware-choices": `--hardware` on `heiss profile apply|diff`, resolver support with the sticky rule, wizard passes the ticked proposals, strings updated, tests (`core/tests/test_hardware_apply.py`, `welcome/tests/test_apply.py`). Not verified: see the new Phase 5 line in the FINAL VM TEST LIST. Next: 3b theme, 3c privacy level (MAC randomization, screen lock), then Phase 6.
@@ -511,3 +515,7 @@ Branch `feat/package-review-round25`. Tests: `tests/test_package_review.py`, `co
 ## Round 25, PR F (2026-11-17): development quality
 
 Branch `build/dev-quality-round25`. Tests: `tests/test_dev_quality.py`, `tests/test_i18n_parity.py`, `tests/test_audit_image.py`, `core/tests/test_agents.py`. Docs: `docs/IMAGE-AUDIT.md`. Not verified: see the Round 25 PR F lines in the FINAL VM TEST LIST.
+
+## Round 25, shellcheck findings in the Tier A scripts (2026-11-17)
+
+Branch `fix/shellcheck-tier-a-round25`. Tests: `tests/test_dev_quality.py`. Not verified: see the FINAL VM TEST LIST.

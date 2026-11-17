@@ -553,3 +553,9 @@ Format: date, what, why. Newest at the bottom.
 - **Owner-only, not done:** the GitHub branch ruleset for `main`. Click path in the PR text.
 - **Tier A:** none touched. `heiss-setup-dock.sh` and `heiss-calamares-build.sh` are only listed as skipped by the shell check. `profile/airootfs/usr/local/bin/heiss-set-wallpaper.sh` is not a protected path.
 - **Not verified:** the first run of the new workflow on GitHub (the jobs ran only in parts here: shellcheck, ruff, mypy, the render and the audit locally with the Arch packages or the PyPI builds of the same tools; namcap not at all, it is not installed here; shellcheck, ruff and mypy ran from PyPI builds, CI installs the Arch packages, so versions may report different findings; the `gui-renders` job itself did not run, only `render-gui.py` locally); that the Dependabot configuration is accepted by GitHub; the audit script on a UEFI or a freshly built image other than 2026-11-17.
+
+## 2026-11-17 (Round 25: shellcheck findings in the two Tier A scripts)
+
+- **Fixed, with the owner's approval of this item (label `design-approved`):** `profile/airootfs/usr/local/bin/heiss-setup-dock.sh` (SC2034: the counter of the 60 s wait loop is now `_`, behaviour unchanged) and `scripts/heiss-calamares-build.sh` (SC2155: `MAKEFLAGS="-j$(nproc)"` and `export MAKEFLAGS` on two lines, so a failing `nproc` is not masked; same value). `docs/design/protected.sha256` regenerated (2 lines).
+- **The skip list of `scripts/check-shell.sh` is now empty**, so shellcheck (warnings and errors) covers every shell script of the repository. A new entry must be a Tier A file with a written reason; a test checks that.
+- **Not verified:** the dock script in a running Plasma session and the Calamares build script on the build VM (no VM here; only `bash -n`, shellcheck and the unit tests were run). See the Round 25 lines of the FINAL VM TEST LIST.
