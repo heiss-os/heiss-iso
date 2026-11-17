@@ -198,7 +198,7 @@ Owner's rule (2026-11-11): no ISO build and no VM check until the whole master p
 - [ ] Privacy 3c, Maximum: apply Maximum, run `sudo systemctl restart NetworkManager`, then `nmcli -f 802-11-wireless.cloned-mac-address connection show <name>` and `ip link` / expect a random Wi-Fi MAC (and `Timeout=1`, `LockGrace=0`); a connection profile with its own cloned MAC keeps it; on a captive-portal network expect it may fail.
 - [ ] Privacy 3c, screen lock: after Apply (re-login if needed) leave the session idle for the chosen time / expect the screen locks after 3 (Enhanced) or 1 (Maximum) minutes.
 - [ ] Privacy 3c, lowering: apply Standard again / expect `preserve` in the drop-in and `Timeout=5`, `LockGrace=5`.
-- [ ] Privacy 3c, screen: open the privacy screen in en and ru / expect firewall, Wi-Fi MAC and screen lock marked "In place", and DNS over TLS, VPN, Bluetooth off, linux-hardened marked "Coming soon".
+- [ ] Privacy 3c, screen: superseded by Round 25 PR B (the item list and its badges are gone; see the Round 25 PR B privacy line). Wi-Fi MAC and screen lock are checked by the Round 25 privacy-level steps.
 - [ ] Privacy 3c, helper: `heiss profile apply --privacy=enhanced --yes` through the helper / expect success; run `python3 -m unittest discover -s helper/tests` where python-gobject is installed / expect the 10 skipped D-Bus tests to pass.
 - [ ] Privacy 3c, user keys: `kwriteconfig6` writes `kscreenlockerrc` as the user during Apply / expect the keys present afterwards.
 - [ ] Apply: plan preview, polkit prompt, progress, success, failure with Try again, Save for later (also re-check after the isolation fix: the installed wizard's plan and Apply still start, since the child now runs `python -I` in `/` without `PYTHON*`/`HEISS_*` variables); the signal from the worker thread to the GUI works; the window refuses to close while applying.
@@ -317,7 +317,9 @@ Added in round 23 PR 5. Each line is run in part 3 of `heiss-task-28.md` (read-o
 - [ ] Privacy page: three levels with a short text each and one line that it can be changed later; no "works today / coming soon" list.
 - [ ] Add-ons page has Cyber extended, Developer extended, Kitty, LTS kernel, Thunar only (no LibreOffice, no Thunderbird); nothing is ticked.
 - [ ] Old resume file: `echo '{"version":1,"step":"hardware"}' > ~/.config/heiss/wizard-state.json`, start the wizard: it opens at the welcome page, no error.
-- [ ] After "Save answers, apply later" the last page names the Control Center page "Profiles and software" and the button "Apply saved actions now"; that button exists there.
+- [ ] After "Save answers, apply later" the last page names the Control Center page "Profiles and software" and the button "Apply saved actions now"; that button exists there; after saving, `cat ~/.config/heiss/answers.toml` lists the ticked add-ons.
+- [ ] Real Plasma session, `heiss-welcome --force` fullscreen: Tab, Shift+Tab, Space, Enter and Alt+Left move through every page and tick items without the mouse; expect no clipped text at 1280x720 and the whole wizard usable by keyboard.
+- [ ] Choose Cyber, tick add-ons, press Apply on the summary: expect a polkit password prompt, the progress page, then the done page; afterwards `heiss profile diff` shows nothing left and `heiss check` is OK apart from normal warnings.
 
 ## Round 20, item 3a (2026-11-11): hardware choices applied
 
