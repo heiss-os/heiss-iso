@@ -2,32 +2,38 @@
 # Selection bar: nine solid 4x4 slices select_{nw,n,ne,w,c,e,sw,s,se}.png (all must exist,
 # GRUB expands "select_*.png" to the full set). heiss-boot-branding.sh removes the
 # selected_item_pixmap_style line when HEISS_GRUB_SELECT_BAR=0 (text color only).
+#
+# Fonts: GRUB fonts are 1-bit bitmaps, so the weight is Inter Medium (strokes stay solid;
+# Inter Regular broke into gaps). Built by scripts/gen-grub-fonts.sh as inter-medium-{16,20,24}.pf2;
+# grub-mkconfig loads every *.pf2 of the theme directory. The names below must match the files.
 desktop-image: "background.png"
 desktop-color: "#1E1F21"
 title-text: ""
-terminal-font: "Inter Regular 16"
+terminal-font: "Inter Medium Regular 16"
 
-# GRUB does not scale images: logo.png is drawn at its own size, so it must be exactly
-# 128x128 (glyph centered, transparent background) to match left/width/height below.
-# Layout never overlaps (logo 128 px at 15%, menu at 45%): gap logo->menu is
-# 102 px @1024x768, 120 px @1280x800, 196 px @1920x1080 (all >= 24 px);
-# menu ends at 85%, footer label at 92%.
+# Layout. GRUB does not scale images: logo.png is drawn at its own size (exactly 128x128, glyph centred,
+# transparent background). Everything is one block centred on the screen's vertical middle, so there is no
+# empty band above it and the spacing is the same at every resolution:
+#   logo 128 px, gap 32 px, menu 255 px (five rows of 44 + 6 px; this menu has four) = 415 px,
+#   block top = 50% - 207, footer label 36 px above the bottom edge.
+# At 640x480 the block runs from y=33 to y=448 and the label sits at y=444: only a fifth menu row would touch
+# it, and the menu has four. At 1024x768 it is y=177..592, at 1920x1080 y=333..748.
 + image {
     file = "logo.png"
     left = 50%-64
-    top = 15%
+    top = 50%-207
     width = 128
     height = 128
 }
 
 + boot_menu {
-    left = 50%-260
-    top = 45%
-    width = 520
-    height = 40%
-    item_font = "Inter Regular 20"
+    left = 50%-280
+    top = 50%-47
+    width = 560
+    height = 255
+    item_font = "Inter Medium Regular 24"
     item_color = "#A9A7A1"
-    selected_item_font = "Inter Regular 20"
+    selected_item_font = "Inter Medium Regular 24"
     selected_item_color = "#C9B28A"
     item_height = 44
     item_padding = 14
@@ -37,12 +43,12 @@ terminal-font: "Inter Regular 16"
 }
 
 + label {
-    left = 50%-260
-    top = 92%
-    width = 520
+    left = 50%-280
+    top = 100%-36
+    width = 560
     height = 24
     align = "center"
-    font = "Inter Regular 16"
+    font = "Inter Medium Regular 16"
     color = "#A9A7A1"
     text = "Heiss OS"
 }
