@@ -56,26 +56,26 @@ All replacement names exist in the official repositories (`pacman -Si`, checked 
 
 | File or directory | Role now | Fate |
 |---|---|---|
-| `profile/airootfs/usr/share/plasma/look-and-feel/org.heiss.{dark,light}.desktop/` (defaults, layouts JS, previews, splash QML, metadata) | Global themes, dock and panel layout | Removed in H1 (Tier A) |
-| `profile/airootfs/usr/share/color-schemes/Heiss{Dark,Light}.colors` | KDE colour schemes | Removed in H1 (Tier A); tokens stay |
-| `profile/airootfs/etc/xdg/{kdeglobals,kwinrc,kscreenlockerrc,ksplashrc}` | KDE defaults | Removed in H1 |
-| `profile/airootfs/etc/sddm.conf.d/{autologin,heiss-theme}.conf`, `usr/share/sddm/themes/breeze/theme.conf.user` | Breeze theme override, live autologin into `plasma.desktop` | Rewritten in H1 (Tier A): own theme, `hyprland.desktop` |
-| `profile/airootfs/usr/local/bin/heiss-setup-dock.sh` and `etc/xdg/autostart/heiss-setup-dock.desktop` | Dock fallback | Removed in H1 (Tier A) |
-| `usr/local/bin/heiss-set-wallpaper.sh`, `heiss-theme-sync.sh`, their autostart entries | Plasma wallpaper, theme sync | Replaced by `heiss theme` (H1) |
-| `usr/local/bin/heiss-start-installer.sh` | waits for `plasmashell`, then `sudo -E calamares` | Rewritten in H1 (waits for the Hyprland session) |
-| `usr/local/share/applications/org.kde.kwrite.desktop` and other hide stubs | menu stubs | Reviewed in H1; `check-menu.py` follows |
-| `etc/xdg/mimeapps.list` | associations point to KDE apps | Rewritten in H1 |
+| `profile/airootfs/usr/share/plasma/look-and-feel/org.heiss.{dark,light}.desktop/` (defaults, layouts JS, previews, splash QML, metadata) | Global themes, dock and panel layout | Removed in H1 (Tier A) (done in H1a) |
+| `profile/airootfs/usr/share/color-schemes/Heiss{Dark,Light}.colors` | KDE colour schemes | Removed in H1 (Tier A); tokens stay (done in H1a) |
+| `profile/airootfs/etc/xdg/{kdeglobals,kwinrc,kscreenlockerrc,ksplashrc}` | KDE defaults | Removed in H1 (done in H1a) |
+| `profile/airootfs/etc/sddm.conf.d/{autologin,heiss-theme}.conf`, `usr/share/sddm/themes/breeze/theme.conf.user` | Breeze theme override, live autologin into `plasma.desktop` | Rewritten in H1 (Tier A): own theme, `heiss.desktop` (done in H1a) |
+| `profile/airootfs/usr/local/bin/heiss-setup-dock.sh` and `etc/xdg/autostart/heiss-setup-dock.desktop` | Dock fallback | Removed in H1 (Tier A) (done in H1a) |
+| `usr/local/bin/heiss-set-wallpaper.sh`, `heiss-theme-sync.sh`, their autostart entries | Plasma wallpaper, theme sync | Replaced by `heiss theme` (H1) (done in H1a) |
+| `usr/local/bin/heiss-start-installer.sh` | waits for `plasmashell`, then `sudo -E calamares` | Rewritten in H1 (waits for the Hyprland session) (done in H1a) |
+| `usr/local/share/applications/org.kde.kwrite.desktop` and other hide stubs | menu stubs | Reviewed in H1; `check-menu.py` follows (done in H1a) |
+| `etc/xdg/mimeapps.list` | associations point to KDE apps | Rewritten in H1 (done in H1a) |
 | `branding/tokens/generated/{kde,konsole}/` and the KDE and Konsole renderers in `scripts/heiss_tokens.py`, `scripts/gen-theme.py` | Generated KDE colours and Konsole schemes | Removed in H1; new generators for Waybar, fuzzel, mako, hyprlock, qt6ct, GTK settings |
-| `branding/tokens/generated/{gtk-3.0,gtk-4.0,kitty}/` | GTK and kitty themes | Kept, extended |
+| `branding/tokens/generated/{gtk-3.0,gtk-4.0,kitty}/` | GTK and kitty themes | Kept, extended (done in H1a) |
 | `packages/heiss-theme/PKGBUILD` | installs Konsole files, kitty files | Konsole removed, desktop configs added |
 | `core/heiss_core/themesync.py` (458 lines), `check.py` KDE items, `cli.py` `theme sync` | Plasma theme sync | Removed in H1a (done); `heiss theme get|set` follows in H1b |
 | `system.py:kde_value`, `apply.py:kwriteconfig`, `manifest.py` and `resolver.py` `kde_settings`, `privacy.py` KDE keys | KDE settings writes for the privacy levels | Removed in H2 together with the privacy code and the old wizard |
-| `core/data/heiss-gtk-audit` | audit script for the KDE GTK path | Rewritten in H1 |
+| `core/data/heiss-gtk-audit` | audit script for the KDE GTK path | Rewritten in H1b |
 | `control/heiss_control/{theme,tools,privacy_view}.py`, `welcome/heiss_welcome/theme.py` | `plasma-apply-lookandfeel`, `kreadconfig6`, `systemsettings` | Replaced in H1 by calls to `heiss theme`; the apps themselves are replaced in H2 |
-| `scripts/check-menu.py`, `check-launchers.py`, `check-shortcuts.py`, `gen-lnf-previews.py`, `audit-image.sh` (Plasma paths) | Checks of Plasma layout files, `X-KDE-Shortcuts` | Replaced by checks of the Hyprland and Waybar configs (H1) |
-| `.github/workflows/core.yml` jobs "tool the wizard uses ... plasma-workspace", "... kconfig", "dock pins" | package-database checks for KDE tools | Removed in H1 |
+| `scripts/check-menu.py`, `check-launchers.py`, `check-shortcuts.py`, `gen-lnf-previews.py`, `audit-image.sh` (Plasma paths) | Checks of Plasma layout files, `X-KDE-Shortcuts` | Replaced by checks of the Hyprland and Waybar configs (H1) (done in H1a) |
+| `.github/workflows/core.yml` jobs "tool the wizard uses ... plasma-workspace", "... kconfig", "dock pins" | package-database checks for KDE tools | Removed in H1 (done in H1a) |
 | Tests: `test_lnf_layout`, `test_themesync` (rewritten), `test_dock_lock`, `test_shortcuts`, `test_menu`, `test_terminal`, `test_launchers`, `test_check`, `test_gtk`, `tests/test_mimeapps.py`, `tests/test_installer_desktop.py`, `test_calamares_quiet` (kept until H5) | cover the above | Removed or rewritten together with the code |
-| Docs: `docs/design/{THEME-SYNC,GTK,SHORTCUTS}.md`, `docs/apps/{LAUNCHER,TERMINAL-HERE,ASSOCIATIONS}.md`, `docs/CONTROL-CENTER.md`, `docs/WELCOME.md`, `docs/PROFILES.md` | describe the Plasma behaviour | Rewritten in the stage that changes the behaviour; leftovers swept in H5 |
+| Docs: `docs/design/GTK.md`, `docs/apps/ASSOCIATIONS.md`, `docs/CONTROL-CENTER.md`, `docs/WELCOME.md`, `docs/PROFILES.md` (`docs/design/{THEME-SYNC,SHORTCUTS}.md` and `docs/apps/{LAUNCHER,TERMINAL-HERE}.md` deleted in H1a) | describe the Plasma behaviour | Rewritten in the stage that changes the behaviour; leftovers swept in H5 |
 | Calamares: `profile/airootfs/etc/calamares/`, `usr/share/calamares/branding/heiss/`, `scripts/heiss-calamares-build.sh`, `scripts/patches/calamares-heiss-layout.patch`, `usr/local/share/applications/calamares.desktop` (under `profile/airootfs/`) | installer | Kept hidden through H3, removed in H5 (Tier A) |
 
 Tier A paths touched by H1 (label `design-approved` needed, checksums updated in the same PR): `etc/sddm.conf.d/`, `usr/share/plasma/look-and-feel/`, `usr/share/color-schemes/`, `usr/local/bin/heiss-setup-dock.sh`, `usr/share/heiss/` (new desktop drop-in directory), `usr/share/libalpm/hooks/` if a hook is added.
@@ -99,7 +99,7 @@ Tier A paths touched by H1 (label `design-approved` needed, checksums updated in
 | Fonts, icons, cursor | `inter-font`, `ttf-jetbrains-mono`, `ttf-nerd-fonts-symbols-mono` (Waybar icons), `noto-fonts`, `noto-fonts-emoji`, `adwaita-icon-theme`, `adwaita-cursors` | all in `extra`; Papirus (111 MiB) is too large |
 | GTK theming | generated `settings.ini`, `gtk.css` (the existing token CSS) and GSettings `color-scheme`, written by `heiss theme` | no `kde-gtk-config`; libadwaita follows the portal |
 | Qt theming | `qt6-wayland`, `qt6ct` with a colour scheme generated from the tokens, `QT_QPA_PLATFORMTHEME=qt6ct`; Heiss's own Qt apps draw from the tokens themselves | Kvantum is not needed |
-| Session start | SDDM starts `hyprland.desktop` (shipped by `hyprland`); environment and `uwsm` not used in H1 | fewer moving parts; revisit if systemd user integration is needed |
+| Session start | SDDM starts `heiss.desktop` (shipped by `heiss-desktop`, runs `/usr/bin/heiss-session`, which starts Hyprland); environment and `uwsm` not used in H1 | fewer moving parts; revisit if systemd user integration is needed |
 | SDDM greeter | X11 greeter (`xorg-server` stays in the image, SDDM depends on it), own QtQuick theme using only `QtQuick`, `QtQuick.Controls`, `QtQuick.Layouts` and `SddmComponents`-free code | the Breeze theme imports `org.kde.plasma.*` and `org.kde.kirigami`, so it cannot be used without Plasma. Wayland greeter would need `weston` or `cage` as an extra compositor; not chosen |
 | Config drop-in place | `/usr/share/heiss/desktop/{hypr,waybar,...}/` copied to `~/.config` at first login (never over an existing file) | replacing the files needs no code change |
 | Software rendering | `WLR_RENDERER_ALLOW_SOFTWARE=1` in the safe-graphics session environment | VirtualBox without 3D acceleration |
