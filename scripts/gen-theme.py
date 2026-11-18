@@ -5,7 +5,7 @@
   gen-theme.py --check   exit 1 if the committed outputs differ from regeneration
 
 Outputs never overwrite files that ship in the image; they are staged for the
-heiss-theme package (Phase 10).
+heiss-theme package.
 """
 import os
 import sys
@@ -19,15 +19,15 @@ OUT = os.path.join(h.ROOT, "branding", "tokens", "generated")
 def outputs(tokens):
     files = {}
     for th in h.THEMES:
-        sid = tokens["themes"][th]["scheme_id"]
-        files["kde/%s.colors" % sid] = h.render_kde_scheme(tokens, th)
         files["gtk-3.0/heiss-%s.css" % th] = h.render_gtk(tokens, th, gtk4=False)
         files["gtk-4.0/heiss-%s.css" % th] = h.render_gtk(tokens, th, gtk4=True)
         files["kitty/heiss-%s.conf" % th] = h.render_kitty(tokens, th)
-        files["konsole/%s.colorscheme" % sid] = h.render_konsole(tokens, th)
-        files["konsole/Heiss-%s.profile" % th.capitalize()] = h.render_konsole_profile(tokens, th)
         files["kitty/%s-theme.auto.conf" % th] = h.render_kitty(tokens, th)
-    files["konsole/konsolerc"] = h.render_konsolerc()
+        files["desktop/%s/hypr-colors.conf" % th] = h.render_hypr_colors(tokens, th)
+        files["desktop/%s/waybar-colors.css" % th] = h.render_waybar_colors(tokens, th)
+        files["desktop/%s/fuzzel.ini" % th] = h.render_fuzzel(tokens, th)
+        files["desktop/%s/mako.conf" % th] = h.render_mako(tokens, th)
+        files["desktop/%s/sddm-theme.conf" % th] = h.render_sddm_theme(tokens, th)
     files["kitty/kitty.conf"] = h.render_kitty_conf(tokens)
     files["kitty/no-preference-theme.auto.conf"] = h.render_kitty(tokens, "dark")   # no preference: dark is the default look
     return files

@@ -8,7 +8,7 @@ import unittest
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SCRIPT = os.path.join(REPO, "scripts", "audit-image.sh")
-PACKAGES = ("heiss-core", "heiss-helper", "heiss-theme", "heiss-keyring", "heiss-welcome", "heiss-control",
+PACKAGES = ("heiss-core", "heiss-helper", "heiss-theme", "heiss-keyring", "heiss-desktop",
             "heiss-safe-graphics", "heiss-profile-base")
 
 

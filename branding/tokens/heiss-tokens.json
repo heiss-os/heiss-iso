@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "comment": "Single source of truth for the Heiss design tokens. Existing palette values (the 'base' colors and kde_scheme) are FROZEN: they mirror profile/airootfs/usr/share/color-schemes/Heiss{Dark,Light}.colors and must never change. Derived values are computed by scripts/heiss_tokens.py with the rules in 'derive'. Edit this file, then run scripts/gen-theme.py.",
+  "comment": "Single source of truth for the Heiss design tokens. Existing palette values (the 'base' colors) are FROZEN and must never change. The 'kde_scheme' mapping is no longer used (KDE colour schemes were removed with Plasma) and is kept only as record. Derived values are computed by scripts/heiss_tokens.py with the rules in 'derive'. Edit this file, then run scripts/gen-theme.py.",
   "themes": {
     "dark": {
       "name": "Heiss Dark",

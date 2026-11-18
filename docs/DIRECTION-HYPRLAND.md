@@ -68,7 +68,8 @@ All replacement names exist in the official repositories (`pacman -Si`, checked 
 | `branding/tokens/generated/{kde,konsole}/` and the KDE and Konsole renderers in `scripts/heiss_tokens.py`, `scripts/gen-theme.py` | Generated KDE colours and Konsole schemes | Removed in H1; new generators for Waybar, fuzzel, mako, hyprlock, qt6ct, GTK settings |
 | `branding/tokens/generated/{gtk-3.0,gtk-4.0,kitty}/` | GTK and kitty themes | Kept, extended |
 | `packages/heiss-theme/PKGBUILD` | installs Konsole files, kitty files | Konsole removed, desktop configs added |
-| `core/heiss_core/themesync.py` (458 lines), `check.py` KDE items, `system.py:kde_value`, `apply.py:kwriteconfig`, `manifest.py:kde_settings`, `resolver.py` `kde_settings`, `cli.py` `theme sync` | Plasma theme sync and settings writes | Rewritten or removed in H1 (`kde_settings` removed from the manifest schema) |
+| `core/heiss_core/themesync.py` (458 lines), `check.py` KDE items, `cli.py` `theme sync` | Plasma theme sync | Removed in H1a (done); `heiss theme get|set` follows in H1b |
+| `system.py:kde_value`, `apply.py:kwriteconfig`, `manifest.py` and `resolver.py` `kde_settings`, `privacy.py` KDE keys | KDE settings writes for the privacy levels | Removed in H2 together with the privacy code and the old wizard |
 | `core/data/heiss-gtk-audit` | audit script for the KDE GTK path | Rewritten in H1 |
 | `control/heiss_control/{theme,tools,privacy_view}.py`, `welcome/heiss_welcome/theme.py` | `plasma-apply-lookandfeel`, `kreadconfig6`, `systemsettings` | Replaced in H1 by calls to `heiss theme`; the apps themselves are replaced in H2 |
 | `scripts/check-menu.py`, `check-launchers.py`, `check-shortcuts.py`, `gen-lnf-previews.py`, `audit-image.sh` (Plasma paths) | Checks of Plasma layout files, `X-KDE-Shortcuts` | Replaced by checks of the Hyprland and Waybar configs (H1) |

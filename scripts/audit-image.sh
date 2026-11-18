@@ -68,7 +68,7 @@ if [[ -n $ISO ]]; then
     info "airootfs.sfs: $(stat -c %s -- "$sfs" | awk '{printf "%.0f MiB", $1 / 1048576}')"
     # only what the checks read; -no-xattrs and -ig because a normal user cannot create device nodes or set owners
     unsquashfs -f -no-xattrs -ig -d "$ROOT" "$sfs" etc usr/lib/os-release usr/share/heiss usr/share/applications \
-        usr/share/calamares usr/share/plasma/look-and-feel usr/share/pacman usr/share/libalpm \
+        usr/share/calamares usr/share/sddm usr/share/wayland-sessions usr/share/pacman usr/share/libalpm \
         usr/lib/systemd/system usr/local/bin var/lib/pacman/local >/dev/null 2>&1 || true
     [[ -d $ROOT/etc ]] || { fail "could not unpack /etc from the squashfs"; exit 1; }
 fi
@@ -103,14 +103,14 @@ done
 if [[ -f $(r usr/share/heiss/lsb-release) ]]; then ok "usr/share/heiss/lsb-release is shipped (the pacman hook restores /etc/lsb-release from it)"; else warn "usr/share/heiss/lsb-release is missing"; fi
 if [[ -f $(r etc/lsb-release) ]]; then info "/etc/lsb-release exists in the live image"; else info "/etc/lsb-release does not exist in the live image (the lsb-release package is not installed: fine)"; fi
 
-# user-visible text: desktop entries, installer branding, Plasma look-and-feel, boot menus
+# user-visible text: desktop entries, installer branding, the login theme, boot menus
 hits=""
 while IFS= read -r f; do
     if grep -HniE '^(Name|GenericName|Comment|Name\[[a-z_]+\]|Comment\[[a-z_]+\])=.*arch linux' "$f" >/dev/null 2>&1; then hits+="${f#"$ROOT"/} "; fi
 done < <(find "$(r usr/share/applications)" -name '*.desktop' 2>/dev/null)
 [[ -z $hits ]] && ok "desktop entries: no Arch Linux in names or comments" || warn "desktop entries mention Arch Linux: $hits"
-user_hits="$(grep -rIli 'arch linux' "$(r usr/share/calamares)" "$(r usr/share/plasma/look-and-feel)" "$(r etc/calamares)" 2>/dev/null | sed "s|^$ROOT/||" | tr '\n' ' ')"
-[[ -z $user_hits ]] && ok "installer branding and look-and-feel: no Arch Linux text" || warn "Arch Linux text in: $user_hits"
+user_hits="$(grep -rIli 'arch linux' "$(r usr/share/calamares)" "$(r usr/share/sddm)" "$(r etc/calamares)" 2>/dev/null | sed "s|^$ROOT/||" | tr '\n' ' ')"
+[[ -z $user_hits ]] && ok "installer branding and login theme: no Arch Linux text" || warn "Arch Linux text in: $user_hits"
 if [[ -d $BOOT ]] && [[ -n "$(find "$BOOT" -type f 2>/dev/null | head -1)" ]]; then
     # only the lines a person reads (title, MENU LABEL, menuentry), not internal label ids such as "LABEL arch"
     boot_hits="$(grep -rInE '^\s*(title|MENU LABEL|MENU TITLE)\b.*([Aa]rch Linux|\bArch\b)|^\s*menuentry\s+["'"'"'][^"'"'"']*([Aa]rch Linux|\bArch\b)' "$BOOT" 2>/dev/null | sed "s|^$BOOT/||" | head -5 | tr '\n' ' ')"
@@ -160,7 +160,7 @@ if [[ -d $db ]]; then
     n="$(find "$db" -mindepth 1 -maxdepth 1 -type d | wc -l)"
     size="$(find "$db" -name desc -print0 | xargs -0 -r awk '/^%SIZE%/ {getline; s += $1} END {printf "%.0f", s / 1048576}')"
     info "packages in the image: $n, installed size about ${size} MiB"
-    for p in heiss-core heiss-helper heiss-theme heiss-keyring heiss-welcome heiss-control heiss-safe-graphics heiss-profile-base; do
+    for p in heiss-core heiss-helper heiss-theme heiss-keyring heiss-desktop heiss-safe-graphics heiss-profile-base; do
         if compgen -G "$db/$p-[0-9]*" >/dev/null; then ok "package $p is in the image"; else fail "package $p is missing"; fi
     done
     for p in refind arch-install-scripts; do

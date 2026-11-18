@@ -1,0 +1,57 @@
+// Heiss OS: Waybar configuration (placeholder, replace it with your own).
+// Copied to ~/.config/waybar/config.jsonc at the first login, never overwritten afterwards.
+// Icons are Font Awesome code points from the "Symbols Nerd Font Mono" font (package ttf-nerd-fonts-symbols-mono).
+{
+    "layer": "top",
+    "position": "top",
+    "height": 36,
+    "margin-top": 8,
+    "margin-left": 10,
+    "margin-right": 10,
+    "spacing": 8,
+    "modules-left": ["hyprland/workspaces", "hyprland/window"],
+    "modules-center": ["clock"],
+    "modules-right": ["pulseaudio", "network", "bluetooth", "battery", "tray"],
+
+    "hyprland/workspaces": {
+        "format": "{id}",
+        "on-click": "activate"
+    },
+    "hyprland/window": {
+        "max-length": 60,
+        "separate-outputs": true
+    },
+    "clock": {
+        "format": "{:%H:%M}",
+        "format-alt": "{:%A, %d %B %Y}",
+        "tooltip-format": "{:%A, %d %B %Y}"
+    },
+    "pulseaudio": {
+        "format": "{icon} {volume}%",
+        "format-muted": " muted",
+        "format-icons": { "default": ["", ""] },
+        "on-click": "pavucontrol"
+    },
+    "network": {
+        "format-wifi": " {signalStrength}%",
+        "format-ethernet": " wired",
+        "format-disconnected": " offline",
+        "tooltip-format": "{ifname}: {ipaddr}",
+        "on-click": "nm-connection-editor"
+    },
+    "bluetooth": {
+        "format": "",
+        "format-disabled": "",
+        "format-off": "",
+        "on-click": "blueman-manager"
+    },
+    "battery": {
+        "format": "{icon} {capacity}%",
+        "format-charging": " {capacity}%",
+        "format-icons": ["", "", "", "", ""],
+        "states": { "warning": 25, "critical": 10 }
+    },
+    "tray": {
+        "spacing": 8
+    }
+}

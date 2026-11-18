@@ -1,0 +1,12 @@
+[SddmGreeterTheme]
+Name=Heiss
+Description=Heiss OS login screen
+Author=Heiss OS
+Version=0.1
+Website=https://github.com/heiss-os
+Type=sddm-theme
+MainScript=Main.qml
+ConfigFile=theme.conf
+Theme-Id=heiss
+Theme-API=2.0
+QTVersion=6

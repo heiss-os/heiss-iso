@@ -1,0 +1,7 @@
+[Desktop Entry]
+Name=Heiss OS
+Name[ru]=Heiss OS
+Comment=Heiss OS desktop (Hyprland)
+Exec=/usr/bin/heiss-session
+Type=Application
+DesktopNames=Hyprland

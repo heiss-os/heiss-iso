@@ -2,33 +2,29 @@
 # Maintainer: Heiss OS <https://github.com/heiss-os>
 pkgname=heiss-profile-base
 pkgver=0.1.0
-pkgrel=2
+pkgrel=3
 pkgdesc='Heiss OS profile Base: Everything for everyday use: web, media, images, PDF, archives, screenshots'
 arch=('any')
 url='https://github.com/heiss-os/heiss-iso'
 license=('GPL-3.0-or-later')
 depends=(
   'heiss-profile-essentials'
-  'kate'
-  'ark'
-  'gwenview'
-  'okular'
-  'spectacle'
-  'kcalc'
-  'plasma-systemmonitor'
-  'haruna'
+  'mousepad'
+  'file-roller'
+  'loupe'
+  'papers'
+  'galculator'
+  'mate-system-monitor'
+  'mpv'
+  'celluloid'
+  'ffmpegthumbnailer'
+  'baobab'
+  'gnome-disk-utility'
   'keepassxc'
-  'kio-extras'
-  'ffmpegthumbs'
-  'kdegraphics-thumbnailers'
-  'filelight'
-  'partitionmanager'
-  'plasma-disks'
-  'discover'
-  'print-manager'
   'cups'
   'cups-filters'
   'sane-airscan'
+  'system-config-printer'
 )
 
 package() {

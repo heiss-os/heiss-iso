@@ -10,7 +10,7 @@ See the phase and round sections below. Phases 0 to 7 are merged; round 23 (pre-
 
 ## In progress
 
-- Direction change to Hyprland and a terminal installer (`heiss-task-31.md`, plan in `docs/DIRECTION-HYPRLAND.md`). H0 plan and inventory (branch `docs/direction-hyprland`), then H1 the installed Hyprland session. Then, one PR each, after the owner's word: H2 welcome and settings windows, H3 terminal installer, H4 boot look, H5 cleanup. Round 25 stops at PR F plus the KDE preview image `heiss-2026.11.17`.
+- Direction change to Hyprland and a terminal installer (`heiss-task-31.md`, plan in `docs/DIRECTION-HYPRLAND.md`). H0 plan and inventory is merged (#125). H1 is split: H1a the installed Hyprland session (branch `feat/hyprland-session`: packages, manifests, SDDM theme, session, configs, first login, Plasma files and code removed), H1b `heiss theme` rebuilt for the new stack and `heiss check` theme item. Do not rebuild the ISO before H1b is merged. Then, one PR each, after the owner's word: H2 welcome and settings windows, H3 terminal installer, H4 boot look, H5 cleanup. Round 25 stops at PR F plus the KDE preview image `heiss-2026.11.17`.
 - Round 25 is merged (PR A to F #116 to #121, shellcheck in the Tier A scripts #123, actions/checkout v7.0.1 #122 and #124). Left from it: final rebuild checklist, then the `heiss-welcome` dependency finding from namcap (not started).
 
 
@@ -22,7 +22,7 @@ See the phase and round sections below. Phases 0 to 7 are merged; round 23 (pre-
 
 ## Next
 
-- H1 (installed Hyprland session), then wait for the owner. The KDE preview image is not rebuilt.
+- H1a, then H1b, then wait for the owner. The KDE preview image is not rebuilt.
 - First ISO build and static inspection of the image, then the owner's VM run of the FINAL VM TEST LIST. Later: Btrfs and snapshots, new neutral wallpapers.
 
 ## Open questions
@@ -368,6 +368,20 @@ Added in round 23 PR 5. Each line is run in part 3 of `heiss-task-28.md` (read-o
 
 ### Direction change H0 (Hyprland, 2026-11-18)
 - [ ] After the first Hyprland image: on a machine with only `linux` (`pacman -Q linux-lts` fails) run `sudo grub-mkconfig -o /boot/grub/grub.cfg`, reboot; expect "Heiss OS, safe graphics" in the boot menu and a login after choosing it (the plan says it does not need the LTS add-on; `docs/DIRECTION-HYPRLAND.md` section 6; never run).
+
+### Direction change H1a (Hyprland session, 2026-11-18)
+- [ ] Rebuild the packages and the ISO (`docs/ISO-E2E-TEST.md`), boot in VirtualBox with 3D acceleration (VMSVGA) on / expect the SDDM login screen is skipped by the live autologin and Hyprland starts with Waybar on top and a wallpaper; Calamares opens by itself after a few seconds.
+- [ ] Same VM with 3D acceleration OFF / expect Hyprland starts after one retry (`~/.local/state/heiss/session.log` shows `Hyprland exited with` then `software rendering on` then `starting Hyprland again`). Which variable the compositor honours (`WLR_RENDERER_ALLOW_SOFTWARE`, `LIBGL_ALWAYS_SOFTWARE`) is not known.
+- [ ] Boot entry "safe graphics" in the live menu / expect the session starts without a retry (`session.log` shows `software rendering on` at the top).
+- [ ] The default Hyprland configuration is accepted: `hyprctl configerrors` prints nothing (written for Hyprland 0.57 from memory of the hyprlang syntax; the `bind`, `bindel`, `bindl`, `bindm` lines, `source` with `~`, `col.active_border` with `rgb()` variables were not run).
+- [ ] Key bindings: Super+Return opens kitty, Super+E Thunar, Super+D the launcher (fuzzel), Super+Q closes, Super+L locks (hyprlock, password prompt appears), Print selects an area for a screenshot, volume and brightness keys work on a laptop.
+- [ ] Waybar: workspaces, clock, volume, network, Bluetooth, tray show; the sand accent marks the active workspace; click on volume opens pavucontrol, on network `nm-connection-editor`. Icons (Font Awesome code points from the Nerd symbols font) show as glyphs, not boxes. The CSS `@import "../heiss/theme/waybar-colors.css"` resolves (no `Waybar` error in `journalctl --user -b | grep -i waybar`).
+- [ ] Notifications: `notify-send test hello` shows a mako popup in the Heiss colours. Polkit: `pkexec true` shows the hyprpolkitagent password dialog.
+- [ ] Installed system: install with Calamares, reboot / expect the SDDM login with the Heiss theme (X11 greeter, own QML theme: card with logo, user, password), log in, Hyprland starts, `ls ~/.config/hypr ~/.config/waybar ~/.config/heiss/theme` shows the copied files, `systemctl --user --failed` and `systemctl --failed` are empty, `pacman -Q plasma-workspace kwin` finds nothing.
+- [ ] Keyboard layout: choose Russian in Calamares / expect the installed session types Russian (heiss-session passes `/etc/X11/xorg.conf.d/00-keyboard.conf` as `XKB_DEFAULT_*`; whether Calamares writes that file with a layout switch key is not known).
+- [ ] `heiss check` on the installed system (as the user) / expect no FAIL; `OK session` after the first login.
+- [ ] Portals: `busctl --user list | grep -i portal` shows `org.freedesktop.impl.portal.desktop.hyprland` and `.gtk`; a Firefox file dialog opens (GTK portal).
+- [ ] Base apps open and are the defaults: `xdg-mime query default inode/directory` is `thunar.desktop`, `text/plain` is `org.xfce.mousepad.desktop`, `application/pdf` is `org.gnome.Papers.desktop`, `image/png` is `org.gnome.Loupe.desktop`; the desktop file ids were checked by CI with `pacman -F`.
 
 ## Round 20, item 3a (2026-11-11): hardware choices applied
 

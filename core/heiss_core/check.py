@@ -11,7 +11,6 @@ import subprocess
 
 from . import manifest as mf
 from . import state as st
-from . import themesync
 from .errors import HeissError
 
 OK, WARN, FAIL = "OK", "WARN", "FAIL"
@@ -24,12 +23,15 @@ REMOVED_PACKAGES = (
     "pptpclient", "sdparm", "sequoia-sq", "sg3_utils", "testdisk", "tcpdump", "tpm2-tools", "usbmuxd",
     "vpnc", "wireless_tools", "wvdial", "xl2tpd",
 )
-# Hide stubs shipped in /usr/local/share/applications (docs/apps/LAUNCHER.md); calamares.desktop is removed after install.
-HIDE_STUBS = ("org.kde.kwrite.desktop", "vim.desktop", "mpv.desktop", "assistant.desktop", "designer.desktop",
+# Hide stubs shipped in /usr/local/share/applications (entries that would clutter the launcher); calamares.desktop is removed after install.
+HIDE_STUBS = ("vim.desktop", "mpv.desktop", "assistant.desktop", "designer.desktop",
               "linguist.desktop", "qdbusviewer.desktop", "qv4l2.desktop", "qvidcap.desktop", "lstopo.desktop")
-# desktop file -> key it must declare (docs/design/SHORTCUTS.md, rows marked "desktop")
-SHORTCUT_FILES = {"org.kde.dolphin.desktop": "Meta+E", "org.kde.konsole.desktop": "Ctrl+Alt+T",
-                  "systemsettings.desktop": "Meta+I", "org.kde.plasma-systemmonitor.desktop": "Meta+Esc"}
+# The installed Hyprland session (docs/DIRECTION-HYPRLAND.md): files the session needs, and the packages that must be gone.
+SESSION_FILES = ("/usr/share/wayland-sessions/heiss.desktop", "/usr/bin/Hyprland", "/usr/bin/waybar",
+                 "/usr/bin/heiss-session", "/usr/share/heiss/desktop/hypr/hyprland.conf",
+                 "/usr/share/heiss/desktop/waybar/config.jsonc", "/usr/share/sddm/themes/heiss/Main.qml")
+KDE_PACKAGES = ("plasma-desktop", "plasma-workspace", "kwin", "konsole", "dolphin", "plasma-nm", "plasma-pa",
+                "kscreen", "polkit-kde-agent", "xdg-desktop-portal-kde", "powerdevil", "kde-gtk-config")
 APP_DIRS = ("/usr/local/share/applications", "/usr/share/applications")
 HELPER_FILES = ("/usr/share/polkit-1/actions/org.heiss.helper.policy",
                 "/usr/share/dbus-1/system.d/org.heiss.Helper1.conf",
@@ -165,24 +167,6 @@ def check_profile(env, manifests):
                 _cmds(env, n)), state
 
 
-def check_theme(theme_env):
-    results, _ = themesync.sync(theme_env, wait=False, dry_run=True)
-    # theme-sync runs its own read-only commands (kreadconfig6, gsettings, busctl --user); they are not captured here
-    cmds = [["heiss", "theme", "status"]]
-    if len(results) == 1 and results[0].target == "all" and results[0].status == "skipped":
-        return Item("theme-sync", WARN, "cannot judge: " + results[0].detail, cmds)
-    if len(results) == 1 and results[0].target == "all" and results[0].status == "failed":
-        return Item("theme-sync", WARN, "cannot judge: " + results[0].detail, cmds)
-    bad = [r for r in results if r.status == "failed"]
-    warn = [r for r in results if r.status == "warn"]
-    if bad:
-        return Item("theme-sync", FAIL, "; ".join("%s: %s" % (r.target, r.detail) for r in bad), cmds)
-    if warn:
-        return Item("theme-sync", WARN, "; ".join("%s: %s" % (r.target, r.detail) for r in warn), cmds)
-    if all(r.status == "skipped" for r in results):
-        return Item("theme-sync", WARN, "not a Heiss color scheme: %s" % results[0].detail, cmds)
-    return Item("theme-sync", OK, ", ".join("%s %s" % (r.target, r.status) for r in results), cmds)
-
 
 def check_launcher(env):
     problems, entries = [], {}
@@ -205,7 +189,7 @@ def check_launcher(env):
         if k.get("Type") != "Application" or k.get("NoDisplay") == "true" or k.get("Hidden") == "true":
             continue
         only, notin = k.get("OnlyShowIn"), k.get("NotShowIn")
-        if (only and "KDE" not in only.split(";")) or (notin and "KDE" in notin.split(";")):
+        if (only and "Hyprland" not in only.split(";")) or (notin and "Hyprland" in notin.split(";")):
             continue
         if k.get("Name"):
             by_name.setdefault(k["Name"], []).append(fname)
@@ -234,24 +218,23 @@ def check_removed(env, state, profile):
     return Item("removed-packages", FAIL if profile in (None, "base") else WARN, detail, _cmds(env, n))
 
 
-def check_shortcuts(env):
-    problems = []
-    for fname, key in SHORTCUT_FILES.items():
-        text = env.read("/usr/share/applications/" + fname)
-        if text is None:
-            problems.append("%s missing" % fname)
-        elif key not in _desktop_keys(text).get("X-KDE-Shortcuts", "").split(","):
-            problems.append("%s does not declare %s" % (fname, key))
-    if not env.exists("/usr/lib/qt6/plugins/kf6/parts/konsolepart.so"):
-        problems.append("konsolepart.so missing: Dolphin terminal panel (Open Terminal Here) will not work")
-    kg = env.read("/etc/xdg/kdeglobals") or ""
-    m = re.search(r"^TerminalApplication\s*=\s*(\S+)", kg, re.M)
-    if m and m.group(1) != "konsole":
-        return Item("shortcuts-terminal", WARN if not problems else FAIL,
-                    "; ".join(problems + ["system TerminalApplication is %s, not konsole" % m.group(1)]))
+def check_session(env, home=None):
+    """The Hyprland session is installed and nothing of Plasma is left."""
+    n = len(env.commands)
+    problems = ["%s missing" % p for p in SESSION_FILES if not env.exists(p)]
+    rc, out = env.run(["pacman", "-Qq"])
+    if rc == 0:
+        left = [p for p in KDE_PACKAGES if p in set(out.split())]
+        if left:
+            problems.append("KDE packages still installed: " + ", ".join(left))
     if problems:
-        return Item("shortcuts-terminal", FAIL, "; ".join(problems))
-    return Item("shortcuts-terminal", OK, "%d shortcuts declared; Konsole terminal part present for Open Terminal Here" % len(SHORTCUT_FILES))
+        return Item("session", FAIL, "; ".join(problems), _cmds(env, n))
+    note = "" if rc == 0 else " (pacman unavailable: leftovers not judged)"
+    cfg = os.path.join(home, ".config/hypr/hyprland.conf") if home else None
+    if cfg and not env.exists(cfg):
+        return Item("session", WARN, "session files present; %s is not there yet (it is copied at the first login)" % cfg, _cmds(env, n))
+    return Item("session", OK, "Hyprland session, Waybar, configs and the SDDM theme installed, no KDE packages%s" % note, _cmds(env, n))
+
 
 
 def check_helper(env):
@@ -299,7 +282,7 @@ def check_live(env):
     return Item("live-leftovers", OK, "no liveuser, no live packages, root locked", _cmds(env, n))
 
 
-def run_checks(env, theme_env, profiles_dir=PROFILES_DIR):
+def run_checks(env, profiles_dir=PROFILES_DIR, home=None):
     try:
         manifests = mf.load_dir(profiles_dir)
     except (OSError, HeissError):
@@ -310,13 +293,9 @@ def run_checks(env, theme_env, profiles_dir=PROFILES_DIR):
         prof_item = Item(prof_item.name, FAIL,
                          "no manifests in %s (heiss-core installed?); " % profiles_dir + prof_item.detail, prof_item.commands)
     items.append(prof_item)
-    if env.euid() == 0:
-        items.append(Item("theme-sync", WARN, "not checked as root: it would read root's settings, run without sudo"))
-    else:
-        items.append(check_theme(theme_env))
     items.append(check_launcher(env))
     items.append(check_removed(env, state, (state.get("applied") or {}).get("profile") if state else None))
-    items.append(check_shortcuts(env))
+    items.append(check_session(env, home))
     items.append(check_helper(env))
     items.append(check_live(env))
     return items
@@ -331,8 +310,7 @@ def render_report(items, env, header=""):
     for i in items:
         out.append("[%s] %s" % (i.status, i.name))
         out += ["  $ " + " ".join(c) for c in i.commands] or ["  (reads files only)"]
-    out += ["", "Not captured below: the read-only commands run by the theme item (kreadconfig6, gsettings, busctl --user); see `heiss theme status`.",
-            "", "Raw output of every command:"]
+    out += ["", "Raw output of every command:"]
     for argv, rc, text in env.commands:
         out += ["$ " + " ".join(argv) + "    (exit %d)" % rc, text.rstrip("\n") or "(no output)", ""]
     return "\n".join(out) + "\n"

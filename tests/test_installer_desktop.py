@@ -1,4 +1,4 @@
-"""Installer and desktop in the live and installed system: wallpaper reference, finish page style, VirtualBox tools."""
+"""Installer and desktop in the live and installed system: wallpaper packages, finish page style, VirtualBox tools."""
 import os
 import re
 import unittest
@@ -13,20 +13,6 @@ def read(*p):
 
 
 class Wallpaper(unittest.TestCase):
-    def test_every_wallpaper_reference_is_a_package_url_not_a_bare_id(self):
-        # Plasma stores a package as file:///usr/share/wallpapers/<id>/; a bare id does not resolve and the desktop
-        # stayed on the plain colour (first real install)
-        url = r"file:///usr/share/wallpapers/Heiss-Everyday(-Light)?/"
-        for theme, wall in (("dark", "Heiss-Everyday"), ("light", "Heiss-Everyday-Light")):
-            js = read(AIR, "usr/share/plasma/look-and-feel/org.heiss.%s.desktop/contents/layouts/org.kde.plasma.desktop-layout.js" % theme)
-            self.assertIn('writeConfig("Image", "file:///usr/share/wallpapers/%s/")' % wall, js)
-            self.assertNotRegex(js, r'writeConfig\("Image", "Heiss-')
-        self.assertRegex(read(AIR, "etc/xdg/kscreenlockerrc"), r"(?m)^Image=" + url + "$")
-        sh = read(AIR, "usr/local/bin/heiss-set-wallpaper.sh")
-        self.assertIn('URL="file:///usr/share/wallpapers/$ID/"', sh)
-        self.assertNotIn('writeConfig("Image", "\'"$ID"\'")', sh)
-        self.assertIn('grep -qsx "Image=$URL"', sh)          # only the URL form is "in place"; a bare id is rewritten
-
     def test_wallpaper_packages_exist_for_both_ids(self):
         for wall in ("Heiss-Everyday", "Heiss-Everyday-Light"):
             self.assertTrue(os.path.isdir(os.path.join(AIR, "usr/share/wallpapers", wall, "contents/images")))

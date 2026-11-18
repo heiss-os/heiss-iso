@@ -49,7 +49,7 @@ class Env:
         os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config"), "heiss"))
     state_file: str = "/var/lib/heiss/state.json"
     profiles_dir: str = field(default_factory=lambda: os.environ.get("HEISS_PROFILES", "/usr/share/heiss/profiles"))
-    kde_value: callable = field(default_factory=lambda: th.kreadconfig)
+    theme_get: callable = field(default_factory=lambda: th.read_current)
     apply_theme: callable = field(default_factory=lambda: th.apply_theme)
     security_facts: callable = field(default_factory=lambda: security.collect)
     privacy_facts: callable = field(default_factory=lambda: privacy_view.collect)
@@ -267,7 +267,11 @@ class Model:
 
     # --- appearance: Dark and Light only ---
     def appearance(self):
-        cur = th.read_current(self.env.kde_value)
+        try:
+            cur = self.env.theme_get()
+        except Exception:  # noqa: BLE001 - a broken tool must not stop the page
+            cur = ""
+        cur = cur if cur in ("dark", "light") else ""
         return {"what": self.tr("appearance.what"), "currentLabel": self.tr("appearance.current"),
                 "current": self.tr("theme." + cur) if cur else self.tr("unknown"),
                 "choices": [{"id": c, "label": self.tr("theme." + c), "selected": c == cur} for c in ("dark", "light")],

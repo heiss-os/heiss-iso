@@ -76,10 +76,10 @@ class Screens(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             vm, _ = vm_in(d)
             vm.w.step = wz.IDS.index("addons")
-            vm.toggle_addon("addon-thunar")
+            vm.toggle_addon("addon-lts-kernel")
             sel = {o["value"] for o in vm.screen()["questions"][0]["options"] if o["selected"]}
-            self.assertEqual(sel, {"addon-thunar"})
-            vm.toggle_addon("addon-thunar")
+            self.assertEqual(sel, {"addon-lts-kernel"})
+            vm.toggle_addon("addon-lts-kernel")
             self.assertEqual(vm.w.answers["addons"], [])
 
     def test_back_skip_and_buttons_state(self):
@@ -98,7 +98,7 @@ class Screens(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             vm, _ = vm_in(d)
             vm.choose("profile", "developer")
-            vm.choose("addons", ["addon-thunar"])
+            vm.choose("addons", ["addon-lts-kernel"])
             vm.w.step = wz.IDS.index("summary")
             lines = vm.screen()["lines"]
             self.assertEqual(len(lines), 3)       # profile, "Add-ons:", one wrapped line per add-on
@@ -134,8 +134,7 @@ class Addons(unittest.TestCase):
             vm, _ = vm_in(d)
             vm.w.step = wz.IDS.index("addons")
             ids = {o["value"] for o in vm.screen()["questions"][0]["options"]}
-            self.assertEqual(ids, {"addon-cyber-extended", "addon-developer-extended", "addon-kitty",
-                                   "addon-lts-kernel", "addon-thunar"})
+            self.assertEqual(ids, {"addon-cyber-extended", "addon-developer-extended", "addon-lts-kernel"})
             self.assertFalse([o for o in vm.screen()["questions"][0]["options"] if o["selected"]])
         for name in os.listdir(PROFILES):
             with open(os.path.join(PROFILES, name), encoding="utf-8") as f:

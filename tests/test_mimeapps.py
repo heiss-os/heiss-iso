@@ -9,9 +9,10 @@ spec.loader.exec_module(cm)
 
 # the one default application per job, and the Base package that ships it
 EXPECTED = {
-    "org.kde.dolphin.desktop": "dolphin", "org.kde.kate.desktop": "kate", "firefox.desktop": "firefox",
-    "org.kde.gwenview.desktop": "gwenview", "org.kde.okular.desktop": "okular", "org.kde.haruna.desktop": "haruna",
-    "org.kde.ark.desktop": "ark", "org.keepassxc.KeePassXC.desktop": "keepassxc",
+    "thunar.desktop": "thunar", "org.xfce.mousepad.desktop": "mousepad", "firefox.desktop": "firefox",
+    "org.gnome.Loupe.desktop": "loupe", "org.gnome.Papers.desktop": "papers",
+    "io.github.celluloid_player.Celluloid.desktop": "celluloid", "org.gnome.FileRoller.desktop": "file-roller",
+    "org.keepassxc.KeePassXC.desktop": "keepassxc",
 }
 
 
@@ -46,13 +47,13 @@ class Mimeapps(unittest.TestCase):
 
     def test_important_defaults(self):
         d = self.data
-        self.assertEqual(d["inode/directory"], ["org.kde.dolphin.desktop"])
+        self.assertEqual(d["inode/directory"], ["thunar.desktop"])
         for k in ("x-scheme-handler/http", "x-scheme-handler/https", "text/html"):
             self.assertEqual(d[k], ["firefox.desktop"], k)
-        self.assertEqual(d["application/pdf"], ["org.kde.okular.desktop"])
-        self.assertEqual(d["text/plain"], ["org.kde.kate.desktop"])
-        self.assertEqual(d["image/png"], ["org.kde.gwenview.desktop"])
-        self.assertEqual(d["application/zip"], ["org.kde.ark.desktop"])
+        self.assertEqual(d["application/pdf"], ["org.gnome.Papers.desktop"])
+        self.assertEqual(d["text/plain"], ["org.xfce.mousepad.desktop"])
+        self.assertEqual(d["image/png"], ["org.gnome.Loupe.desktop"])
+        self.assertEqual(d["application/zip"], ["org.gnome.FileRoller.desktop"])
 
     def test_no_mail_handler_because_base_has_no_mail_client(self):
         self.assertNotIn("x-scheme-handler/mailto", self.data)

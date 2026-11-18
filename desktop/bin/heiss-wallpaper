@@ -1,0 +1,8 @@
+#!/bin/sh
+# Heiss OS: (re)starts the wallpaper (swaybg) with the image the current Heiss theme points to.
+# ~/.config/heiss/theme/wallpaper is a symlink that the first login and `heiss theme` maintain.
+# Usage: heiss-wallpaper   (no arguments; the image path is never taken from the command line)
+img="${XDG_CONFIG_HOME:-$HOME/.config}/heiss/theme/wallpaper"
+[ -e "$img" ] || exit 0
+pkill -u "$(id -u)" -x swaybg 2>/dev/null
+exec swaybg -i "$img" -m fill

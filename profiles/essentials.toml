@@ -7,13 +7,16 @@ description = { en = "The minimum for a usable, secure and good-looking system."
 packages = [
   "base", "linux", "linux-firmware", "intel-ucode", "amd-ucode", "grub", "os-prober", "efibootmgr", "sudo", "nano",
   "mesa", "xorg-xwayland", "vulkan-radeon", "vulkan-intel",
-  "networkmanager", "plasma-nm", "wireless-regdb",
-  "pipewire", "pipewire-pulse", "pipewire-alsa", "wireplumber", "plasma-pa", "alsa-utils",
-  "bluez", "bluez-utils", "bluedevil",
-  "plasma-desktop", "plasma-workspace", "kwin", "sddm", "kscreen", "powerdevil", "kinfocenter",
-  "polkit-kde-agent", "xdg-desktop-portal-kde", "xdg-desktop-portal-gtk", "kde-gtk-config", "breeze-gtk",
-  "konsole", "dolphin", "firefox", "noto-fonts", "ttf-jetbrains-mono", "plymouth",
-  "reflector", "zram-generator", "fwupd", "firewalld", "plasma-firewall",
+  "networkmanager", "network-manager-applet", "wireless-regdb",
+  "pipewire", "pipewire-pulse", "pipewire-alsa", "wireplumber", "pavucontrol", "alsa-utils",
+  "bluez", "bluez-utils", "blueman",
+  "hyprland", "waybar", "hyprlock", "hypridle", "swaybg", "fuzzel", "mako", "hyprpolkitagent",
+  "xdg-desktop-portal-hyprland", "xdg-desktop-portal-gtk", "grim", "slurp", "wl-clipboard", "brightnessctl",
+  "qt6-wayland", "qt6ct", "sddm", "xorg-server",
+  "kitty", "thunar", "thunar-volman", "gvfs", "tumbler", "firefox",
+  "noto-fonts", "noto-fonts-emoji", "inter-font", "ttf-jetbrains-mono", "ttf-nerd-fonts-symbols-mono",
+  "adwaita-icon-theme", "adwaita-cursors", "plymouth",
+  "reflector", "zram-generator", "fwupd", "firewalld",
 ]
 services = ["NetworkManager.service", "sddm.service", "bluetooth.service", "firewalld.service", "fstrim.timer"]
 

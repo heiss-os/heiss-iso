@@ -1,5 +1,7 @@
 # Heiss Control Center (Phase 6)
 
+Status 2026-11-18: dormant. `heiss-control` is no longer in the ISO package list; the Hyprland session gets a light settings window in H2 (`docs/DIRECTION-HYPRLAND.md`). The code stays until then; its theme calls now go through `heiss theme get|set`.
+
 Split into small PRs. Status of each page:
 
 | Page | Status |

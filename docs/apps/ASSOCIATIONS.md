@@ -1,5 +1,7 @@
 # Default applications and file associations
 
+Status 2026-11-18: the defaults now point to the Hyprland-session apps (Thunar, Mousepad, Loupe, Papers, Celluloid, File Roller, Firefox, KeePassXC); the table below still lists the KDE apps of the preview image and is rewritten in H5.
+
 File: `profile/airootfs/etc/xdg/mimeapps.list` (XDG system-wide defaults). It reaches the live session and, through the squashfs copy, every installed system; new users inherit it, and a user's own `~/.config/mimeapps.list` wins. One default per job, only applications of the Base profile.
 
 | Job | Default | Package | What it opens |

@@ -65,9 +65,9 @@ class Env(unittest.TestCase):
 
 class Validation(Env):
     def test_install_accepts_manifest_packages_only(self):
-        steps = actions.build_install(self.ctx, ["nmap", "kate"])
+        steps = actions.build_install(self.ctx, ["nmap", "mousepad"])
         argv = [s.argv for s in steps if s.argv][0]
-        self.assertEqual(argv, ["pacman", "-S", "--needed", "--noconfirm", "--", "nmap", "kate"])
+        self.assertEqual(argv, ["pacman", "-S", "--needed", "--noconfirm", "--", "nmap", "mousepad"])
         for bad in (["evil-pkg"], ["nmap; rm -rf /"], ["--overwrite=*"], ["-Syu"], [], ["nmap", "nmap"], "nmap", [1],
                     ["$(id)"], ["nmap\n"], ["a" * 200]):
             with self.assertRaises(HelperError, msg=str(bad)) as cm:
@@ -76,7 +76,7 @@ class Validation(Env):
 
     def test_install_limit(self):
         with self.assertRaises(HelperError):
-            actions.build_install(self.ctx, ["kate"] * 600)
+            actions.build_install(self.ctx, ["mousepad"] * 600)
 
     def test_remove_only_owned_and_never_essentials(self):
         self.own("nmap", "linux")
@@ -151,7 +151,7 @@ class Validation(Env):
     def test_update_is_always_full_upgrade(self):
         argv = [s.argv for s in actions.build_update(self.ctx) if s.argv][0]
         self.assertEqual(argv, ["pacman", "-Syu", "--noconfirm"])
-        for steps in (actions.build_install(self.ctx, ["kate"]),):
+        for steps in (actions.build_install(self.ctx, ["mousepad"]),):
             for s in steps:
                 self.assertNotIn("-Sy", s.argv or [])
 
@@ -172,32 +172,32 @@ class Ownership(Env):
         return set(st.load(self.state)["packages"])
 
     def test_install_records_only_newly_installed_packages(self):
-        self.installed = {"kate"}                       # the user already had kate: not Heiss-owned
-        steps = actions.build_install(self.ctx, ["kate", "ark"])
+        self.installed = {"mousepad"}                       # the user already had mousepad: not Heiss-owned
+        steps = actions.build_install(self.ctx, ["mousepad", "file-roller"])
         self.assertTrue(self.go(steps))
-        self.assertEqual(self.owned(), {"ark"})
+        self.assertEqual(self.owned(), {"file-roller"})
 
     def test_failed_install_records_nothing(self):
         self.runner.fail_on = "pacman"
-        self.assertFalse(self.go(actions.build_install(self.ctx, ["ark"])))
+        self.assertFalse(self.go(actions.build_install(self.ctx, ["file-roller"])))
         self.assertEqual(self.owned(), set())
 
     def test_remove_forgets_ownership(self):
-        self.own("ark", "kate")
-        self.assertTrue(self.go(actions.build_remove(self.ctx, ["ark"])))
-        self.assertEqual(self.owned(), {"kate"})
+        self.own("file-roller", "mousepad")
+        self.assertTrue(self.go(actions.build_remove(self.ctx, ["file-roller"])))
+        self.assertEqual(self.owned(), {"mousepad"})
 
     def test_failed_remove_keeps_ownership(self):
-        self.own("ark")
+        self.own("file-roller")
         self.runner.fail_on = "pacman"
-        self.assertFalse(self.go(actions.build_remove(self.ctx, ["ark"])))
-        self.assertEqual(self.owned(), {"ark"})
+        self.assertFalse(self.go(actions.build_remove(self.ctx, ["file-roller"])))
+        self.assertEqual(self.owned(), {"file-roller"})
 
     def test_adopt_only_installed_explicit_unowned(self):
-        self.installed, self.explicit = {"kate", "ark", "okular"}, {"kate", "ark"}
-        self.own("ark")
-        self.assertTrue(self.go(actions.build_adopt(self.ctx, ["kate", "ark", "okular", "gwenview"])))
-        self.assertEqual(self.owned(), {"kate", "ark"})          # okular not explicit, gwenview not installed, ark already owned
+        self.installed, self.explicit = {"mousepad", "file-roller", "papers"}, {"mousepad", "file-roller"}
+        self.own("file-roller")
+        self.assertTrue(self.go(actions.build_adopt(self.ctx, ["mousepad", "file-roller", "papers", "loupe"])))
+        self.assertEqual(self.owned(), {"mousepad", "file-roller"})          # papers not explicit, loupe not installed, file-roller already owned
 
     def test_adopt_rejects_unlisted_packages(self):
         with self.assertRaises(HelperError):
@@ -221,21 +221,21 @@ class Execution(Env):
     def test_lock_blocks(self):
         os.makedirs(os.path.join(self.root, "var/lib/pacman"))
         open(os.path.join(self.root, "var/lib/pacman/db.lck"), "w").close()
-        ok, msg, _ = self.run_steps(actions.build_install(self.ctx, ["kate"]))
+        ok, msg, _ = self.run_steps(actions.build_install(self.ctx, ["mousepad"]))
         self.assertFalse(ok)
         self.assertIn("db.lck", msg)
         self.assertEqual(self.runner.calls, [])
 
     def test_low_space_blocks(self):
         self.ctx.free_bytes = lambda: 1 << 20
-        ok, msg, _ = self.run_steps(actions.build_install(self.ctx, ["kate"]))
+        ok, msg, _ = self.run_steps(actions.build_install(self.ctx, ["mousepad"]))
         self.assertFalse(ok)
         self.assertEqual(self.runner.calls, [])
 
     def test_snapshot_taken_when_available_and_failure_is_not_fatal(self):
         self.ctx.snapshots_available = lambda: True
         self.runner.fail_on = "snapper"
-        ok, _, lines = self.run_steps(actions.build_install(self.ctx, ["kate"]))
+        ok, _, lines = self.run_steps(actions.build_install(self.ctx, ["mousepad"]))
         self.assertTrue(ok)
         self.assertEqual([c[0] for c in self.runner.calls], ["snapper", "pacman"])
         self.assertTrue(any("warning" in l for l in lines))
@@ -272,7 +272,7 @@ class DispatcherTests(Env):
 
     def test_authorized_job_streams_to_caller_only(self):
         d = self.make()
-        job = d.handle(":1.5", 1000, "InstallPackages", (["kate"],))
+        job = d.handle(":1.5", 1000, "InstallPackages", (["mousepad"],))
         d.join()
         self.assertEqual(re.fullmatch(r"[0-9a-f]{16}", job) is not None, True)
         self.assertTrue(all(e[0] == ":1.5" for e in self.events))
@@ -296,7 +296,7 @@ class DispatcherTests(Env):
             return original(argv, emit, timeout)
         self.runner.run = slow
         d = self.make()
-        d.handle(":1.5", 1000, "InstallPackages", (["kate"],))
+        d.handle(":1.5", 1000, "InstallPackages", (["mousepad"],))
         with self.assertRaises(HelperError) as cm:
             d.handle(":1.6", 1000, "RunPostAction", ("mkinitcpio",))
         self.assertEqual(cm.exception.code, "Busy")
@@ -309,7 +309,7 @@ class DispatcherTests(Env):
         d = self.make()
         self.ctx.trusted = lambda: 1 / 0
         with self.assertRaises(HelperError) as cm:
-            d.handle(":1.5", 1000, "InstallPackages", (["kate"],))
+            d.handle(":1.5", 1000, "InstallPackages", (["mousepad"],))
         self.assertEqual(cm.exception.code, "Failed")
         self.assertFalse(d._busy.locked())
 

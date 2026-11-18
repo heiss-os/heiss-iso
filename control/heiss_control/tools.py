@@ -7,14 +7,13 @@ import os
 import subprocess
 
 from heiss_core import check as ck
-from heiss_core import themesync
 
 STATUSES = (ck.OK, ck.WARN, ck.FAIL)
 
 
 def run_check():
     env = ck.CheckEnv()
-    items = ck.run_checks(env, themesync.RealEnv(), os.environ.get("HEISS_PROFILES", ck.PROFILES_DIR))
+    items = ck.run_checks(env, os.environ.get("HEISS_PROFILES", ck.PROFILES_DIR), home=os.path.expanduser("~"))
     return [i.to_dict() for i in items]
 
 

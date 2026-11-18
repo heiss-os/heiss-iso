@@ -1,0 +1,51 @@
+#!/bin/sh
+# Heiss OS: starts the Hyprland session (SDDM runs this through /usr/share/wayland-sessions/heiss.desktop).
+# 1. first-login copy of the default configuration (never overwrites)
+# 2. environment: Heiss desktop name, cursor, Qt platform theme, keyboard layout of the system
+# 3. starts Hyprland; if it stops within 10 seconds (no usable 3D, as in a VirtualBox VM without acceleration)
+#    it is started once more with software rendering. Everything is logged to ~/.local/state/heiss/session.log.
+# Safe graphics: the kernel parameter nomodeset (boot entry "safe graphics") starts with software rendering at once.
+LOG="${XDG_STATE_HOME:-$HOME/.local/state}/heiss/session.log"
+mkdir -p "$(dirname "$LOG")"
+log() { printf '%s %s\n' "$(date '+%F %T')" "$*" >> "$LOG"; }
+
+/usr/bin/heiss-first-login >> "$LOG" 2>&1
+
+export XDG_CURRENT_DESKTOP=Hyprland XDG_SESSION_TYPE=wayland XDG_SESSION_DESKTOP=Hyprland
+export XCURSOR_THEME=Adwaita XCURSOR_SIZE=24
+export QT_QPA_PLATFORMTHEME=qt6ct QT_QPA_PLATFORM="wayland;xcb"
+export MOZ_ENABLE_WAYLAND=1
+
+# Keyboard layout: Hyprland does not read the X11 keyboard file the installer writes, so pass it on (heiss-user.conf wins).
+kb=/etc/X11/xorg.conf.d/00-keyboard.conf
+if [ -r "$kb" ]; then
+  opt() { sed -n "s/^[[:space:]]*Option[[:space:]]*\"$1\"[[:space:]]*\"\(.*\)\"/\1/p" "$kb" | head -n 1; }
+  v="$(opt XkbLayout)";  [ -n "$v" ] && export XKB_DEFAULT_LAYOUT="$v"
+  v="$(opt XkbVariant)"; [ -n "$v" ] && export XKB_DEFAULT_VARIANT="$v"
+  v="$(opt XkbOptions)"; [ -n "$v" ] && export XKB_DEFAULT_OPTIONS="$v"
+fi
+
+software() {
+  export WLR_RENDERER_ALLOW_SOFTWARE=1 LIBGL_ALWAYS_SOFTWARE=1 WLR_NO_HARDWARE_CURSORS=1
+  log "software rendering on"
+}
+grep -qw nomodeset /proc/cmdline 2>/dev/null && software
+
+# Live session only: start the installer and the link helper once the compositor is up
+if [ -d /run/archiso/bootmnt ]; then
+  ( /usr/local/bin/heiss-start-installer.sh & /usr/local/bin/heiss-open-link & wait ) >/dev/null 2>&1 &
+fi
+
+start=$(date +%s)
+log "starting Hyprland"
+/usr/bin/Hyprland >> "$LOG" 2>&1
+rc=$?
+log "Hyprland exited with $rc after $(( $(date +%s) - start )) s"
+if [ "$rc" -ne 0 ] && [ $(( $(date +%s) - start )) -lt 10 ] && [ -z "$WLR_RENDERER_ALLOW_SOFTWARE" ]; then
+  software
+  log "starting Hyprland again"
+  /usr/bin/Hyprland >> "$LOG" 2>&1
+  rc=$?
+  log "Hyprland exited with $rc"
+fi
+exit "$rc"

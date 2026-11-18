@@ -1,6 +1,0 @@
-[Desktop Entry]
-Type=Application
-Name=Install Heiss OS (live autostart)
-Exec=/usr/local/bin/heiss-start-installer.sh
-OnlyShowIn=KDE;
-NoDisplay=true
