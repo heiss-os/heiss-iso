@@ -1,6 +1,6 @@
 # Direction change: Hyprland desktop and a terminal installer
 
-Status: plan and inventory (stage H0, docs only). Source: `~/share/heiss-task-31.md`. The KDE image `heiss-2026.11.17` stays as the "KDE preview"; nothing here changes it. Anything about Plasma, the Qt wizard look or Calamares in `heiss-task-30.md` that was not finished is obsolete.
+Status: plan and inventory (stage H0, docs only); H1 and H2a/H2b are done, see `docs/PLAN-STATE.md`. Source: `~/share/heiss-task-31.md`. The KDE image `heiss-2026.11.17` stays as the "KDE preview"; nothing here changes it. Anything about Plasma, the Qt wizard look or Calamares in `heiss-task-30.md` that was not finished is obsolete.
 
 ## 1. What changes
 
@@ -10,8 +10,8 @@ Status: plan and inventory (stage H0, docs only). Source: `~/share/heiss-task-31
 | Login | SDDM, Breeze theme with a Heiss override, Plasma session | SDDM stays, own Heiss theme without Plasma, Hyprland session |
 | Live session | Plasma autologin, Calamares started from it | H1: same Hyprland session, Calamares started from it. H3: no graphical live session, console autologin, terminal installer `heiss-installer` |
 | Installer | Calamares 3.4.2 (Qt6, AUR build) with QML branding | Terminal installer (Python). Calamares stays hidden until the owner confirms the new one in a VM, removed in H5 |
-| First run | `heiss-welcome` Qt wizard (11 steps) | Welcome window with the key bindings (H2); the installer asks the questions (H3) |
-| Settings | `heiss-control` (Qt, sidebar of pages) plus stock KDE System Settings | One light settings window (H2): Appearance, Display, Keyboard, Network and Bluetooth, Audio, Packages, Hardware, System |
+| First run | `heiss-welcome` Qt wizard (11 steps) | Welcome window with the key bindings (H2a, done); the installer asks the questions (H3) |
+| Settings | `heiss-control` (Qt, sidebar of pages) plus stock KDE System Settings | One light settings window (H2b, done): Appearance, Display, Keyboard, Network and Bluetooth, Audio, Packages, Hardware, System |
 | Theme switch | `heiss theme` = Plasma Look-and-Feel + theme sync | `heiss theme` for GTK, Qt, kitty, Waybar, wallpaper, cursor, from the design tokens |
 | GRUB | Heiss theme, jagged font | Inter font from `grub-mkfont`, balanced layout (H4, Tier A) |
 
@@ -115,7 +115,7 @@ Tier A paths touched by H1 (label `design-approved` needed, checksums updated in
 | `heiss-core` | `python` | No at install time. The code calls `kreadconfig6`, `kwriteconfig6`, `plasma-apply-lookandfeel`, `busctl org.kde.*` (themesync, check, apply) | Calls removed in H1; `heiss theme` writes GTK, Qt, kitty, Waybar and wallpaper itself |
 | `heiss-helper` | `heiss-core python python-gobject polkit dbus`, optdepends `snapper` | No | Snapshot and privacy actions removed (H2); the rest unchanged |
 | `heiss-welcome` | `python pyside6 heiss-core` | No (QtQuick Controls only), but applies the theme with `plasma-apply-lookandfeel` | Replaced in H2 by the welcome window (key bindings) |
-| `heiss-control` | `python pyside6 heiss-core`, optdepends `kconfig`, `plasma-workspace`, `systemsettings` | Optional only | Replaced in H2 by the settings window |
+| `heiss-control` | `python pyside6 heiss-core`, optdepends `kconfig`, `plasma-workspace`, `systemsettings` | Optional only | Replaced in H2b by the settings window (done) |
 | `heiss-theme` | optdepends `konsole`, `kitty` | Konsole files | Desktop theme files for the Hyprland stack |
 | `heiss-profile-essentials`, `-base` | generated from the manifests | Yes: they pull Plasma | Regenerated from the new manifests (H1) |
 | `heiss-safe-graphics` | `grub` | No | unchanged |

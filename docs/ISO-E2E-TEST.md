@@ -167,7 +167,7 @@ warning and error. Look at the PNGs; expect `Qt/QML warnings and errors: 0`. The
 runs it (skipped without PySide6).
 
 What this does **not** show (still needs the VM): the real fonts (Inter is not installed on the build VM, so text is
-drawn in a fallback face), the real Plasma colour scheme and window decoration, animations, the polkit prompt, the
+drawn in a fallback face), the real Hyprland session colours and window decoration, animations, the polkit prompt, the
 worker threads and signals (the script's bridge is synchronous), the clipboard, anything the real helper or system
 tools return. The light theme is rendered from a copy of the QML with the one colour-scheme test replaced
 (the offscreen platform has no colour scheme).

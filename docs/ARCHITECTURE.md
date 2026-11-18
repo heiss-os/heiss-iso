@@ -52,7 +52,7 @@ answers + manifests + current state -> plan (install / enable / configure / remo
 ## 6. Data flow examples
 
 1. Apply (`heiss profile apply`; the wizard that used to start it was removed in H2a): answers saved -> resolver builds plan -> user sees summary -> core sends action requests to the helper one by one -> helper snapshots, runs, reports progress -> state file updated.
-2. Offline: network actions go to a "Pending actions" queue stored next to the answers; the Control Center runs them later.
+2. Offline: network actions go to a "Pending actions" queue stored next to the answers; (the saved-actions queue was removed in H2b: run `heiss profile apply` again when online).
 3. Theme switch: see "Theme sync" below.
 
 ## 7. Theme sync (extension of the existing `heiss-theme-sync`)
