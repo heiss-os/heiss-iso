@@ -11,6 +11,8 @@ log() { printf '%s %s\n' "$(date '+%F %T')" "$*" >> "$LOG"; }
 
 BIN="${HEISS_SESSION_BIN:-/usr/bin}"   # the override is for tests
 "$BIN/heiss-first-login" >> "$LOG" 2>&1
+# dark theme files for GTK, Qt and the colours, once (never overrides a later choice; no compositor needed)
+command -v heiss >/dev/null 2>&1 && heiss theme init >> "$LOG" 2>&1
 
 export XDG_CURRENT_DESKTOP=Hyprland XDG_SESSION_TYPE=wayland XDG_SESSION_DESKTOP=Hyprland
 export XCURSOR_THEME=Adwaita XCURSOR_SIZE=24

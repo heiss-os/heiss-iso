@@ -10,7 +10,7 @@ See the phase and round sections below. Phases 0 to 7 are merged; round 23 (pre-
 
 ## In progress
 
-- Direction change to Hyprland and a terminal installer (`heiss-task-31.md`, plan in `docs/DIRECTION-HYPRLAND.md`). H0 plan and inventory is merged (#125). H1 is split: H1a the installed Hyprland session (branch `feat/hyprland-session`: packages, manifests, SDDM theme, session, configs, first login, Plasma files and code removed), H1b `heiss theme` rebuilt for the new stack and `heiss check` theme item. Do not rebuild the ISO before H1b is merged. Then, one PR each, after the owner's word: H2 welcome and settings windows, H3 terminal installer, H4 boot look, H5 cleanup. Round 25 stops at PR F plus the KDE preview image `heiss-2026.11.17`.
+- Direction change to Hyprland and a terminal installer (`heiss-task-31.md`, plan in `docs/DIRECTION-HYPRLAND.md`). H0 plan and inventory is merged (#125). H1 is split: H1a the installed Hyprland session (branch `feat/hyprland-session`: packages, manifests, SDDM theme, session, configs, first login, Plasma files and code removed), H1b `heiss theme` rebuilt for the new stack and `heiss check` theme item (branch `feat/heiss-theme-hyprland`, with the CLAUDE.md update and `docs/OWNER-INPUTS.md`). H1a is merged (#126). After H1b is merged the ISO can be rebuilt. Then, one PR each, after the owner's word: H2 welcome and settings windows, H3 terminal installer, H4 boot look, H5 cleanup. Round 25 stops at PR F plus the KDE preview image `heiss-2026.11.17`.
 - Round 25 is merged (PR A to F #116 to #121, shellcheck in the Tier A scripts #123, actions/checkout v7.0.1 #122 and #124). Left from it: final rebuild checklist, then the `heiss-welcome` dependency finding from namcap (not started).
 
 
@@ -22,8 +22,8 @@ See the phase and round sections below. Phases 0 to 7 are merged; round 23 (pre-
 
 ## Next
 
-- H1a, then H1b, then wait for the owner. The KDE preview image is not rebuilt.
-- First ISO build and static inspection of the image, then the owner's VM run of the FINAL VM TEST LIST. Later: Btrfs and snapshots, new neutral wallpapers.
+- H1b, then wait for the owner (rebuild of the ISO and the VM run of the H1a and H1b lines). The KDE preview image is not rebuilt.
+- First ISO build and static inspection of the image, then the owner's VM run of the FINAL VM TEST LIST. Later: new neutral wallpapers (Btrfs and snapshots were removed from the plan, see DECISIONS 2026-11-18).
 
 ## Open questions
 
@@ -385,6 +385,21 @@ H1a needs the label `design-approved` (Tier A: color-schemes, plasma/look-and-fe
 - [ ] `heiss check` on the installed system (as the user) / expect no FAIL; `OK session` after the first login.
 - [ ] Portals: `busctl --user list | grep -i portal` shows `org.freedesktop.impl.portal.desktop.hyprland` and `.gtk`; a Firefox file dialog opens; `cat /usr/share/xdg-desktop-portal/hyprland-portals.conf` (shipped by the hyprland package) names the GTK portal for the file chooser, otherwise report its content.
 - [ ] Base apps open and are the defaults: `xdg-mime query default inode/directory` is `thunar.desktop`, `text/plain` is `org.xfce.mousepad.desktop`, `application/pdf` is `org.gnome.Papers.desktop`, `image/png` is `org.gnome.Loupe.desktop`; the desktop file ids were checked by CI with `pacman -F`.
+
+### Direction change H1b (`heiss theme`, 2026-11-18)
+- [ ] In the Hyprland session: `heiss theme get` / expect `dark`; `heiss theme set light` / expect seven `theme: ...` lines, none `failed`; waybar, fuzzel (Super+D), a Thunar window, Firefox and kitty turn light (GTK 3 and Qt programs at their next start); `heiss theme set dark` turns them back; wallpaper switches between `Heiss-Everyday` and `Heiss-Everyday-Light`.
+- [ ] `gsettings get org.gnome.desktop.interface color-scheme` / expect `'prefer-light'` after `set light`; a new kitty window uses the Light colours (kitty 0.49 `*-theme.auto.conf` following the portal, not verified).
+- [ ] A Qt program (keepassxc) after a restart / expect Heiss colours, readable text on buttons and in menus (the 22-role qt6ct colour file and `QT_QPA_PLATFORMTHEME=qt6ct` were never run).
+- [ ] Waybar after `heiss theme set light` / expect it re-reads the CSS without a restart (`pkill -USR2` and the `@import "../heiss/theme/waybar-colors.css"`); if not, report `journalctl --user -b | grep -i waybar`.
+- [ ] `heiss theme status` and `heiss check` / expect `theme` OK after a `set`; after `echo x >> ~/.config/heiss/theme/mako.conf` expect `WARN theme` naming `colors`.
+- [ ] Put your own `~/.config/gtk-3.0/gtk.css` (any text) in place and run `heiss theme set light` / expect `gtk ... warn` and your file unchanged.
+- [ ] Cursor: after `heiss theme set light` / expect the `cursor:` line is `changed` or `ok`, the pointer stays Adwaita 24 px (`hyprctl setcursor Adwaita 24`).
+- [ ] `hyprctl reload` re-reads the sourced colours: after `heiss theme set light` / expect the window border colour changes at once without logging out and `hyprctl configerrors` prints nothing; if not, report the output.
+- [ ] Notifications: after `heiss theme set light` run `notify-send test hello` / expect a light mako popup with the sand accent (`makoctl reload` was never run).
+- [ ] libadwaita: open Loupe or Papers after `heiss theme set light` / expect the Heiss light colours from `~/.config/gtk-4.0/gtk.css`, not the default Adwaita blue accent; the same in dark.
+- [ ] First login on a fresh user, then `ls ~/.config/heiss/theme` / expect `current` containing `dark`, the four colour files and the `wallpaper` link; `heiss theme init` run again prints `theme already set (dark)`; after `heiss theme set light` and a new login the theme is still light.
+- [ ] Outside Hyprland (a tty login, `HYPRLAND_INSTANCE_SIGNATURE` unset): `heiss theme set dark` / expect the `cursor` and `reload` lines `skipped` and exit code 0.
+- [ ] `heiss-gtk-audit after-light` / expect a report without KDE sections; send it back.
 
 ## Round 20, item 3a (2026-11-11): hardware choices applied
 

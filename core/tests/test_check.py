@@ -77,14 +77,32 @@ def by_name(items):
 
 
 class Checks(unittest.TestCase):
-    def items(self, env, home=None):
-        return by_name(ck.run_checks(env, PROFILES, home=home))
+    def items(self, env, home=None, theme_env=None):
+        return by_name(ck.run_checks(env, PROFILES, home=home, theme_env=theme_env))
+
+    def test_theme_item(self):
+        from test_theme import FakeEnv
+        with tempfile.TemporaryDirectory() as d:
+            te = FakeEnv(d, session=False)
+            self.assertEqual(self.items(healthy(), theme_env=te)["theme"].status, ck.WARN)    # nothing set yet
+            from heiss_core import theme as th
+            th.apply(te, "dark", live=False)
+            r = self.items(healthy(), theme_env=te)["theme"]
+            self.assertEqual(r.status, ck.OK, r.detail)
+            with open(te.config("heiss/theme/mako.conf"), "w", encoding="utf-8") as f:
+                f.write("edited\n")
+            self.assertEqual(self.items(healthy(), theme_env=te)["theme"].status, ck.WARN)
+            te.src_root = os.path.join(d, "none")
+            self.assertEqual(self.items(healthy(), theme_env=te)["theme"].status, ck.FAIL)
+            env = healthy()
+            env.uid = 0
+            self.assertEqual(self.items(env, theme_env=te)["theme"].status, ck.WARN)
 
     def test_healthy_system_has_no_fail(self):
         items = ck.run_checks(healthy(), PROFILES)
         self.assertEqual([i for i in items if i.status == ck.FAIL], [], [i.line() for i in items])
         self.assertEqual(ck.exit_code(items), 0)
-        self.assertEqual(len(items), 7)
+        self.assertEqual(len(items), 8)
 
     def test_failed_system_unit(self):
         env = healthy(commands={"systemctl --failed": (0, "foo.service loaded failed failed Foo\n")})
@@ -242,7 +260,7 @@ class Cli(unittest.TestCase):
             env = healthy()
             rc = cli.main(["--profiles", PROFILES, "check", "--report", report], out=out, check_env=env)
             self.assertEqual(rc, 0, out.getvalue())
-            self.assertEqual(len(out.getvalue().strip().splitlines()), 7)
+            self.assertEqual(len(out.getvalue().strip().splitlines()), 8)
             with open(report, encoding="utf-8") as f:
                 text = f.read()
             self.assertIn("$ systemctl --failed --no-legend --plain --no-pager", text)
@@ -257,7 +275,7 @@ class Cli(unittest.TestCase):
         out = io.StringIO()
         cli.main(["--profiles", PROFILES, "--json", "check"], out=out, check_env=healthy())
         data = json.loads(out.getvalue())
-        self.assertEqual({d["name"] for d in data}, {"failed-units", "profile-state", "launcher-menu", "removed-packages",
+        self.assertEqual({d["name"] for d in data}, {"failed-units", "profile-state", "theme", "launcher-menu", "removed-packages",
                                                      "session", "helper", "live-leftovers"})
 
     def test_unwritable_report_is_an_error(self):

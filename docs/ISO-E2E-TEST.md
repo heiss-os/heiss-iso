@@ -123,7 +123,7 @@ journalctl --user -u heiss-theme-sync --no-pager | tail -20
 cat ~/.local/state/heiss/theme-sync.log
 ```
 
-Open a NEW Konsole window and keep one that was open before the switch: both must show the Light colors. Switch back to Heiss Dark and repeat. Expected in the log: six `theme-sync:` lines per switch; anything marked `warn` or `failed` is what I need to see. Details and the list of unverified assumptions: Details were in the removed THEME-SYNC document (see git history before H1a).
+Open a NEW Konsole window and keep one that was open before the switch: both must show the Light colors. Switch back to Heiss Dark and repeat. Expected in the log: six `theme-sync:` lines per switch; anything marked `warn` or `failed` is what I need to see. Details were in the removed THEME-SYNC document (see git history before H1a).
 
 ## The Hyprland session (H1; nothing of it has run yet)
 
@@ -139,7 +139,17 @@ heiss check
 
 Expected: the log has `starting Hyprland` and no `exited with`; the three directories hold the copied files (`hyprland.conf`, `heiss-user.conf`, `config.jsonc`, `hypr-colors.conf`, `wallpaper`); `heiss check` shows `OK session`.
 
-The calls to `heiss theme` in the old windows fail until `heiss theme` is rebuilt (next PR); that is expected.
+Theme (H1b):
+
+```bash
+heiss theme get
+heiss theme set light
+heiss theme set dark
+heiss theme status
+heiss-gtk-audit after-dark
+```
+
+Expected: `get` prints `dark` at the first login; `set light` prints seven lines `theme: <target>: ...`, none `failed`, and the bar, launcher (Super+D), a Thunar window, Firefox and kitty turn light at once or at their next start; `set dark` turns them back; `status` shows `current theme` and no `warn`. Send back the output of the `set` commands and a screenshot in each theme.
 
 ## Looking at the windows without a display (`scripts/render-gui.py`)
 

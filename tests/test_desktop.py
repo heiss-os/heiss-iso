@@ -48,6 +48,31 @@ class HyprlandConfig(unittest.TestCase):
         self.assertIn('@import "../heiss/theme/waybar-colors.css";', read("waybar", "style.css"))
 
 
+class ThemeVariables(unittest.TestCase):
+    def test_every_colour_variable_the_configs_use_is_generated(self):
+        gen = os.path.join(ROOT, "branding", "tokens", "generated", "desktop", "dark")
+        with open(os.path.join(gen, "hypr-colors.conf"), encoding="utf-8") as f:
+            hypr = set(re.findall(r"^\$(heiss_\w+)\s*=", f.read(), re.M))
+        with open(os.path.join(gen, "waybar-colors.css"), encoding="utf-8") as f:
+            css = set(re.findall(r"@define-color (heiss_\w+)", f.read()))
+        for rel in (("hypr", "hyprland.conf"), ("hypr", "hyprlock.conf")):
+            self.assertEqual(set(re.findall(r"\$(heiss_\w+)", read(*rel))) - hypr, set(), rel)
+        self.assertEqual(set(re.findall(r"@(heiss_\w+)", read("waybar", "style.css"))) - css, set())
+
+    def test_dark_and_light_define_the_same_variables(self):
+        base = os.path.join(ROOT, "branding", "tokens", "generated", "desktop")
+        for name in ("hypr-colors.conf", "waybar-colors.css", "mako.conf", "fuzzel.ini"):
+            keys = []
+            for t in ("dark", "light"):
+                with open(os.path.join(base, t, name), encoding="utf-8") as f:
+                    keys.append([l.split("=")[0].split(" ")[0] for l in f if l.strip() and not l.startswith(("#", "/*"))])
+            self.assertEqual(keys[0], keys[1], name)
+
+    def test_session_runs_theme_init_after_the_first_login_copy(self):
+        text = read("bin", "heiss-session")
+        self.assertLess(text.index("heiss-first-login"), text.index("heiss theme init"))
+
+
 class FirstLogin(unittest.TestCase):
     def test_every_copied_file_exists_in_the_source_tree(self):
         for src in re.findall(r"^copy (\S+) ", read("bin", "heiss-first-login"), re.M):
