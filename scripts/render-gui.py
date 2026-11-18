@@ -16,7 +16,6 @@ properties and slots.
     python3 scripts/render-gui.py [--out DIR] [--only welcome|control] [--lang en,ru] [--theme dark,light]
 """
 import argparse
-import json
 import os
 import sys
 import shutil
@@ -121,7 +120,6 @@ def welcome_pages(out, lang, theme, shots):
 
 def control_pages(out, lang, theme, shots):
     """Every page of the settings window on fixture data: no hyprctl, no nmcli, no pacman, no real home."""
-    from heiss_core import hardware as hw
     from heiss_core import hyprcfg
     from heiss_control import hardware_view as hwv
     from heiss_control import model as m
