@@ -383,7 +383,7 @@ H1a needs the label `design-approved` (Tier A: color-schemes, plasma/look-and-fe
 - [ ] Installed system: install with Calamares, reboot / expect the SDDM login with the Heiss theme (X11 greeter, own QML theme: card with logo, user, password), log in, Hyprland starts, `ls ~/.config/hypr ~/.config/waybar ~/.config/heiss/theme` shows the copied files, `systemctl --user --failed` and `systemctl --failed` are empty, `pacman -Q plasma-workspace kwin` finds nothing.
 - [ ] Keyboard layout: choose Russian in Calamares / expect the installed session types Russian (heiss-session passes `/etc/X11/xorg.conf.d/00-keyboard.conf` as `XKB_DEFAULT_*`; whether Calamares writes that file with a layout switch key is not known).
 - [ ] `heiss check` on the installed system (as the user) / expect no FAIL; `OK session` after the first login.
-- [ ] Portals: `busctl --user list | grep -i portal` shows `org.freedesktop.impl.portal.desktop.hyprland` and `.gtk`; a Firefox file dialog opens (GTK portal).
+- [ ] Portals: `busctl --user list | grep -i portal` shows `org.freedesktop.impl.portal.desktop.hyprland` and `.gtk`; a Firefox file dialog opens; `cat /usr/share/xdg-desktop-portal/hyprland-portals.conf` (shipped by the hyprland package) names the GTK portal for the file chooser, otherwise report its content.
 - [ ] Base apps open and are the defaults: `xdg-mime query default inode/directory` is `thunar.desktop`, `text/plain` is `org.xfce.mousepad.desktop`, `application/pdf` is `org.gnome.Papers.desktop`, `image/png` is `org.gnome.Loupe.desktop`; the desktop file ids were checked by CI with `pacman -F`.
 
 ## Round 20, item 3a (2026-11-11): hardware choices applied
