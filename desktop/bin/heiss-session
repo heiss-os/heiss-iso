@@ -20,9 +20,11 @@ export MOZ_ENABLE_WAYLAND=1
 kb=/etc/X11/xorg.conf.d/00-keyboard.conf
 if [ -r "$kb" ]; then
   opt() { sed -n "s/^[[:space:]]*Option[[:space:]]*\"$1\"[[:space:]]*\"\(.*\)\"/\1/p" "$kb" | head -n 1; }
-  v="$(opt XkbLayout)";  [ -n "$v" ] && export XKB_DEFAULT_LAYOUT="$v"
-  v="$(opt XkbVariant)"; [ -n "$v" ] && export XKB_DEFAULT_VARIANT="$v"
-  v="$(opt XkbOptions)"; [ -n "$v" ] && export XKB_DEFAULT_OPTIONS="$v"
+  # only plain keyboard names are passed on (letters, digits and , : + _ - and spaces)
+  safe() { case "$1" in ""|*[!A-Za-z0-9_,:+\ -]*) return 1 ;; esac; }
+  v="$(opt XkbLayout)";  safe "$v" && export XKB_DEFAULT_LAYOUT="$v"
+  v="$(opt XkbVariant)"; safe "$v" && export XKB_DEFAULT_VARIANT="$v"
+  v="$(opt XkbOptions)"; safe "$v" && export XKB_DEFAULT_OPTIONS="$v"
 fi
 
 software() {
