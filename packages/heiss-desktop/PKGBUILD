@@ -18,7 +18,6 @@ package() {
   install -Dm644 -t "$pkgdir/usr/share/heiss/desktop/waybar" desktop/waybar/config.jsonc desktop/waybar/style.css
   install -Dm755 -t "$pkgdir/usr/bin" desktop/bin/heiss-session desktop/bin/heiss-first-login desktop/bin/heiss-wallpaper
   install -Dm644 desktop/session/heiss.desktop "$pkgdir/usr/share/wayland-sessions/heiss.desktop"
-  install -Dm644 desktop/portals/hyprland-portals.conf "$pkgdir/usr/share/xdg-desktop-portal/hyprland-portals.conf"
   install -Dm644 -t "$pkgdir/usr/share/sddm/themes/heiss" desktop/sddm/heiss/Main.qml desktop/sddm/heiss/metadata.desktop
   install -Dm644 branding/tokens/generated/desktop/dark/sddm-theme.conf "$pkgdir/usr/share/sddm/themes/heiss/theme.conf"
 }
