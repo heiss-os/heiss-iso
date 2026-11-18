@@ -1,4 +1,4 @@
-"""heiss command line: profile list|show|diff|apply, hw detect|remove, check, answers validate.
+"""heiss command line: profile list|show|diff|apply, hw detect|remove, theme get|set|init|status, check, answers validate.
 
 `apply` shows the plan, asks for confirmation and runs it through the privileged
 helper (D-Bus + polkit). `--dry-run` only prints the plan.
@@ -10,6 +10,7 @@ import sys
 
 from . import answers as ans
 from . import check as checkmod
+from . import theme as thememod
 from . import apply as applymod
 from . import hardware as hw
 from . import hwremove
@@ -116,7 +117,7 @@ def _real_helper():
     return GioHelperClient()
 
 
-def main(argv=None, system=None, out=sys.stdout, helper=None, confirm=None, check_env=None):
+def main(argv=None, system=None, out=sys.stdout, helper=None, confirm=None, check_env=None, theme_env=None):
     p = argparse.ArgumentParser(prog="heiss")
     p.add_argument("--profiles", help="directory with manifests")
     p.add_argument("--json", action="store_true")
@@ -146,16 +147,40 @@ def main(argv=None, system=None, out=sys.stdout, helper=None, confirm=None, chec
     rm.add_argument("id")
     rm.add_argument("--dry-run", action="store_true")
     rm.add_argument("--yes", action="store_true", help="do not ask for confirmation")
+    th = sub.add_parser("theme", help="Heiss Dark and Light for the Hyprland session").add_subparsers(dest="sub", required=True)
+    th.add_parser("get", help="print the current theme: dark or light")
+    ths = th.add_parser("set", help="switch GTK, Qt, kitty, Waybar, wallpaper and cursor")
+    ths.add_argument("name", choices=thememod.THEMES)
+    ths.add_argument("--dry-run", action="store_true", help="report what would change, change nothing")
+    th.add_parser("init", help="first login: put the dark theme in place once (no reload)")
+    th.add_parser("status", help="report only: the current theme and anything that differs from it")
     ck = sub.add_parser("check", help="read-only health check of the installed system (exit 1 on any FAIL)")
     ck.add_argument("--report", metavar="FILE", help="also save the full output and the exact commands to FILE")
     av = sub.add_parser("answers").add_subparsers(dest="sub", required=True)
     v = av.add_parser("validate")
     v.add_argument("file")
     args = p.parse_args(argv)
+    if args.cmd == "theme":
+        env = theme_env or thememod.RealEnv()
+        if args.sub == "get":
+            cur = thememod.get(env)
+            if cur:
+                out.write(cur + "\n")
+            return 0 if cur else 1
+        if args.sub == "set":
+            results, rc = thememod.apply(env, args.name, dry_run=args.dry_run)
+        elif args.sub == "init":
+            results, rc = thememod.init(env)
+        else:
+            results, rc = thememod.status(env)
+        for r in results:
+            out.write(r.line() + "\n")
+        return rc
     if args.cmd == "check":
         env = check_env or checkmod.CheckEnv()
         items = checkmod.run_checks(env, args.profiles or os.environ.get("HEISS_PROFILES", DEFAULT_PROFILES),
-                                    home=None if os.geteuid() == 0 else os.path.expanduser("~"))
+                                    home=None if os.geteuid() == 0 else os.path.expanduser("~"),
+                                    theme_env=theme_env or thememod.RealEnv())
         out.write(json.dumps([i.to_dict() for i in items], indent=2) + "\n" if args.json else checkmod.render(items))
         if args.report:
             try:

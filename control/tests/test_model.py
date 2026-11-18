@@ -1503,7 +1503,7 @@ class Tools(unittest.TestCase):
     def test_run_check_returns_plain_dicts(self):
         from heiss_core import check as ck
         orig = (ck.run_checks, ck.CheckEnv)
-        ck.run_checks = lambda env, profiles_dir, home=None: [ck.Item("x", ck.OK, "d", [["a", "b"]])]
+        ck.run_checks = lambda env, profiles_dir, home=None, theme_env=None: [ck.Item("x", ck.OK, "d", [["a", "b"]])]
         try:
             self.assertEqual(tools.run_check(), [{"name": "x", "status": "OK", "detail": "d", "commands": ["a b"]}])
         finally:

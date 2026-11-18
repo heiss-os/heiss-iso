@@ -2,8 +2,8 @@
 # Built from the repository HEAD by scripts/heiss-packages-build.sh (it creates heiss-src.tar.gz).
 pkgname=heiss-theme
 pkgver=0.1.0
-pkgrel=2
-pkgdesc='Heiss OS theme files generated from the design tokens: kitty and the Hyprland desktop (Hyprland, Waybar, fuzzel, mako)'
+pkgrel=3
+pkgdesc='Heiss OS theme files generated from the design tokens: kitty and the Hyprland desktop (Hyprland, Waybar, fuzzel, mako, GTK, Qt)'
 arch=('any')
 url='https://github.com/heiss-os/heiss-iso'
 license=('GPL-3.0-or-later')
@@ -16,8 +16,8 @@ package() {
   cd "$srcdir/heiss-src/branding/tokens/generated"
   install -Dm644 -t "$pkgdir/etc/xdg/kitty" kitty/kitty.conf kitty/*-theme.auto.conf
   install -Dm644 -t "$pkgdir/usr/share/heiss/kitty" kitty/heiss-dark.conf kitty/heiss-light.conf
-  # theme sets for the desktop: heiss-first-login copies dark, `heiss theme` switches between the two
+  # theme sets for the desktop: `heiss theme` copies the chosen one into ~/.config (dark first, at the first login)
   for t in dark light; do
-    install -Dm644 -t "$pkgdir/usr/share/heiss/desktop/theme/$t" desktop/$t/hypr-colors.conf desktop/$t/waybar-colors.css desktop/$t/fuzzel.ini desktop/$t/mako.conf
+    install -Dm644 -t "$pkgdir/usr/share/heiss/desktop/theme/$t" desktop/$t/hypr-colors.conf desktop/$t/waybar-colors.css desktop/$t/fuzzel.ini desktop/$t/mako.conf desktop/$t/qt6ct-colors.conf desktop/$t/gtk-3.0.css desktop/$t/gtk-4.0.css
   done
 }

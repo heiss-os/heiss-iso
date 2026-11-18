@@ -254,3 +254,23 @@ def render_sddm_theme(tokens, theme):
             "background=/usr/share/wallpapers/Heiss-Everyday/contents/images/3840x2160.png",
             "logo=/usr/share/heiss/heiss-glyph-sand.svg", ""]
     return "\n".join(out)
+
+
+def render_qt6ct_colors(tokens, theme):
+    """qt6ct colour scheme: 22 QPalette roles (Qt 6.6 added Accent) for the active, inactive and disabled groups."""
+    p = palette(tokens, theme)
+
+    def argb(c):
+        return "#ff" + c.lstrip("#").lower()
+    light, midlight = mix(p["button"], p["text"], 0.35), mix(p["button"], p["text"], 0.18)
+    dark, mid = mix(p["button"], p["view"], 0.6), mix(p["button"], p["view"], 0.3)
+    roles = [p["text"], p["button"], light, midlight, dark, mid, p["text"], p["text"], p["text"], p["view"],
+             p["window"], p["view"], p["accent"], p["on_accent"], p["accent_text"], p["visited"], p["view_alt"],
+             p["window"], p["panel"], p["text"], p["text_secondary"], p["accent"]]
+    names = ("WindowText Button Light Midlight Dark Mid Text BrightText ButtonText Base Window Shadow Highlight "
+             "HighlightedText Link LinkVisited AlternateBase NoRole ToolTipBase ToolTipText PlaceholderText Accent").split()
+    active = ", ".join(argb(c) for c in roles)
+    text_roles = {"WindowText", "Text", "BrightText", "ButtonText", "ToolTipText"}
+    disabled = ", ".join(argb(p["disabled_text"] if n in text_roles else c) for n, c in zip(names, roles))
+    return "\n".join(["# " + HEADER, "# roles: " + " ".join(names), "[ColorScheme]",
+                      "active_colors=" + active, "disabled_colors=" + disabled, "inactive_colors=" + active, ""])

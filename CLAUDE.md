@@ -1,14 +1,16 @@
 # Heiss OS: контекст проекта для Claude Code
 
-Heiß OS (ASCII-вариант: Heiss, техническое имя: `heiss`, читается «Хайсс») это независимый дистрибутив на базе Arch Linux с KDE Plasma. Это не официальный продукт Arch Linux. Цель: красивый, удобный и безопасный дистрибутив для обычных людей и для специалистов по кибербезопасности.
+Heiß OS (ASCII-вариант: Heiss, техническое имя: `heiss`, читается «Хайсс») это независимый дистрибутив на базе Arch Linux с рабочим столом Hyprland + Waybar (направление с 2026-11-18, план: `docs/DIRECTION-HYPRLAND.md`; KDE Plasma остался только в образе-превью `heiss-2026.11.17`). Это не официальный продукт Arch Linux. Цель: красивый, удобный и безопасный дистрибутив для обычных людей и для специалистов по кибербезопасности.
 
 Язык общения с пользователем: русский. Код, комментарии в коде, сообщения коммитов и описания Pull Request: английский.
 
 ## Решения, которые уже приняты
 
 - База Arch Linux, образ собирается через `archiso` (профиль основан на `releng`).
-- Первая версия только с KDE Plasma (SDDM как менеджер входа). Профили называются **Base, Cyber, Developer, Custom** (раньше: Everyday, Security, Developer, Universal; соответствие Everyday → Base, Security → Cyber, Universal → Custom). Внутренние идентификаторы в готовых ресурсах не переименовываются: пакеты обоев `Heiss-Everyday` и `Heiss-Everyday-Light` остаются как есть. Состав профилей: `profiles/*.toml`, описание: `docs/PROFILES.md`.
-- Установщик графический: Calamares 3.4.x (Qt6). В репозиториях Arch его нет, пакет собирается из AUR скриптом `scripts/heiss-calamares-build.sh` в локальный репозиторий `~/localrepo`.
+- Рабочий стол: Hyprland + Waybar, SDDM как менеджер входа (своя тема на QtQuick без Plasma, своя сессия `heiss.desktop`). KDE Plasma удалён из образа. Профили называются **Base, Cyber, Developer, Custom** (раньше: Everyday, Security, Developer, Universal; соответствие Everyday → Base, Security → Cyber, Universal → Custom). Внутренние идентификаторы в готовых ресурсах не переименовываются: пакеты обоев `Heiss-Everyday` и `Heiss-Everyday-Light` остаются как есть. Состав профилей: `profiles/*.toml`, описание: `docs/PROFILES.md`.
+- Установщик: сейчас Calamares 3.4.x (Qt6), он запускается из сессии Hyprland как скрытая запасная копия; пакета в репозиториях Arch нет, он собирается из AUR скриптом `scripts/heiss-calamares-build.sh` в `~/localrepo`. Дальше (этапы H3 и H5 в `docs/DIRECTION-HYPRLAND.md`): терминальный установщик `heiss-installer`, затем Calamares удаляется.
+- Удалено из продукта: уровень подробности, уровни приватности (режимы MAC Wi-Fi, блокировка экрана), резервные копии и снимки, дополнение «ядро LTS» (профили Cyber и Developer теперь только профили). Код этих функций убирается на этапах H2 и H3.
+- Конфиги рабочего стола: `desktop/` в репозитории, пакет `heiss-desktop`, место для замены конфигов владельца `/usr/share/heiss/desktop/{hypr,waybar}/` (копируются в `~/.config` при первом входе и не перезаписываются). Перед каждой строкой `bind` комментарий с описанием. Цвета только из токенов (`heiss theme`, `docs/design/THEME.md`).
 - Без телеметрии. Безопасность по умолчанию: root заблокирован после установки, live-настройки не попадают в установленную систему.
 - Единый стиль пока один: **Heiss Dark** (по умолчанию) и **Heiss Light**, нейтральная палитра с песочным акцентом (тёмная `#C9B28A`, светлая `#8C7448`). Шрифты: Inter (интерфейс), JetBrains Mono (код).
 - Палитра тёмной темы: окна `#26282B`, панели `#1E1F21`, кнопки `#34373B`, текст `#ECEAE5`, вторичный текст `#A9A7A1`, акцент `#C9B28A`.
@@ -18,7 +20,7 @@ Heiß OS (ASCII-вариант: Heiss, техническое имя: `heiss`, �
 ## Структура репозитория
 
 - `profile/` профиль archiso: `packages.x86_64`, `pacman.conf`, `profiledef.sh`, `syslinux/`, `efiboot/`, `grub/`.
-- `profile/airootfs/` файлы, попадающие в образ: настройки Calamares (`etc/calamares/`), тема KDE (`usr/share/color-schemes/`, `usr/share/plasma/look-and-feel/`), автозапуск (`etc/xdg/autostart/`), скрипты (`usr/local/bin/`), брендинг установщика (`usr/share/calamares/branding/heiss/`).
+- `profile/airootfs/` файлы, попадающие в образ: настройки Calamares (`etc/calamares/`), настройки SDDM (`etc/sddm.conf.d/`), скрипты (`usr/local/bin/`), брендинг установщика (`usr/share/calamares/branding/heiss/`).
 - `profile/hooks/` pacman-хуки только для сборки (не попадают в образ), см. ниже про os-release.
 - `scripts/` вспомогательные скрипты сборки и генераторы (`gen-theme.py`, `gen-profile-packages.py`, `check-*.py`).
 - `branding/` исходники бренда: логотипы (`logo/`), обои (`wallpapers/`), токены дизайна (`tokens/`, источник правды для цветов и генерируемых тем).
@@ -44,7 +46,7 @@ sudo mkarchiso -v -w ~/archiso-work -o out profile
 
 Тест в VirtualBox: режим BIOS, 4 ГБ ОЗУ, Video Memory 128 МБ, чистый диск 20-40 ГБ. Ожидается:
 1. В меню загрузки Heiss OS, без логотипа Arch.
-2. Рабочий стол KDE в нейтральной теме с песочным акцентом, обои Heiss-Everyday, внизу плавающий док.
+2. Рабочий стол Hyprland с Waybar сверху в нейтральной теме с песочным акцентом, обои Heiss-Everyday (в ВМ включить 3D-ускорение VMSVGA, иначе сессия перезапустится с программным рендером).
 3. Установщик Calamares открывается сам, в стиле Heiss.
 4. После установки на пустой диск и загрузки с диска: сеть работает (`nmcli general status`), `systemctl --failed` пуст, `sudo passwd -S root` показывает `L`, пользователя `liveuser` нет.
 
@@ -111,11 +113,11 @@ sudo mkarchiso -v -w ~/archiso-work -o out profile
 ## Известные проблемы и ближайшие задачи
 
 - Стиль установщика в духе макета: своя боковая панель на QML (ссылки Telegram `https://t.me/heiss_os` и X `https://x.com/heiss_OS`, позже Reddit), без кнопки «О приложении», без кнопок «Пожертвовать/Поддержка/Известные проблемы».
-- Док: раскладка из LnF-скрипта (`contents/layouts/org.kde.plasma.desktop-layout.js`), `heiss-setup-dock.sh` только запасной вариант. Порядок закреплённых: Dolphin, Konsole, Параметры системы, Firefox; установщик в доке не закреплён (ярлык на рабочем столе). Позже сделать панель полупрозрачнее.
+- Конфиги Hyprland и Waybar сейчас временные (заглушки), владелец пришлёт свои: список в `docs/OWNER-INPUTS.md`.
 - Пакет `heiss-branding` вместо россыпи файлов; собственный репозиторий пакетов с подписью GPG; автосборка в GitHub Actions.
 - Не проверялись: UEFI и Secure Boot. В VirtualBox замечена проблема с выделением мышью на рабочем столе (возможно, особенность Wayland и VirtualBox).
 - Анимация слайдшоу (бегущий огонёк по логотипу, `show.qml`) готова и требует проверки в виртуальной машине (свечение через QtQuick.Effects не проверено; переключатели `animated`, `glow`, `glowUsesEffects`).
 - Страница пользователя (`usersq.qml`): фоновый логотип «дышит» (4.6 с, масштаб 1.0 → 1.035, прозрачность 0.65-1.0, переключатель `animated`), язык берётся из `Qt.locale()` через таймер 500 мс (никогда не подключать обработчик к `Global.changed()`: взаимная блокировка). Проверка в виртуальной машине ещё не проведена.
 - Из live-образа в установленную систему попадают лишние службы (`cloud-init` и др.): убрать в `heiss-cleanup.sh`.
-- KDE visual polish pass pending (panel, widgets, fonts).
-- Дальше по дорожной карте: Welcome-приложение с выбором профиля, Btrfs и снапшоты, Security Center, Security Labs.
+- Окна приветствия (все сочетания клавиш из активного конфига) и настроек, затем терминальный установщик, вид загрузки (GRUB), уборка: этапы H2 до H5.
+- Дальше по дорожной карте после этапов H2 до H5: Security Center, Security Labs (Btrfs и снимки сняты с плана).

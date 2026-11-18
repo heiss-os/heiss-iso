@@ -1,7 +1,7 @@
 #!/bin/sh
 # Heiss OS: read-only report on how GTK applications get their theme in this session.
 # Changes nothing, makes no network calls. Run inside the desktop session as the normal user:
-#   heiss-gtk-audit dark      (then switch to Heiss Light in System Settings and run:)
+#   heiss-gtk-audit dark      (then run `heiss theme set light` and:)
 #   heiss-gtk-audit light
 # The report is written to ~/heiss-gtk-audit-<label>.txt and printed. Send both files back.
 label="${1:-now}"
@@ -24,21 +24,15 @@ show_file() {
   section "Session"
   printf 'XDG_CURRENT_DESKTOP=%s XDG_SESSION_TYPE=%s\nGTK_THEME=%s GTK2_RC_FILES=%s GDK_BACKEND=%s\n' \
     "$XDG_CURRENT_DESKTOP" "$XDG_SESSION_TYPE" "$GTK_THEME" "$GTK2_RC_FILES" "$GDK_BACKEND"
-  have plasmashell && plasmashell --version
-
-  section "KDE color scheme and accent"
-  if have kreadconfig6; then
-    echo "ColorScheme=$(kreadconfig6 --file kdeglobals --group General --key ColorScheme)"
-    echo "AccentColor=$(kreadconfig6 --file kdeglobals --group General --key AccentColor)"
-    echo "icon theme=$(kreadconfig6 --file kdeglobals --group Icons --key Theme)"
-    echo "font=$(kreadconfig6 --file kdeglobals --group General --key font)"
-  else
-    echo "kreadconfig6 not available"
-  fi
+  section "Heiss theme"
+  have heiss && heiss theme get
+  show_file "$HOME/.config/heiss/theme/current"
+  show_file "$HOME/.config/qt6ct/qt6ct.conf"
+  echo "QT_QPA_PLATFORMTHEME=$QT_QPA_PLATFORMTHEME"
 
   section "Package versions"
   if have pacman; then
-    pacman -Q gtk3 gtk4 libadwaita kde-gtk-config breeze-gtk xdg-desktop-portal xdg-desktop-portal-kde xdg-desktop-portal-gtk firefox 2>&1
+    pacman -Q gtk3 gtk4 libadwaita qt6ct qt6-wayland xdg-desktop-portal xdg-desktop-portal-hyprland xdg-desktop-portal-gtk firefox 2>&1
   fi
 
   section "Portal: appearance settings (color-scheme: 0 none, 1 dark, 2 light)"
@@ -58,11 +52,6 @@ show_file() {
     echo "gsettings not available"
   fi
 
-  section "kded: is the GTK config module loaded (kde-gtk-config)?"
-  if have busctl; then
-    busctl --user call org.kde.kded6 /kded org.kde.kded6 loadedModules 2>&1 | tr ' ' '\n' | grep -i -E 'gtk|^as$' | head
-  fi
-
   section "System-wide GTK defaults"
   for f in /etc/xdg/gtk-3.0/settings.ini /etc/xdg/gtk-4.0/settings.ini /etc/gtk-3.0/settings.ini /etc/gtk-4.0/settings.ini; do
     [ -e "$f" ] && show_file "$f"
@@ -80,7 +69,8 @@ show_file() {
   cat <<'EOF'
   1. Firefox: start page with the toolbar and a menu open.
   2. A GTK file dialog (in Firefox: Ctrl+O).
-  3. Window buttons of a GTK app with client-side decorations, next to Dolphin's.
+  3b. A Qt program (for example keepassxc or qt6ct itself): colours follow the theme after a restart.
+  3. Window buttons of a GTK app with client-side decorations, next to a Thunar window.
   4. If installed: any libadwaita app (accent, sidebar, buttons, switches).
   Note anything that stays light in the dark theme or the other way round.
 EOF

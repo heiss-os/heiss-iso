@@ -594,3 +594,16 @@ Format: date, what, why. Newest at the bottom.
 - **Known leftovers of H1a:** `core/data/heiss-gtk-audit` still calls `plasmashell` and `kreadconfig6` (rewritten in H1b); the KDE keys of the privacy levels (H2). `heiss-session` and `heiss-first-login` read three test overrides (`HEISS_SESSION_BIN`, `HEISS_KB_FILE`, `HEISS_DESKTOP_SRC`); they only change which files the user's own session reads or writes.
 - **Scripts are run in tests** (`tests/test_desktop.py`, `RunTheScripts`): first-login copy and no-overwrite, the retry with software rendering, the keyboard parsing with a refused odd value. Not run: the `nomodeset` branch of `heiss-session` (reads `/proc/cmdline`).
 - **pkgrel bumps:** `heiss-core` 21, `heiss-welcome` 13, `heiss-control` 18 (code changed), `heiss-theme` 2, `heiss-desktop` 1, profile packages `essentials` and `base` 3.
+
+## 2026-11-18 (Direction change, H1b: `heiss theme` for the Hyprland session)
+
+- **`heiss theme get|set|init|status`** (`core/heiss_core/theme.py`, `docs/design/THEME.md`): seven targets (colours, wallpaper, GTK, Qt, GSettings color-scheme, cursor, reload), as the user, fixed argument lists, atomic writes. Heiss Dark and Heiss Light names stay. Replaces the removed `heiss theme sync` and the Plasma Look-and-Feel packages.
+- **Colours come from the tokens only:** new generated files per theme (`qt6ct-colors.conf`, `gtk-3.0.css`, `gtk-4.0.css` next to the Hyprland, Waybar, fuzzel, mako and SDDM files), installed by `heiss-theme` (pkgrel 3). The Qt scheme has 22 palette roles (Qt 6.6 added Accent); whether qt6ct 0.11 reads 22 roles is not verified.
+- **Method (small decisions):** GTK 3 through `settings.ini` and `gtk.css`, GTK 4 and libadwaita through the same named colours plus the GSettings `color-scheme`; kitty follows `color-scheme` through the portal (the `*-theme.auto.conf` files already shipped); Qt through `qt6ct` (`QT_QPA_PLATFORMTHEME=qt6ct`, Fusion style); wallpaper through the `wallpaper` symlink and `heiss-wallpaper`; reload by `hyprctl reload`, `makoctl reload` and `SIGUSR2` to Waybar. Programs that cannot reload (Qt and GTK 3 apps) change at their next start.
+- **User files are never overwritten:** a `gtk.css`, `settings.ini` or `qt6ct.conf` without the Heiss header is reported as `warn` and left alone; a wallpaper link to a file that is not a Heiss wallpaper stays. `heiss-session` runs `heiss theme init` once after the first-login copy.
+- **`heiss check` has the `theme` item again** (read-only, uses `heiss theme status`; WARN when none was set or a file differs, FAIL when the generated files are missing; not judged as root). Eight items now.
+- **`heiss-gtk-audit` rewritten** for the new stack (no `plasmashell`, `kreadconfig6`, kded). `docs/design/GTK.md` shrunk to a pointer.
+- **CLAUDE.md updated by the assistant (not a protected path):** direction, decisions, structure, build and test lines no longer say KDE-only and Calamares-only. Removed features are listed there.
+- **`docs/OWNER-INPUTS.md`** lists what the owner still supplies (Hyprland and Waybar configs, binding descriptions, the ß logo SVG, wallpapers).
+- **Not verified:** everything at runtime (see the H1b lines of the FINAL VM TEST LIST). Unit tests ran with a fake environment and a temporary home only.
+

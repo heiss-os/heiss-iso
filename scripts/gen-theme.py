@@ -28,6 +28,9 @@ def outputs(tokens):
         files["desktop/%s/fuzzel.ini" % th] = h.render_fuzzel(tokens, th)
         files["desktop/%s/mako.conf" % th] = h.render_mako(tokens, th)
         files["desktop/%s/sddm-theme.conf" % th] = h.render_sddm_theme(tokens, th)
+        files["desktop/%s/qt6ct-colors.conf" % th] = h.render_qt6ct_colors(tokens, th)
+        files["desktop/%s/gtk-3.0.css" % th] = h.render_gtk(tokens, th, gtk4=False)
+        files["desktop/%s/gtk-4.0.css" % th] = h.render_gtk(tokens, th, gtk4=True)
     files["kitty/kitty.conf"] = h.render_kitty_conf(tokens)
     files["kitty/no-preference-theme.auto.conf"] = h.render_kitty(tokens, "dark")   # no preference: dark is the default look
     return files

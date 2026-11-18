@@ -11,6 +11,7 @@ import subprocess
 
 from . import manifest as mf
 from . import state as st
+from . import theme as thememod
 from .errors import HeissError
 
 OK, WARN, FAIL = "OK", "WARN", "FAIL"
@@ -168,6 +169,22 @@ def check_profile(env, manifests):
 
 
 
+def check_theme(theme_env):
+    """The files of the current theme in the user's configuration match the generated theme (read-only)."""
+    cmds = [["heiss", "theme", "status"]]
+    results, _ = thememod.status(theme_env)
+    first = results[0]
+    if first.target == "theme" and first.status == "warn":
+        return Item("theme", WARN, first.detail, cmds)
+    bad = [r for r in results if r.status == "failed"]
+    warn = [r for r in results[1:] if r.status == "warn"]
+    if bad:
+        return Item("theme", FAIL, "; ".join("%s: %s" % (r.target, r.detail) for r in bad), cmds)
+    if warn:
+        return Item("theme", WARN, "; ".join("%s: %s" % (r.target, r.detail) for r in warn), cmds)
+    return Item("theme", OK, "%s; %s" % (first.detail, ", ".join("%s %s" % (r.target, r.status) for r in results[1:])), cmds)
+
+
 def check_launcher(env):
     problems, entries = [], {}
     for fname in HIDE_STUBS:
@@ -282,7 +299,7 @@ def check_live(env):
     return Item("live-leftovers", OK, "no liveuser, no live packages, root locked", _cmds(env, n))
 
 
-def run_checks(env, profiles_dir=PROFILES_DIR, home=None):
+def run_checks(env, profiles_dir=PROFILES_DIR, home=None, theme_env=None):
     try:
         manifests = mf.load_dir(profiles_dir)
     except (OSError, HeissError):
@@ -293,6 +310,11 @@ def run_checks(env, profiles_dir=PROFILES_DIR, home=None):
         prof_item = Item(prof_item.name, FAIL,
                          "no manifests in %s (heiss-core installed?); " % profiles_dir + prof_item.detail, prof_item.commands)
     items.append(prof_item)
+    if env.euid() == 0 or theme_env is None:
+        items.append(Item("theme", WARN, "not checked as root: it would read root's settings, run without sudo"
+                          if env.euid() == 0 else "not checked (no user environment)"))
+    else:
+        items.append(check_theme(theme_env))
     items.append(check_launcher(env))
     items.append(check_removed(env, state, (state.get("applied") or {}).get("profile") if state else None))
     items.append(check_session(env, home))

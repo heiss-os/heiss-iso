@@ -139,7 +139,17 @@ heiss check
 
 Expected: the log has `starting Hyprland` and no `exited with`; the three directories hold the copied files (`hyprland.conf`, `heiss-user.conf`, `config.jsonc`, `hypr-colors.conf`, `wallpaper`); `heiss check` shows `OK session`.
 
-The calls to `heiss theme` in the old windows fail until `heiss theme` is rebuilt (next PR); that is expected.
+Theme (H1b):
+
+```bash
+heiss theme get
+heiss theme set light
+heiss theme set dark
+heiss theme status
+heiss-gtk-audit after-dark
+```
+
+Expected: `get` prints `dark` at the first login; `set light` prints seven lines `theme: <target>: ...`, none `failed`, and the bar, launcher (Super+D), a Thunar window, Firefox and kitty turn light at once or at their next start; `set dark` turns them back; `status` shows `current theme` and no `warn`. Send back the output of the `set` commands and a screenshot in each theme.
 
 ## Looking at the windows without a display (`scripts/render-gui.py`)
 
