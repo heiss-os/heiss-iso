@@ -198,7 +198,7 @@ def _bare(c):
 
 
 def render_hypr_colors(tokens, theme):
-    """hyprlang variables, sourced by hyprland.conf, hyprlock.conf and heiss-user.conf."""
+    """hyprlang variables, sourced by hyprlock.conf and read by hyprland.lua."""
     p = palette(tokens, theme)
     names = ("window", "view", "panel", "button", "text", "text_secondary", "accent", "accent_alt", "on_accent",
              "border", "negative", "positive", "neutral")

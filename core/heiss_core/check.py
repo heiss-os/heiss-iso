@@ -29,7 +29,7 @@ HIDE_STUBS = ("vim.desktop", "mpv.desktop", "assistant.desktop", "designer.deskt
               "linguist.desktop", "qdbusviewer.desktop", "qv4l2.desktop", "qvidcap.desktop", "lstopo.desktop")
 # The installed Hyprland session (docs/DIRECTION-HYPRLAND.md): files the session needs, and the packages that must be gone.
 SESSION_FILES = ("/usr/share/wayland-sessions/heiss.desktop", "/usr/bin/Hyprland", "/usr/bin/waybar",
-                 "/usr/bin/heiss-session", "/usr/share/heiss/desktop/hypr/hyprland.conf",
+                 "/usr/bin/heiss-session", "/usr/share/heiss/desktop/hypr/hyprland.lua",
                  "/usr/share/heiss/desktop/waybar/config.jsonc", "/usr/share/sddm/themes/heiss/Main.qml")
 KDE_PACKAGES = ("plasma-desktop", "plasma-workspace", "kwin", "konsole", "dolphin", "plasma-nm", "plasma-pa",
                 "kscreen", "polkit-kde-agent", "xdg-desktop-portal-kde", "powerdevil", "kde-gtk-config")
@@ -247,7 +247,7 @@ def check_session(env, home=None):
     if problems:
         return Item("session", FAIL, "; ".join(problems), _cmds(env, n))
     note = "" if rc == 0 else " (pacman unavailable: leftovers not judged)"
-    cfg = os.path.join(home, ".config/hypr/hyprland.conf") if home else None
+    cfg = os.path.join(home, ".config/hypr/hyprland.lua") if home else None
     if cfg and not env.exists(cfg):
         return Item("session", WARN, "session files present; %s is not there yet (it is copied at the first login)" % cfg, _cmds(env, n))
     return Item("session", OK, "Hyprland session, Waybar, configs and the SDDM theme installed, no KDE packages%s" % note, _cmds(env, n))

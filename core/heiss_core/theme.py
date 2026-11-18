@@ -26,7 +26,7 @@ WALLPAPERS = {"dark": "/usr/share/wallpapers/Heiss-Everyday/contents/images/3840
               "light": "/usr/share/wallpapers/Heiss-Everyday-Light/contents/images/3840x2160.png"}
 COLOR_SCHEME = {"dark": "prefer-dark", "light": "prefer-light"}
 CURSOR, CURSOR_SIZE, ICONS, FONT = "Adwaita", "24", "Adwaita", "Inter 10"
-MARK = "# Heiss theme file: written by `heiss theme`, edit heiss-user.conf or remove this line to take over"
+MARK = "# Heiss theme file: written by `heiss theme`, edit heiss-user.lua or remove this line to take over"
 CSS_MARK = "/* Heiss theme file: written by `heiss theme`, remove this line to take over */"
 TARGETS = ("colors", "wallpaper", "gtk", "qt", "color-scheme", "cursor", "reload")
 LIVE_TARGETS = ("color-scheme", "cursor", "reload")   # run only when every file target worked

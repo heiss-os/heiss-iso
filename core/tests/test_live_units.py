@@ -48,7 +48,8 @@ NEVER = {"sshd.service", "sshd.socket", "reflector.service", "reflector.timer", 
          "avahi-daemon.service", "avahi-daemon.socket", "fwupd.service", "fwupd-refresh.timer",
          "packagekit.service", "packagekit-offline-update.service"}
 # Programs the default Hyprland configuration starts (exec-once): none of them may fetch anything.
-EXEC_ONCE = ["heiss-wallpaper", "waybar", "mako", "hypridle", "hyprpolkitagent", "nm-applet --indicator", "blueman-applet"]
+EXEC_ONCE = ["heiss-wallpaper", "waybar", "mako", "hypridle", "hyprpolkitagent", "nm-applet --indicator", "blueman-applet",
+             "command -v VBoxClient-all >/dev/null && VBoxClient-all"]
 
 
 def packages(name):
@@ -120,8 +121,11 @@ class Autostart(unittest.TestCase):
                          ["/usr/local/bin/heiss-start-installer.sh", "/usr/local/bin/heiss-open-link"])
 
     def test_default_hyprland_config_starts_the_listed_programs(self):
-        with open(os.path.join(REPO, "desktop", "hypr", "hyprland.conf"), encoding="utf-8") as f:
-            started = [l.split("=", 1)[1].strip() for l in f if l.startswith("exec-once")]
+        with open(os.path.join(REPO, "desktop", "hypr", "hyprland.lua"), encoding="utf-8") as f:
+            text = f.read()
+        block = re.search(r'hl\.on\("hyprland\.start", function\(\)\n(.*?)\nend\)', text, re.S)
+        self.assertIsNotNone(block)
+        started = re.findall(r'^\s*hl\.exec_cmd\("(.*)"\)\s*$', block.group(1), re.M)
         self.assertEqual(started, EXEC_ONCE)
         for cmd in started:
             self.assertNotRegex(cmd, r"curl|wget|http")

@@ -2,7 +2,7 @@
 # Built from the repository HEAD by scripts/heiss-packages-build.sh (it creates heiss-src.tar.gz).
 pkgname=heiss-desktop
 pkgver=0.1.0
-pkgrel=1
+pkgrel=2
 pkgdesc='Heiss OS desktop session: Hyprland and Waybar configuration, session start, first-login copy, SDDM login theme'
 arch=('any')
 url='https://github.com/heiss-os/heiss-iso'
@@ -14,7 +14,7 @@ sha256sums=('SKIP')   # archive made locally from git HEAD; not a downloaded fil
 package() {
   cd "$srcdir/heiss-src"
   # the single drop-in place: replace the files under /usr/share/heiss/desktop and nothing else changes
-  install -Dm644 -t "$pkgdir/usr/share/heiss/desktop/hypr" desktop/hypr/*.conf
+  install -Dm644 -t "$pkgdir/usr/share/heiss/desktop/hypr" desktop/hypr/hyprland.lua desktop/hypr/heiss-user.lua desktop/hypr/hypridle.conf desktop/hypr/hyprlock.conf
   install -Dm644 -t "$pkgdir/usr/share/heiss/desktop/waybar" desktop/waybar/config.jsonc desktop/waybar/style.css
   install -Dm755 -t "$pkgdir/usr/bin" desktop/bin/heiss-session desktop/bin/heiss-first-login desktop/bin/heiss-wallpaper
   install -Dm644 desktop/session/heiss.desktop "$pkgdir/usr/share/wayland-sessions/heiss.desktop"
