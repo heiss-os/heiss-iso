@@ -21,6 +21,8 @@ file keeps its own `mainMod`, and the settings window says so.
 """
 import os
 import re
+import stat
+import tempfile
 from dataclasses import dataclass, field
 
 MODIFIERS = ("ALT", "SUPER")
@@ -28,6 +30,9 @@ DEFAULT_MODIFIER = "ALT"
 MODIFIER_FILE = os.path.join("heiss", "modifier")   # below the configuration directory
 MANAGED_MARK = "heiss/modifier"                      # present in a configuration that reads the file
 MAX_BYTES = 1 << 20                                  # a configuration larger than this is not read
+MAX_BINDINGS = 2000                                  # more than this is not a key-binding list (loops included)
+MAX_STEPS = 20000                                    # loop bodies run in all (nested loops multiply)
+MAX_DEPTH = 32                                       # nesting of loops
 
 
 @dataclass
@@ -53,6 +58,12 @@ class Config:
 _SYMS = ("...", "..", "==", "~=", "<=", ">=", "::", "//", "<<", ">>")
 
 
+_BLOCK_COMMENT = re.compile(r"--\[(=*)\[")
+_LONG_STRING = re.compile(r"\[(=*)\[")
+_NUMBER = re.compile(r"0[xX][0-9a-fA-F]+|\d+(\.\d+)?")
+_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+
+
 def tokenize(text):
     """[(kind, value, line)]; kind is name, str, num, sym or comment. Block comments and long strings are skipped."""
     toks, i, n, line = [], 0, len(text), 1
@@ -64,7 +75,7 @@ def tokenize(text):
         elif c in " \t\r":
             i += 1
         elif text.startswith("--", i):
-            m = re.match(r"--\[(=*)\[", text[i:])
+            m = _BLOCK_COMMENT.match(text, i)
             if m:
                 close = "]" + m.group(1) + "]"
                 j = text.find(close, i)
@@ -87,8 +98,8 @@ def tokenize(text):
                 j += 1
             toks.append(("str", "".join(buf), line))
             i = j + 1
-        elif text.startswith("[[", i) or re.match(r"\[=+\[", text[i:i + 8]):
-            m = re.match(r"\[(=*)\[", text[i:])
+        elif c == "[" and _LONG_STRING.match(text, i):
+            m = _LONG_STRING.match(text, i)
             close = "]" + m.group(1) + "]"
             j = text.find(close, i)
             j = n if j < 0 else j + len(close)
@@ -96,11 +107,11 @@ def tokenize(text):
             line += text.count("\n", i, j)
             i = j
         elif c.isascii() and c.isdigit():
-            m = re.match(r"0[xX][0-9a-fA-F]+|\d+(\.\d+)?", text[i:])
+            m = _NUMBER.match(text, i)
             toks.append(("num", m.group(0), line))
             i += len(m.group(0))
         elif c.isascii() and (c.isalpha() or c == "_"):
-            m = re.match(r"[A-Za-z_][A-Za-z0-9_]*", text[i:])
+            m = _NAME.match(text, i)
             toks.append(("name", m.group(0), line))
             i += len(m.group(0))
         else:
@@ -117,6 +128,8 @@ class _Reader:
         self.env = {}
         self.forced = forced or {}
         self.out = []
+        self.steps = 0
+        self.depth = 0
 
     # a value is a str, or None when it cannot be known
     def value_of(self, name):
@@ -227,12 +240,17 @@ class _Reader:
             body_lo = i + 7
             end = self._end_of(toks, body_lo, hi)
             a, b = int(m[2][1]), int(m[4][1])
-            if b - a > 1000:
+            if b - a > 1000 or self.depth >= MAX_DEPTH:
                 return end
             old = self.env.get(m[0][1])
+            self.depth += 1
             for v in range(a, b + 1):
+                self.steps += 1
+                if self.steps > MAX_STEPS or len(self.out) > MAX_BINDINGS:
+                    break
                 self.env[m[0][1]] = str(v)
                 self.run(toks, body_lo, end - 1)
+            self.depth -= 1
             if old is None:
                 self.env.pop(m[0][1], None)
             else:
@@ -277,6 +295,8 @@ class _Reader:
         if not desc and close + 1 < hi and toks[close + 1][0] == "comment" and toks[close + 1][2] == toks[close][2]:
             desc = toks[close + 1][1]
         keys = [k.strip() for k in keys_text.split("+")] if resolved else []
+        if len(self.out) > MAX_BINDINGS:
+            return close + 1
         self.out.append(Binding([k for k in keys if k], keys_text.strip(), desc, line, resolved))
         return close + 1
 
@@ -318,6 +338,8 @@ def parse_text(text, forced=None):
 
 
 def _read(path):
+    if not stat.S_ISREG(os.stat(path).st_mode):   # a FIFO or a device would block the reader
+        raise ValueError("not a regular file")
     with open(path, "rb") as f:
         data = f.read(MAX_BYTES + 1)
     if len(data) > MAX_BYTES:
@@ -331,27 +353,52 @@ def config_dir(environ=None):
 
 
 def read_modifier(cfg_dir):
-    """'ALT', 'SUPER', or '' when the file is missing or holds anything else."""
+    """'ALT', 'SUPER', or '' when the file is missing or its first line holds anything else (hyprland.lua reads the
+    first line only, so this does too)."""
     try:
-        v = _read(os.path.join(cfg_dir, MODIFIER_FILE)).strip()
-    except (OSError, ValueError):
+        path = os.path.join(cfg_dir, MODIFIER_FILE)
+        if not stat.S_ISREG(os.stat(path).st_mode):
+            return ""
+        with open(path, "r", encoding="utf-8", errors="replace") as f:
+            v = f.readline(4096).strip()
+    except OSError:
         return ""
     return v if v in MODIFIERS else ""
 
 
 def write_modifier(cfg_dir, value):
-    """Store the choice (atomically). Raises ValueError for anything but ALT or SUPER."""
+    """Store the choice (atomically, in a fresh temporary file next to it). Raises ValueError for anything but ALT
+    or SUPER, OSError when the directory or the file cannot be written."""
     if value not in MODIFIERS:
         raise ValueError("the modifier is ALT or SUPER")
     path = os.path.join(cfg_dir, MODIFIER_FILE)
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    tmp = path + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as f:
-        f.write(value + "\n")
-    os.replace(tmp, path)
+    fd, tmp = tempfile.mkstemp(prefix=".modifier.", dir=os.path.dirname(path))
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(value + "\n")
+            f.flush()
+            os.fsync(f.fileno())
+        os.chmod(tmp, 0o644)
+        os.replace(tmp, path)
+    except BaseException:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
 
 
 def load(cfg_dir=None):
+    """Never raises: a configuration that cannot be read or parsed gives `error` and no bindings."""
+    cfg_dir = cfg_dir or config_dir()
+    try:
+        return _load(cfg_dir)
+    except Exception as e:  # noqa: BLE001 - a hostile or odd file must not stop the window (RecursionError, ...)
+        return Config(os.path.join(cfg_dir, "hypr", "hyprland.lua"), error="cannot read the configuration: %s" % type(e).__name__)
+
+
+def _load(cfg_dir):
     """The bindings of ~/.config/hypr/hyprland.lua, then those of heiss-user.lua (loaded last by the configuration),
     read with the modifier the shipped configuration would use."""
     cfg_dir = cfg_dir or config_dir()

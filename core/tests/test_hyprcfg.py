@@ -12,6 +12,7 @@ sys.path.insert(0, os.path.join(REPO, "core"))
 from heiss_core import hyprcfg as hc  # noqa: E402
 
 SHIPPED = os.path.join(REPO, "desktop", "hypr", "hyprland.lua")
+LUA = shutil.which("lua") or shutil.which("lua5.4")
 
 # A stand-in for Hyprland's `hl` table: it records every hl.bind(keys, action, options) call and ignores the rest.
 LUA_STUB = r'''
@@ -96,6 +97,68 @@ hl.bind("REAL", f())
             hc.parse_text(text)
 
 
+class Hostile(unittest.TestCase):
+    """Cases found by the QA run: the window parses the user's own file at start, so none of these may hang or raise."""
+
+    def timed(self, text):
+        import time
+        t = time.time()
+        out = hc.parse_text(text)
+        self.assertLess(time.time() - t, 5)
+        return out
+
+    def test_nested_loops_do_not_multiply_without_limit(self):
+        b, _ = self.timed("for a = 1, 1000 do for b = 1, 1000 do for c = 1, 1000 do hl.bind('A' .. a, f()) end end end")
+        self.assertLessEqual(len(b), hc.MAX_BINDINGS + 1)
+        b, _ = self.timed("for a = 1, 2 do " * 40 + "hl.bind('A', f())" + " end" * 40)
+        self.assertLessEqual(len(b), hc.MAX_BINDINGS + 1)
+
+    def test_a_big_file_is_parsed_in_linear_time(self):
+        self.timed("x " * 400000)
+        self.timed("a=1\n" * 200000)
+
+    def test_deep_nesting_gives_an_error_not_an_exception(self):
+        d = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, d)
+        write(os.path.join(d, "hypr", "hyprland.lua"), "for i = 1, 1 do " * 3000 + "hl.bind('A', f())" + " end" * 3000)
+        cfg = hc.load(d)
+        self.assertIsInstance(cfg, hc.Config)
+        write(os.path.join(d, "hypr", "hyprland.lua"), "function " * 5000)
+        hc.load(d)
+
+    def test_a_fifo_is_not_opened(self):
+        d = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, d)
+        os.makedirs(os.path.join(d, "heiss"))
+        os.mkfifo(os.path.join(d, "heiss", "modifier"))
+        self.assertEqual(hc.read_modifier(d), "")
+        os.makedirs(os.path.join(d, "hypr"))
+        os.mkfifo(os.path.join(d, "hypr", "hyprland.lua"))
+        self.assertTrue(hc.load(d).error)
+
+    def test_first_line_only_like_the_lua_reader(self):
+        d = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, d)
+        for content, expect in (("SUPER\nALT\n", "SUPER"), ("ALT\nSUPER\n", "ALT"), ("  SUPER  \r\n", "SUPER"), ("\nSUPER\n", "")):
+            write(os.path.join(d, "heiss", "modifier"), content)
+            self.assertEqual(hc.read_modifier(d), expect, repr(content))
+
+    def test_write_modifier_fails_cleanly_and_leaves_nothing_behind(self):
+        d = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, d)
+        os.makedirs(os.path.join(d, "heiss", "modifier"))   # a directory where the file should be
+        with self.assertRaises(OSError):
+            hc.write_modifier(d, "SUPER")
+        self.assertEqual(os.listdir(os.path.join(d, "heiss")), ["modifier"])
+        os.rmdir(os.path.join(d, "heiss", "modifier"))
+        victim = os.path.join(d, "precious")
+        write(victim, "keep")
+        os.symlink(victim, os.path.join(d, "heiss", "modifier.tmp"))   # the old fixed temporary name
+        hc.write_modifier(d, "SUPER")
+        with open(victim, encoding="utf-8") as f:
+            self.assertEqual(f.read(), "keep")
+
+
 class Shipped(unittest.TestCase):
     def test_every_bind_of_the_shipped_configuration_is_resolved_and_described(self):
         b, _ = hc.parse_text(shipped_text())
@@ -104,7 +167,7 @@ class Shipped(unittest.TestCase):
             self.assertTrue(x.resolved, x.keys_text)
             self.assertTrue(x.description, x.keys_text)
 
-    @unittest.skipUnless(shutil.which("lua"), "lua is needed")
+    @unittest.skipUnless(LUA, "lua is needed (CI installs lua5.4)")
     def test_the_parser_gives_the_same_bindings_as_running_the_real_file(self):
         """Ground truth: run hyprland.lua under Lua with a stub `hl` and compare keys and descriptions that Lua computed."""
         for modifier in (None, "SUPER", "ALT"):
@@ -114,7 +177,7 @@ class Shipped(unittest.TestCase):
                 stub = os.path.join(d, "stub.lua")
                 write(stub, LUA_STUB)
                 env = {"PATH": os.environ["PATH"], "HOME": d, "XDG_CONFIG_HOME": d}
-                r = subprocess.run(["lua", stub, SHIPPED], capture_output=True, text=True, env=env, cwd=d, timeout=30)
+                r = subprocess.run([LUA, stub, SHIPPED], capture_output=True, text=True, env=env, cwd=d, timeout=30)
                 self.assertEqual(r.returncode, 0, r.stderr)
                 truth = [tuple(l.split("\t", 1)) for l in r.stdout.splitlines()]
                 write(os.path.join(d, "hypr", "hyprland.lua"), shipped_text())
@@ -127,7 +190,7 @@ class Shipped(unittest.TestCase):
                         self.assertEqual(gd, td)
                 self.assertEqual(cfg.main_mod, modifier or "ALT")
 
-    @unittest.skipUnless(shutil.which("lua"), "lua is needed")
+    @unittest.skipUnless(LUA, "lua is needed (CI installs lua5.4)")
     def test_the_modifier_block_ignores_anything_but_alt_or_super(self):
         for content, expect in (("SUPER\n", "SUPER"), ("ALT", "ALT"), ("CTRL\n", "ALT"), ("super\n", "ALT"), ("", "ALT"),
                                 ("SUPER\nALT\n", "SUPER"), ("../../x\n", "ALT")):
@@ -136,7 +199,7 @@ class Shipped(unittest.TestCase):
                 stub = os.path.join(d, "stub.lua")
                 write(stub, LUA_STUB)
                 env = {"PATH": os.environ["PATH"], "HOME": d, "XDG_CONFIG_HOME": d}
-                r = subprocess.run(["lua", stub, SHIPPED], capture_output=True, text=True, env=env, cwd=d, timeout=30)
+                r = subprocess.run([LUA, stub, SHIPPED], capture_output=True, text=True, env=env, cwd=d, timeout=30)
                 self.assertEqual(r.stdout.splitlines()[0].split("\t")[0], expect + " + Return", repr(content))
 
 

@@ -286,7 +286,7 @@ def qml_for_theme(out, app, theme):
     dst = os.path.join(d, "Main.qml")
     with open(dst, "w", encoding="utf-8") as f:
         f.write(text.replace(SCHEME_TEST, "true" if theme == "dark" else "false"))
-    for name in os.listdir(os.path.dirname(src)):   # shared components next to Main.qml (ChoiceRow.qml)
+    for name in os.listdir(os.path.dirname(src)):   # shared components next to Main.qml, if any
         if name.endswith(".qml") and name != "Main.qml":
             shutil.copy(os.path.join(os.path.dirname(src), name), os.path.join(d, name))
     return dst
