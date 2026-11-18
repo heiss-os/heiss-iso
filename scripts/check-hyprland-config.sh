@@ -32,7 +32,7 @@ for theme in dark light; do
       LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}" "$BIN" --verify-config -c "$conf" > "$out" 2>&1
   rc=$?
   if [ "$rc" -ne 0 ] || ! grep -q '^config ok$' "$out"; then
-    echo "FAIL: $theme (exit $rc)"; sed -n '/Config parsing result/,$p' "$out"; fail=1
+    echo "FAIL: $theme (exit $rc)"; if grep -q 'Config parsing result' "$out"; then sed -n '/Config parsing result/,$p' "$out"; else cat "$out"; fi; fail=1
   else
     echo "OK: $theme"
   fi
