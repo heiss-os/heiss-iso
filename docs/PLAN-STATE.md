@@ -10,7 +10,7 @@ See the phase and round sections below. Phases 0 to 7 are merged; round 23 (pre-
 
 ## In progress
 
-- Direction change to Hyprland and a terminal installer (`heiss-task-31.md`, plan in `docs/DIRECTION-HYPRLAND.md`). H0 plan and inventory is merged (#125). H1 is split: H1a the installed Hyprland session (branch `feat/hyprland-session`: packages, manifests, SDDM theme, session, configs, first login, Plasma files and code removed), H1b `heiss theme` rebuilt for the new stack and `heiss check` theme item (branch `feat/heiss-theme-hyprland`, with the CLAUDE.md update and `docs/OWNER-INPUTS.md`). H1a is merged (#126). After H1b is merged the ISO can be rebuilt. Then, one PR each, after the owner's word: H2 welcome and settings windows, H3 terminal installer, H4 boot look, H5 cleanup. Round 25 stops at PR F plus the KDE preview image `heiss-2026.11.17`.
+- Direction change to Hyprland and a terminal installer (`heiss-task-31.md`, plan in `docs/DIRECTION-HYPRLAND.md`). H0 plan and inventory is merged (#125). H1 is split: H1a the installed Hyprland session (branch `feat/hyprland-session`: packages, manifests, SDDM theme, session, configs, first login, Plasma files and code removed), H1b `heiss theme` rebuilt for the new stack and `heiss check` theme item (branch `feat/heiss-theme-hyprland`, with the CLAUDE.md update and `docs/OWNER-INPUTS.md`). H1a is merged (#126). H1b is merged (#127). H1c (the Hyprland session made real: Lua config `hyprland.lua`, `start-hyprland`, ALT binds, VirtualBox user tools, CI job `hyprland-config`; branch `feat/hyprland-lua-session`) is in review. After H1c is merged the ISO can be rebuilt. Then, one PR each, after the owner's word: H2 welcome and settings windows, H3 terminal installer, H4 boot look, H5 cleanup. Round 25 stops at PR F plus the KDE preview image `heiss-2026.11.17`.
 - Round 25 is merged (PR A to F #116 to #121, shellcheck in the Tier A scripts #123, actions/checkout v7.0.1 #122 and #124). Left from it: final rebuild checklist, then the `heiss-welcome` dependency finding from namcap (not started).
 
 
@@ -23,7 +23,6 @@ See the phase and round sections below. Phases 0 to 7 are merged; round 23 (pre-
 ## Next
 
 - H1c (Hyprland session made real: Lua config, `start-hyprland`, ALT binds, VirtualBox user tools, CI guard; branch `feat/hyprland-lua-session`), then wait for the owner. After it, H3 (terminal installer) comes before H2 (`heiss-task-32.md`).
-- (old) H1b, then wait for the owner (rebuild of the ISO and the VM run of the H1a and H1b lines). The KDE preview image is not rebuilt.
 - First ISO build and static inspection of the image, then the owner's VM run of the FINAL VM TEST LIST. Later: new neutral wallpapers (Btrfs and snapshots were removed from the plan, see DECISIONS 2026-11-18).
 
 ## Open questions
@@ -378,7 +377,7 @@ H1a needs the label `design-approved` (Tier A: color-schemes, plasma/look-and-fe
 - [ ] Boot the live ISO, press `e` on the entry, add `nomodeset`, boot / expect `session.log` shows `software rendering on` at the top and Hyprland starts without a retry (the `nomodeset` branch of `heiss-session` was not run).
 - [ ] Boot entry "safe graphics" in the live menu / expect the session starts without a retry (`session.log` shows `software rendering on` at the top).
 - [x] (obsolete 2026-11-18, replaced by the H1c lines: the shipped config is Lua and checked by `Hyprland --verify-config`) The default Hyprland configuration is accepted: `hyprctl configerrors` prints nothing (written for Hyprland 0.57 from memory of the hyprlang syntax; the `bind`, `bindel`, `bindl`, `bindm` lines, `source` with `~`, `col.active_border` with `rgb()` variables were not run).
-- [ ] Key bindings: Super+Return opens kitty, Super+E Thunar, Super+D the launcher (fuzzel), Super+Q closes, Super+L locks (hyprlock, password prompt appears), Print selects an area for a screenshot, volume and brightness keys work on a laptop.
+- [ ] Key bindings (ALT, see the H1c lines): ALT+L locks (hyprlock, password prompt appears), Print selects an area for a screenshot, volume and brightness keys work on a laptop.
 - [ ] Waybar: workspaces, clock, volume, network, Bluetooth, tray show; the sand accent marks the active workspace; click on volume opens pavucontrol, on network `nm-connection-editor`. Icons (Font Awesome code points from the Nerd symbols font) show as glyphs, not boxes. The CSS `@import "../heiss/theme/waybar-colors.css"` resolves (no `Waybar` error in `journalctl --user -b | grep -i waybar`).
 - [ ] Notifications: `notify-send test hello` shows a mako popup in the Heiss colours. Polkit: `pkexec true` shows the hyprpolkitagent password dialog.
 - [ ] Installed system: install with Calamares, reboot / expect the SDDM login with the Heiss theme (X11 greeter, own QML theme: card with logo, user, password), log in, Hyprland starts, `ls ~/.config/hypr ~/.config/waybar ~/.config/heiss/theme` shows the copied files, `systemctl --user --failed` and `systemctl --failed` are empty, `pacman -Q plasma-workspace kwin` finds nothing.
