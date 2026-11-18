@@ -573,3 +573,4 @@ Format: date, what, why. Newest at the bottom.
 - **LTS kernel:** `41_heiss_safe` writes an entry per existing kernel and works with `linux` alone; the NVIDIA hardware profiles install `linux-lts` and `nvidia-open-lts` themselves. Removing the add-on changes nothing for the safe-graphics rule.
 - **Manual partitioning is out of scope for the terminal installer (H3):** guided "erase this disk and install" only, UEFI only.
 - **Not verified:** everything here is a plan; nothing was started or built.
+- **Supersedes** the "Base stays" line of the first entry (KDE Plasma and Calamares are no longer fixed; Arch, no telemetry, the palette, fonts and the root lock stay). The CLAUDE.md section "Решения, которые уже приняты" (KDE-only first version, Calamares) is outdated in the same way; the owner updates CLAUDE.md.

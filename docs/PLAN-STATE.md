@@ -11,7 +11,7 @@ See the phase and round sections below. Phases 0 to 7 are merged; round 23 (pre-
 ## In progress
 
 - Direction change to Hyprland and a terminal installer (`heiss-task-31.md`, plan in `docs/DIRECTION-HYPRLAND.md`). H0 plan and inventory (branch `docs/direction-hyprland`), then H1 the installed Hyprland session. Then, one PR each, after the owner's word: H2 welcome and settings windows, H3 terminal installer, H4 boot look, H5 cleanup. Round 25 stops at PR F plus the KDE preview image `heiss-2026.11.17`.
-- Round 25, shellcheck in the two Tier A scripts (branch `fix/shellcheck-tier-a-round25`, Tier A: `heiss-setup-dock.sh`, `heiss-calamares-build.sh`). PR A to F are merged (#116 to #121). Next: final rebuild checklist, then the `heiss-welcome` dependency finding from namcap.
+- Round 25 is merged (PR A to F #116 to #121, shellcheck in the Tier A scripts #123, actions/checkout v7.0.1 #122 and #124). Left from it: final rebuild checklist, then the `heiss-welcome` dependency finding from namcap (not started).
 
 
 
@@ -367,7 +367,7 @@ Added in round 23 PR 5. Each line is run in part 3 of `heiss-task-28.md` (read-o
 - [ ] On the build VM `bash scripts/heiss-calamares-build.sh`; expect the line `==> Что будет собираться:`, build lines with `-j<number of cores>` (for example `make -j4`), and `ls ~/localrepo/calamares-*.pkg.tar.zst` listing the package.
 
 ### Direction change H0 (Hyprland, 2026-11-18)
-- [ ] After the first Hyprland image: boot the "safe graphics" entry on a machine with only the `linux` kernel installed (no `linux-lts`): the entry exists and reaches a login (the plan says it does not need the LTS add-on; `docs/DIRECTION-HYPRLAND.md`, section 6; never run).
+- [ ] After the first Hyprland image: on a machine with only `linux` (`pacman -Q linux-lts` fails) run `sudo grub-mkconfig -o /boot/grub/grub.cfg`, reboot; expect "Heiss OS, safe graphics" in the boot menu and a login after choosing it (the plan says it does not need the LTS add-on; `docs/DIRECTION-HYPRLAND.md` section 6; never run).
 
 ## Round 20, item 3a (2026-11-11): hardware choices applied
 

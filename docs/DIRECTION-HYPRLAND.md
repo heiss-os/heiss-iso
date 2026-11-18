@@ -25,7 +25,7 @@ Status: plan and inventory (stage H0, docs only). Source: `~/share/heiss-task-31
 - **Qt wizard steps 2 and 3 look**, the Plasma-bound parts of PR B of round 25 (not implemented).
 - Removed in H1 (session): all Plasma and KDE packages and files of section 4. Removed in H5: Calamares and its branding, the Qt wizard code that no longer exists, leftovers and obsolete CI jobs.
 
-Every removal lands in the PR of its stage, never half-way: a PR that removes a feature also removes its tests and docs, and `docs/FACTS`-type statements about it are fixed in H5 at the latest.
+Every removal lands in the PR of its stage, never half-way: a PR that removes a feature also removes its tests and docs, and statements about it in the docs are fixed in H5 at the latest.
 
 ## 3. What is kept
 
