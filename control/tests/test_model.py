@@ -31,7 +31,7 @@ class Fixture(unittest.TestCase):
         self.env = m.Env(os_release=self.p("os-release"), system_answers=self.p("profile.toml"),
                          user_dir=self.p("user"), state_file=self.p("state.json"),
                          kernel=lambda: "9.9.9-test", plasma=lambda: "6.8.2",
-                         profiles_dir=os.path.join(REPO, "profiles"), kde_value=lambda f, g, k: "HeissDark",
+                         profiles_dir=os.path.join(REPO, "profiles"), theme_get=lambda: "dark",
                          apply_theme=lambda theme: (True, ""),
                          run_check=lambda: [{"name": "units", "status": "OK", "detail": "fine", "commands": []}],
                          open_settings=lambda: (True, ""),
@@ -259,8 +259,8 @@ class Appearance(Fixture):
         self.assertEqual([(c["id"], c["selected"]) for c in a["choices"]], [("dark", True), ("light", False)])
 
     def test_other_or_unreadable_scheme_is_unknown(self):
-        for fn in (lambda f, g, k: "BreezeDark", lambda f, g, k: None, lambda f, g, k: 1 / 0):
-            self.env.kde_value = fn
+        for fn in (lambda: "", lambda: "BreezeDark", lambda: 1 / 0):
+            self.env.theme_get = fn
             a = self.mod().screen()["appearance"]
             self.assertEqual(a["current"], "unknown")
             self.assertFalse(any(c["selected"] for c in a["choices"]))
@@ -1503,7 +1503,7 @@ class Tools(unittest.TestCase):
     def test_run_check_returns_plain_dicts(self):
         from heiss_core import check as ck
         orig = (ck.run_checks, ck.CheckEnv)
-        ck.run_checks = lambda env, theme_env, profiles_dir: [ck.Item("x", ck.OK, "d", [["a", "b"]])]
+        ck.run_checks = lambda env, profiles_dir, home=None: [ck.Item("x", ck.OK, "d", [["a", "b"]])]
         try:
             self.assertEqual(tools.run_check(), [{"name": "x", "status": "OK", "detail": "d", "commands": ["a b"]}])
         finally:
@@ -1522,13 +1522,11 @@ class ThemeModule(unittest.TestCase):
                 raise self.raises
             return subprocess.CompletedProcess(argv, self.rc, self.out, self.err)
 
-    def test_uses_the_shipped_look_and_feel_ids(self):
-        for theme, lnf in (("dark", "org.heiss.dark.desktop"), ("light", "org.heiss.light.desktop")):
+    def test_dark_and_light_run_heiss_theme_set(self):
+        for theme in ("dark", "light"):
             run = self.Run()
             self.assertEqual(th.apply_theme(theme, run), (True, ""))
-            self.assertEqual(run.calls, [["plasma-apply-lookandfeel", "--apply", lnf]])
-            self.assertTrue(os.path.isdir(os.path.join(REPO, "profile", "airootfs", "usr", "share", "plasma",
-                                                       "look-and-feel", lnf)))
+            self.assertEqual(run.calls, [["heiss", "theme", "set", theme]])
 
     def test_unknown_theme_runs_nothing(self):
         run = self.Run()
@@ -1543,7 +1541,7 @@ class ThemeModule(unittest.TestCase):
 
     def test_tool_output_is_decoded_leniently_and_bounded(self):
         self.assertEqual(th.apply_theme("dark", self.Run(rc=1, err="x" * 100000))[1], "x" * th.MAX_OUTPUT)
-        self.assertEqual(len(th.kreadconfig("a", "b", "c", self.Run(out="y" * 100000))), th.MAX_OUTPUT)
+        self.assertEqual(len(th.read_current(self.Run(out="y" * 100000))), 0)
         ok, msg = th.apply_theme("dark", self.Run(raises=UnicodeDecodeError("utf-8", b"\xff", 0, 1, "bad")))
         self.assertFalse(ok)
 
@@ -1557,11 +1555,12 @@ class ThemeModule(unittest.TestCase):
         th.apply_theme("dark", run)
         self.assertEqual(seen["errors"], "replace")
 
-    def test_kreadconfig_reads_with_a_fixed_argument_list(self):
-        run = self.Run(out="HeissLight\n")
-        self.assertEqual(th.kreadconfig("kdeglobals", "General", "ColorScheme", run), "HeissLight")
-        self.assertEqual(run.calls, [["kreadconfig6", "--file", "kdeglobals", "--group", "General", "--key", "ColorScheme"]])
-        self.assertEqual(th.kreadconfig("a", "b", "c", self.Run(rc=1)), "")
+    def test_read_current_runs_heiss_theme_get(self):
+        run = self.Run(out="light\n")
+        self.assertEqual(th.read_current(run), "light")
+        self.assertEqual(run.calls, [["heiss", "theme", "get"]])
+        self.assertEqual(th.read_current(self.Run(rc=1)), "")
+        self.assertEqual(th.read_current(self.Run(out="BreezeDark")), "")
 
 
 class About(Fixture):

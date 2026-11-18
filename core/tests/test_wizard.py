@@ -135,9 +135,9 @@ class Answers(unittest.TestCase):
         w = wz.Wizard(MANIFESTS)
         with self.assertRaises(ValidationError):
             w.set("appearance", {"theme": "dark"})
-        w.set("addons", ["addon-kitty"])
+        w.set("addons", ["addon-lts-kernel"])
         w.set("appearance.theme", "dark")
-        self.assertEqual(w.answers["addons"], ["addon-kitty"])
+        self.assertEqual(w.answers["addons"], ["addon-lts-kernel"])
         self.assertEqual(set(w.answers["appearance"]), {"theme", "animations"})
         self.assertEqual(w.touched, {"addons", "appearance.theme"})
 

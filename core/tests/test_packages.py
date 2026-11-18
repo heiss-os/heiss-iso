@@ -117,8 +117,7 @@ class ThemePackage(unittest.TestCase):
     def test_installs_every_generated_terminal_file(self):
         import fnmatch
         pk = pkgbuild("heiss-theme")
-        patterns = {"konsole": ["*.colorscheme", "*.profile", "konsolerc"],
-                    "kitty": ["kitty.conf", "*-theme.auto.conf", "heiss-dark.conf", "heiss-light.conf"]}
+        patterns = {"kitty": ["kitty.conf", "*-theme.auto.conf", "heiss-dark.conf", "heiss-light.conf"]}
         gen_dir = os.path.join(REPO, "branding", "tokens", "generated")
         for sub, pats in patterns.items():
             for pat in pats:
@@ -126,15 +125,24 @@ class ThemePackage(unittest.TestCase):
             for f in os.listdir(os.path.join(gen_dir, sub)):
                 self.assertTrue(any(fnmatch.fnmatch(f, pat) for pat in pats), "generated %s/%s is not installed" % (sub, f))
 
-    def test_konsole_default_profile_exists_in_the_package(self):
-        rc = open(os.path.join(REPO, "branding", "tokens", "generated", "konsole", "konsolerc")).read()
-        self.assertIn("DefaultProfile=Heiss-Dark.profile", rc)
-        self.assertTrue(os.path.exists(os.path.join(REPO, "branding", "tokens", "generated", "konsole", "Heiss-Dark.profile")))
+    def test_installs_the_desktop_theme_sets_that_first_login_copies(self):
+        pk = pkgbuild("heiss-theme")
+        gen = os.path.join(REPO, "branding", "tokens", "generated", "desktop")
+        with open(os.path.join(REPO, "desktop", "bin", "heiss-first-login"), encoding="utf-8") as f:
+            first_login = f.read()
+        for name in ("hypr-colors.conf", "waybar-colors.css", "fuzzel.ini", "mako.conf"):
+            self.assertIn(name, pk)
+            self.assertIn(name, first_login)
+            for theme in ("dark", "light"):
+                self.assertTrue(os.path.isfile(os.path.join(gen, theme, name)), (theme, name))
+
+    def test_no_konsole_left(self):
+        pk = pkgbuild("heiss-theme")
+        self.assertNotIn("konsole", pk.lower())
 
     def test_config_files_are_marked_as_backup_and_no_overwrites_of_other_packages(self):
         pk = pkgbuild("heiss-theme")
-        self.assertIn("backup=('etc/xdg/konsolerc' 'etc/xdg/kitty/kitty.conf')", pk)
-        self.assertNotIn("/usr/share/konsole/Konsole", pk)
+        self.assertIn("backup=('etc/xdg/kitty/kitty.conf')", pk)
 
     def test_iso_lists_the_theme_package(self):
         with open(os.path.join(REPO, "profile", "packages.x86_64")) as f:
@@ -239,11 +247,12 @@ class WelcomePackage(unittest.TestCase):
                 self.assertEqual(out.returncode, 0)
                 self.assertEqual(out.stdout.strip(), expected)
 
-    def test_build_script_archives_the_sources_and_the_iso_list_has_the_package(self):
+    def test_build_script_archives_the_sources_and_the_iso_list_does_not_have_the_package(self):
         with open(os.path.join(REPO, "scripts", "heiss-packages-build.sh"), encoding="utf-8") as f:
             self.assertRegex(f.read(), r"archive .* welcome ")
+        # not in the ISO list any more: the Hyprland session has its own welcome window (docs/DIRECTION-HYPRLAND.md, H2)
         with open(os.path.join(REPO, "profile", "packages.x86_64"), encoding="utf-8") as f:
-            self.assertIn("heiss-welcome", f.read().split())
+            self.assertNotIn("heiss-welcome", f.read().split())
 
 
 class ControlPackage(unittest.TestCase):
@@ -275,8 +284,30 @@ class ControlPackage(unittest.TestCase):
         self.assertEqual(d["StartupWMClass"], "heiss-control")
         self.assertIn("Settings", d["Categories"])
 
-    def test_build_script_archives_the_sources_and_the_iso_list_has_the_package(self):
+    def test_build_script_archives_the_sources_and_the_iso_list_does_not_have_the_package(self):
         with open(os.path.join(REPO, "scripts", "heiss-packages-build.sh"), encoding="utf-8") as f:
             self.assertRegex(f.read(), r"archive .* welcome control ")
         with open(os.path.join(REPO, "profile", "packages.x86_64"), encoding="utf-8") as f:
-            self.assertIn("heiss-control", f.read().split())
+            self.assertNotIn("heiss-control", f.read().split())
+
+
+class DesktopPackage(unittest.TestCase):
+    def test_every_installed_source_file_exists(self):
+        pk = pkgbuild("heiss-desktop")
+        paths = re.findall(r"\b((?:desktop|branding)/[\w./*-]+)", pk)
+        self.assertGreater(len(paths), 8)
+        import glob
+        for p in paths:
+            self.assertTrue(glob.glob(os.path.join(REPO, p)), p)
+
+    def test_the_build_archive_contains_the_desktop_directory(self):
+        with open(os.path.join(REPO, "scripts", "heiss-packages-build.sh"), encoding="utf-8") as f:
+            sh = f.read()
+        self.assertRegex(sh, r"archive .* HEAD core helper desktop ")
+
+    def test_iso_lists_the_package_and_the_release_is_recorded(self):
+        with open(os.path.join(REPO, "profile", "packages.x86_64")) as f:
+            self.assertIn("heiss-desktop", {l.split("#")[0].strip() for l in f})
+        with open(os.path.join(REPO, "packages", "pkgrel.json")) as f:
+            rel = json.load(f)
+        self.assertEqual(int(re.search(r"^pkgrel=(\d+)", pkgbuild("heiss-desktop"), re.M).group(1)), rel["heiss-desktop"])

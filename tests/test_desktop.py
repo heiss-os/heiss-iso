@@ -1,0 +1,213 @@
+"""The default Hyprland session files (desktop/): bind descriptions, theme colours only from tokens, first-login sources."""
+import os
+import re
+import unittest
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DESKTOP = os.path.join(ROOT, "desktop")
+HEX = re.compile(r"#[0-9A-Fa-f]{6}\b|rgba?\([0-9, ]+\)")
+
+
+def read(*p):
+    with open(os.path.join(DESKTOP, *p), encoding="utf-8") as f:
+        return f.read()
+
+
+class HyprlandConfig(unittest.TestCase):
+    def test_every_bind_line_has_a_description_comment_directly_above(self):
+        lines = read("hypr", "hyprland.conf").splitlines()
+        binds = [i for i, l in enumerate(lines) if re.match(r"bind[a-z]*\s*=", l)]
+        self.assertGreater(len(binds), 30)
+        for i in binds:
+            above = lines[i - 1].strip()
+            self.assertTrue(above.startswith("# ") and len(above) > 3, "no description above: " + lines[i])
+
+    def test_binds_have_no_duplicate_key_combination(self):
+        seen = {}
+        for l in read("hypr", "hyprland.conf").splitlines():
+            m = re.match(r"bind[a-z]*\s*=\s*([^,]*),\s*([^,]+),", l)
+            if m:
+                key = (m.group(1).strip(), m.group(2).strip())
+                self.assertNotIn(key, seen, "key bound twice: %r" % (key,))
+                seen[key] = l
+
+    def test_the_user_include_is_the_last_line(self):
+        last = [l for l in read("hypr", "hyprland.conf").splitlines() if l.strip()][-1]
+        self.assertEqual(last, "source = ~/.config/hypr/heiss-user.conf")
+
+    def test_colours_come_from_the_generated_theme_only(self):
+        for rel in (("hypr", "hyprland.conf"), ("hypr", "hyprlock.conf"), ("hypr", "hypridle.conf"),
+                    ("waybar", "style.css"), ("waybar", "config.jsonc"), ("sddm", "heiss", "Main.qml")):
+            self.assertIsNone(HEX.search(read(*rel)), "literal colour in %s" % "/".join(rel))
+
+    def test_sourced_theme_file_is_the_one_first_login_creates(self):
+        first = read("bin", "heiss-first-login")
+        for rel in (("hypr", "hyprland.conf"), ("hypr", "hyprlock.conf")):
+            self.assertIn("source = ~/.config/heiss/theme/hypr-colors.conf", read(*rel))
+        self.assertIn("hypr-colors.conf", first)
+        self.assertIn('@import "../heiss/theme/waybar-colors.css";', read("waybar", "style.css"))
+
+
+class FirstLogin(unittest.TestCase):
+    def test_every_copied_file_exists_in_the_source_tree(self):
+        for src in re.findall(r"^copy (\S+) ", read("bin", "heiss-first-login"), re.M):
+            self.assertTrue(os.path.isfile(os.path.join(DESKTOP, src)), src)
+
+    def test_never_overwrites_and_writes_only_below_the_users_directories(self):
+        text = read("bin", "heiss-first-login")
+        self.assertNotRegex(text, r"\bcp -f|\bmv |\brm |sudo|\bln -sf\b(?!n)")
+        self.assertNotIn("/etc/", text.replace("/etc/xdg", ""))
+
+    def test_session_logs_and_retries_with_software_rendering(self):
+        text = read("bin", "heiss-session")
+        self.assertIn("WLR_RENDERER_ALLOW_SOFTWARE=1", text)
+        self.assertIn("nomodeset", text)
+        self.assertIn("heiss-first-login", text)
+
+    def test_session_entry_runs_the_session_script(self):
+        text = read("session", "heiss.desktop")
+        self.assertIn("Exec=/usr/bin/heiss-session", text)
+        self.assertIn("DesktopNames=Hyprland", text)
+
+
+class SddmTheme(unittest.TestCase):
+    def test_theme_has_no_plasma_or_kde_import(self):
+        self.assertNotRegex(read("sddm", "heiss", "Main.qml"), r"import\s+org\.kde|Kirigami|plasma")
+
+    def test_main_script_and_config_names(self):
+        meta = read("sddm", "heiss", "metadata.desktop")
+        self.assertIn("MainScript=Main.qml", meta)
+        self.assertIn("ConfigFile=theme.conf", meta)
+
+    def test_every_config_key_the_theme_reads_is_generated(self):
+        qml = read("sddm", "heiss", "Main.qml")
+        used = set(re.findall(r"config\.(\w+)", qml))
+        with open(os.path.join(ROOT, "branding", "tokens", "generated", "desktop", "dark", "sddm-theme.conf"), encoding="utf-8") as f:
+            have = {l.split("=")[0] for l in f if "=" in l}
+        self.assertEqual(used - have, set())
+
+    def test_system_configs_name_the_theme_and_session(self):
+        air = os.path.join(ROOT, "profile", "airootfs", "etc", "sddm.conf.d")
+        with open(os.path.join(air, "heiss-theme.conf"), encoding="utf-8") as f:
+            self.assertIn("Current=heiss", f.read())
+        with open(os.path.join(air, "autologin.conf"), encoding="utf-8") as f:
+            self.assertIn("Session=heiss.desktop", f.read())
+
+
+class NoPlasmaLeft(unittest.TestCase):
+    def test_iso_list_and_manifests_have_no_kde_packages(self):
+        names = ("plasma-desktop", "plasma-workspace", "kwin", "konsole", "dolphin", "kate", "ark", "gwenview", "okular",
+                 "spectacle", "kscreen", "plasma-nm", "plasma-pa", "polkit-kde-agent", "xdg-desktop-portal-kde",
+                 "kde-gtk-config", "breeze-gtk", "bluedevil", "powerdevil", "plasma-firewall")
+        for rel in ("profile/packages.x86_64",) + tuple("profiles/%s.toml" % n for n in ("essentials", "base", "custom", "cyber", "developer")):
+            with open(os.path.join(ROOT, rel), encoding="utf-8") as f:
+                text = f.read()
+            for n in names:
+                self.assertNotRegex(text, r'(^|")%s("|$)' % re.escape(n), "%s mentions %s" % (rel, n))
+
+    def test_plasma_files_are_gone(self):
+        air = os.path.join(ROOT, "profile", "airootfs")
+        for rel in ("usr/share/plasma", "usr/share/color-schemes", "etc/xdg/kdeglobals", "etc/xdg/kwinrc",
+                    "etc/xdg/kscreenlockerrc", "etc/xdg/ksplashrc", "usr/local/bin/heiss-setup-dock.sh",
+                    "usr/local/bin/heiss-theme-sync.sh", "usr/local/bin/heiss-set-wallpaper.sh"):
+            self.assertFalse(os.path.exists(os.path.join(air, rel)), rel)
+
+
+if __name__ == "__main__":
+    unittest.main()
+
+
+class RunTheScripts(unittest.TestCase):
+    """Run heiss-first-login and heiss-session in a temporary home (no Hyprland, no root)."""
+
+    def setUp(self):
+        import tempfile
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        t = self.tmp.name
+        self.home, self.src, self.bin = os.path.join(t, "home"), os.path.join(t, "src"), os.path.join(t, "bin")
+        for d in (self.home, self.bin):
+            os.makedirs(d)
+        for rel in ("hypr/hyprland.conf", "hypr/hypridle.conf", "hypr/hyprlock.conf", "hypr/heiss-user.conf",
+                    "waybar/config.jsonc", "waybar/style.css", "theme/dark/hypr-colors.conf",
+                    "theme/dark/waybar-colors.css", "theme/dark/fuzzel.ini", "theme/dark/mako.conf"):
+            p = os.path.join(self.src, rel)
+            os.makedirs(os.path.dirname(p), exist_ok=True)
+            with open(p, "w", encoding="utf-8") as f:
+                f.write("source:" + rel + "\n")
+        self.env = dict(os.environ, HOME=self.home, HEISS_DESKTOP_SRC=self.src, HEISS_SESSION_BIN=self.bin,
+                        XDG_CONFIG_HOME=os.path.join(self.home, ".config"),
+                        XDG_STATE_HOME=os.path.join(self.home, ".local/state"))
+        for k in ("XKB_DEFAULT_LAYOUT", "XKB_DEFAULT_OPTIONS", "XKB_DEFAULT_VARIANT", "WLR_RENDERER_ALLOW_SOFTWARE"):
+            self.env.pop(k, None)
+
+    def run_script(self, name, **kw):
+        import subprocess
+        return subprocess.run(["sh", os.path.join(DESKTOP, "bin", name)], env=self.env, capture_output=True, text=True,
+                              timeout=60, **kw)
+
+    def cfg(self, *p):
+        return os.path.join(self.home, ".config", *p)
+
+    def test_first_login_copies_links_and_marks(self):
+        r = self.run_script("heiss-first-login")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        for rel in ("hypr/hyprland.conf", "hypr/heiss-user.conf", "waybar/config.jsonc", "waybar/style.css"):
+            self.assertTrue(os.path.isfile(self.cfg(rel)), rel)
+        self.assertTrue(os.path.isfile(self.cfg("heiss/theme/hypr-colors.conf")))
+        self.assertTrue(os.path.islink(self.cfg("fuzzel/fuzzel.ini")))
+        self.assertTrue(os.path.islink(self.cfg("mako/config")))
+        self.assertEqual(os.path.realpath(self.cfg("fuzzel/fuzzel.ini")), os.path.realpath(self.cfg("heiss/theme/fuzzel.ini")))
+        self.assertTrue(os.path.isfile(os.path.join(self.home, ".local/state/heiss/desktop-first-login")))
+
+    def test_first_login_never_overwrites_a_users_file(self):
+        os.makedirs(self.cfg("hypr"))
+        mine = self.cfg("hypr", "hyprland.conf")
+        with open(mine, "w", encoding="utf-8") as f:
+            f.write("my own config\n")
+        os.makedirs(self.cfg("mako"))
+        os.symlink("/nonexistent", self.cfg("mako", "config"))     # even a dangling link of the user stays
+        self.assertEqual(self.run_script("heiss-first-login").returncode, 0)
+        self.assertEqual(self.run_script("heiss-first-login").returncode, 0)
+        with open(mine, encoding="utf-8") as f:
+            self.assertEqual(f.read(), "my own config\n")
+        self.assertEqual(os.readlink(self.cfg("mako", "config")), "/nonexistent")
+
+    def fake_hyprland(self, body):
+        for name, text in (("Hyprland", body), ("heiss-first-login", "#!/bin/sh\nexit 0\n")):
+            p = os.path.join(self.bin, name)
+            with open(p, "w", encoding="utf-8") as f:
+                f.write(text)
+            os.chmod(p, 0o755)
+
+    def test_session_retries_once_with_software_rendering_when_hyprland_fails_fast(self):
+        counter = os.path.join(self.tmp.name, "runs")
+        self.fake_hyprland('#!/bin/sh\necho "run soft=${WLR_RENDERER_ALLOW_SOFTWARE:-no}" >> "%s"\nexit 1\n' % counter)
+        r = self.run_script("heiss-session")
+        self.assertEqual(r.returncode, 1)
+        with open(counter, encoding="utf-8") as f:
+            runs = f.read().splitlines()
+        with open("/proc/cmdline", encoding="utf-8") as f:
+            nomodeset = "nomodeset" in f.read().split()
+        if nomodeset:
+            self.skipTest("this machine itself runs with nomodeset")
+        self.assertEqual(runs, ["run soft=no", "run soft=1"])
+
+    def test_session_does_not_retry_when_hyprland_succeeds(self):
+        counter = os.path.join(self.tmp.name, "runs")
+        self.fake_hyprland('#!/bin/sh\necho run >> "%s"\nexit 0\n' % counter)
+        self.assertEqual(self.run_script("heiss-session").returncode, 0)
+        with open(counter, encoding="utf-8") as f:
+            self.assertEqual(len(f.read().splitlines()), 1)
+
+    def test_session_passes_the_system_keyboard_layout_on_and_refuses_odd_values(self):
+        kb = os.path.join(self.tmp.name, "00-keyboard.conf")
+        with open(kb, "w", encoding="utf-8") as f:
+            f.write('Section "InputClass"\n  Option "XkbLayout" "us,ru"\n  Option "XkbVariant" ""\n'
+                    '  Option "XkbOptions" "grp:alt_shift_toggle;touch /tmp/x"\nEndSection\n')
+        self.env["HEISS_KB_FILE"] = kb
+        out = os.path.join(self.tmp.name, "env")
+        self.fake_hyprland('#!/bin/sh\necho "L=$XKB_DEFAULT_LAYOUT O=${XKB_DEFAULT_OPTIONS:-unset} D=$XDG_CURRENT_DESKTOP" > "%s"\nexit 0\n' % out)
+        self.assertEqual(self.run_script("heiss-session").returncode, 0)
+        with open(out, encoding="utf-8") as f:
+            self.assertEqual(f.read().strip(), "L=us,ru O=unset D=Hyprland")

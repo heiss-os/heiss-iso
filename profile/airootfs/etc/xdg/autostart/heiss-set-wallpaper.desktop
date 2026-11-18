@@ -1,6 +1,0 @@
-[Desktop Entry]
-Type=Application
-Name=Heiss wallpaper
-Exec=sh /usr/local/bin/heiss-set-wallpaper.sh
-OnlyShowIn=KDE;
-NoDisplay=true

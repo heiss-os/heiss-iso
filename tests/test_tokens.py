@@ -7,30 +7,6 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "scripts"))
 import heiss_tokens as h  # noqa: E402
 
-SCHEMES = os.path.join(ROOT, "profile", "airootfs", "usr", "share", "color-schemes")
-
-
-class GeneratorMatchesExistingSchemes(unittest.TestCase):
-    """Generated schemes may ADD keys but must never alter an existing one."""
-
-    def check(self, theme):
-        tokens = h.load()
-        sid = tokens["themes"][theme]["scheme_id"]
-        with open(os.path.join(SCHEMES, sid + ".colors"), encoding="utf-8") as f:
-            existing = h.parse_ini(f.read())
-        generated = h.parse_ini(h.render_kde_scheme(tokens, theme))
-        self.assertTrue(existing, "existing scheme parsed empty")
-        for section, keys in existing.items():
-            self.assertIn(section, generated, "missing section [%s]" % section)
-            for key, value in keys.items():
-                self.assertIn(key, generated[section], "missing [%s] %s" % (section, key))
-                self.assertEqual(generated[section][key], value, "[%s] %s differs" % (section, key))
-
-    def test_dark(self):
-        self.check("dark")
-
-    def test_light(self):
-        self.check("light")
 
 
 class TokenSanity(unittest.TestCase):

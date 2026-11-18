@@ -1,0 +1,56 @@
+/* Heiss OS: Waybar style (placeholder, replace it with your own).
+   The colors come from ~/.config/heiss/theme/waybar-colors.css (@heiss_window, @heiss_accent, ...),
+   which `heiss theme` switches between Heiss Dark and Heiss Light. */
+@import "../heiss/theme/waybar-colors.css";
+
+* {
+    font-family: "Inter", "Symbols Nerd Font Mono";
+    font-size: 13px;
+    border: none;
+    min-height: 0;
+}
+
+window#waybar {
+    background: transparent;
+    color: @heiss_text;
+}
+
+.modules-left, .modules-center, .modules-right {
+    background: alpha(@heiss_panel, 0.92);
+    border-radius: 12px;
+    padding: 0 8px;
+}
+
+#workspaces button {
+    padding: 0 8px;
+    color: @heiss_text_secondary;
+    background: transparent;
+    border-radius: 8px;
+}
+
+#workspaces button.active {
+    color: @heiss_on_accent;
+    background: @heiss_accent;
+}
+
+#workspaces button:hover {
+    background: @heiss_hover;
+}
+
+#pulseaudio, #network, #bluetooth, #battery, #clock, #window {
+    padding: 0 8px;
+}
+
+#battery.warning {
+    color: @heiss_neutral;
+}
+
+#battery.critical, #network.disconnected {
+    color: @heiss_negative;
+}
+
+tooltip {
+    background: @heiss_panel;
+    border: 1px solid @heiss_border;
+    border-radius: 8px;
+}

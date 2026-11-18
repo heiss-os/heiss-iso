@@ -27,9 +27,6 @@ class Stubs(unittest.TestCase):
         self.assertIn("Exec", msgs)
         self.assertIn("Hidden", msgs)
 
-    def test_pins_are_read(self):
-        self.assertIn("org.kde.dolphin.desktop", menu.pinned_ids())
-
     def test_shipped_stubs_are_clean_and_do_not_hide_used_apps(self):
         keep = menu.used_ids(mimeapps)
         import glob

@@ -9,7 +9,6 @@ Manifests live in `profiles/*.toml` (one file per id, file name = id). They are 
 | cyber | profile | base | 11 | 80 / 286 MiB |
 | developer | profile | base | 20 | 162 / 746 MiB |
 | custom | profile | essentials | 0 | 0 / 0 MiB |
-| addon-kitty, addon-thunar | addon | none | 1 / 3 | 19 / 77 and 3 / 15 MiB |
 | addon-lts-kernel | addon | none | 1 | 155 / 156 MiB |
 | addon-cyber-extended | addon | cyber | 3 | 380 / 837 MiB |
 | addon-developer-extended | addon | developer | 3 | 443 / 750 MiB |
@@ -20,7 +19,7 @@ Sizes come from `scripts/check-packages.py` (pacman sync database, 2026-11-09). 
 
 - Official repositories only. `scripts/check-packages.py` and the CI job `packages-exist` fail if a package disappears.
 - Installing a profile never weakens defaults: only `essentials` enables services (NetworkManager, SDDM, Bluetooth, firewalld, fstrim.timer).
-- Konsole and Dolphin are the defaults. Kitty and Thunar are add-ons.
+- Kitty and Thunar are the default terminal and file manager (in `essentials`); the Hyprland session replaces Plasma (`docs/DIRECTION-HYPRLAND.md`). The sizes in the table above were measured before that change and are not re-measured yet.
 - Not in any profile yet: NVIDIA and other hardware-dependent packages (Phase 7), Flatpak/Flathub (an answer, off by default), Inter font (ships with the branding package, Phase 10), Heiss's own packages (not written yet).
 
 ## Commands
@@ -28,7 +27,7 @@ Sizes come from `scripts/check-packages.py` (pacman sync database, 2026-11-09). 
 ```
 PYTHONPATH=core python3 -m heiss_core --profiles profiles profile list
 PYTHONPATH=core python3 -m heiss_core --profiles profiles profile show cyber
-PYTHONPATH=core python3 -m heiss_core --profiles profiles profile diff --profile cyber --addon addon-kitty
+PYTHONPATH=core python3 -m heiss_core --profiles profiles profile diff --profile cyber --addon addon-lts-kernel
 PYTHONPATH=core python3 -m heiss_core --profiles profiles profile apply --dry-run --profile base
 ```
 

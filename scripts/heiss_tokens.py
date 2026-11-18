@@ -70,10 +70,6 @@ def contrast(a, b):
     return (hi + 0.05) / (lo + 0.05)
 
 
-def rgb_csv(h):
-    return "%d,%d,%d" % hex_to_rgb(h)
-
-
 # ---------- resolved palette ----------
 
 def palette(tokens, theme):
@@ -102,113 +98,6 @@ def terminal(tokens, theme):
         "selection_bg": p[t["selection_bg"]], "selection_fg": p[t["selection_fg"]],
         "ansi": list(t["ansi"]),
     }
-
-
-# ---------- KDE color scheme ----------
-
-_COLOR_EFFECTS = """[ColorEffects:Disabled]
-Color=56,56,56
-ColorAmount=0
-ColorEffect=0
-ContrastAmount=0.65
-ContrastEffect=1
-IntensityAmount=0.1
-IntensityEffect=2
-
-[ColorEffects:Inactive]
-ChangeSelectionColor=true
-Color=112,111,110
-ColorAmount=0.025
-ColorEffect=2
-ContrastAmount=0.1
-ContrastEffect=2
-Enable=false
-IntensityAmount=0
-IntensityEffect=0
-"""
-
-
-def _fg_block(p, normal, inactive):
-    return [
-        ("DecorationFocus", p["accent"]), ("DecorationHover", p["accent"]),
-        ("ForegroundActive", p["accent"]), ("ForegroundInactive", inactive),
-        ("ForegroundLink", p["accent"]), ("ForegroundNegative", p["negative"]),
-        ("ForegroundNeutral", p["neutral"]), ("ForegroundNormal", normal),
-        ("ForegroundPositive", p["positive"]), ("ForegroundVisited", p["visited"]),
-    ]
-
-
-def kde_scheme_sections(tokens, theme):
-    """Ordered list of (section, [(key, 'r,g,b' or literal)])."""
-    p = palette(tokens, theme)
-    t = tokens["themes"][theme]
-    std = tokens["kde_scheme"]["standard_sections"]
-    out = []
-
-    def sect(name, pairs):
-        out.append((name, [(k, v if not v.startswith("#") else rgb_csv(v)) for k, v in pairs]))
-
-    def standard(name, normal=None):
-        m = std[name]
-        pairs = [("BackgroundAlternate", p[m["bg_alt"]]), ("BackgroundNormal", p[m["bg"]])]
-        pairs += _fg_block(p, normal or p["text"], p["text_secondary"])
-        sect(name, pairs)
-
-    standard("Colors:Button")
-    standard("Colors:Complementary")
-    standard("Colors:Header")
-    # Inactive header: only the normal text color differs
-    m = std["Colors:Header"]
-    pairs = [("BackgroundAlternate", p[m["bg_alt"]]), ("BackgroundNormal", p[m["bg"]])]
-    pairs += _fg_block(p, p["text_secondary"], p["text_secondary"])
-    sect("Colors:Header][Inactive", pairs)  # rendered as [Colors:Header][Inactive]
-    sect("Colors:Selection", [
-        ("BackgroundAlternate", p["accent_alt"]), ("BackgroundNormal", p["accent"]),
-        ("DecorationFocus", p["accent"]), ("DecorationHover", p["accent"]),
-        ("ForegroundActive", p["accent"]), ("ForegroundInactive", p["on_accent"]),
-        ("ForegroundLink", p["on_accent"]), ("ForegroundNegative", p["on_accent_negative"]),
-        ("ForegroundNeutral", p["on_accent_neutral"]), ("ForegroundNormal", p["on_accent"]),
-        ("ForegroundPositive", p["on_accent_positive"]), ("ForegroundVisited", p["on_accent"]),
-    ])
-    standard("Colors:Tooltip")
-    standard("Colors:View")
-    standard("Colors:Window")
-    sect("General", [
-        ("ColorScheme", t["scheme_id"]), ("Name", t["name"]),
-        ("shadeSortColumn", "true"), ("AccentColor", p["accent"]),
-    ])
-    sect("KDE", [("contrast", "4")])
-    sect("WM", [
-        ("activeBackground", p["panel"]), ("activeBlend", p["text"]),
-        ("activeForeground", p["text"]), ("inactiveBackground", p["panel"]),
-        ("inactiveBlend", p["text_secondary"]), ("inactiveForeground", p["text_secondary"]),
-    ])
-    return out
-
-
-def render_kde_scheme(tokens, theme):
-    lines = ["# " + HEADER, _COLOR_EFFECTS]
-    for name, pairs in kde_scheme_sections(tokens, theme):
-        lines.append("[%s]" % name)
-        lines += ["%s=%s" % kv for kv in pairs]
-        lines.append("")
-    return "\n".join(lines)
-
-
-def parse_ini(text):
-    """Minimal KDE ini parser: {section: {key: value}}; keeps case, ignores comments."""
-    data, cur = {}, None
-    for raw in text.splitlines():
-        line = raw.strip()
-        if not line or line.startswith("#") or line.startswith(";"):
-            continue
-        if line.startswith("[") and line.endswith("]"):
-            cur = line[1:-1]
-            data.setdefault(cur, {})
-        elif "=" in line and cur is not None:
-            k, v = line.split("=", 1)
-            data[cur][k] = v
-    return data
 
 
 # ---------- GTK (libadwaita named colors + classic theme_* names) ----------
@@ -264,20 +153,6 @@ def render_kitty(tokens, theme):
     return "\n".join(out) + "\n"
 
 
-def render_konsole(tokens, theme):
-    t = terminal(tokens, theme)
-    name = tokens["themes"][theme]["name"]
-    out = ["# " + HEADER,
-           "[Background]", "Color=" + rgb_csv(t["bg"]), "",
-           "[BackgroundIntense]", "Color=" + rgb_csv(t["bg"]), "",
-           "[Foreground]", "Color=" + rgb_csv(t["fg"]), "",
-           "[ForegroundIntense]", "Color=" + rgb_csv(t["fg"]), ""]
-    for i, c in enumerate(t["ansi"]):
-        sec = "Color%d" % i if i < 8 else "Color%dIntense" % (i - 8)
-        out += ["[%s]" % sec, "Color=" + rgb_csv(c), ""]
-    out += ["[General]", "Description=%s" % name, "Opacity=1", ""]
-    return "\n".join(out)
-
 
 # ---------- contrast pairs ----------
 
@@ -303,16 +178,6 @@ def text_pairs(tokens, theme):
     return pairs
 
 
-def render_konsole_profile(tokens, theme):
-    t = tokens["themes"][theme]
-    size = tokens["font"]["sizes_pt"]["terminal"]
-    font = "%s,%d,-1,5,400,0,0,0,0,0,0,0,0,0,0,1" % (tokens["font"]["mono"], size)
-    return "\n".join(["# " + HEADER, "[Appearance]", "ColorScheme=%s" % t["scheme_id"], "Font=%s" % font, "",
-                      "[General]", "Name=%s" % t["name"], "Parent=FALLBACK/", ""])
-
-
-def render_konsolerc():
-    return "# " + HEADER + "\n[Desktop Entry]\nDefaultProfile=Heiss-Dark.profile\n"
 
 
 def render_kitty_conf(tokens):
@@ -324,3 +189,68 @@ def render_kitty_conf(tokens):
         "font_family      %s" % tokens["font"]["mono"], "font_size        %d" % size,
         "window_padding_width 8", "cursor_shape     block", "background_opacity 1.0",
         "enable_audio_bell no", ""])
+
+
+# ---------- Hyprland desktop (Hyprland, hyprlock, Waybar, fuzzel, mako) ----------
+
+def _bare(c):
+    return c.lstrip("#").lower()
+
+
+def render_hypr_colors(tokens, theme):
+    """hyprlang variables, sourced by hyprland.conf, hyprlock.conf and heiss-user.conf."""
+    p = palette(tokens, theme)
+    names = ("window", "view", "panel", "button", "text", "text_secondary", "accent", "accent_alt", "on_accent",
+             "border", "negative", "positive", "neutral")
+    out = ["# " + HEADER, "# Heiss colors (%s). Use as $heiss_<name>, for example col.active_border = $heiss_accent." % theme]
+    out += ["$heiss_%s = rgb(%s)" % (n, _bare(p[n])) for n in names]
+    return "\n".join(out) + "\n"
+
+
+def render_waybar_colors(tokens, theme):
+    p = palette(tokens, theme)
+    names = ("window", "view", "panel", "button", "hover", "pressed", "text", "text_secondary", "accent", "on_accent",
+             "border", "negative", "positive", "neutral", "disabled_text")
+    out = ["/* " + HEADER + " */"]
+    out += ["@define-color heiss_%s %s;" % (n, p[n].lower()) for n in names]
+    return "\n".join(out) + "\n"
+
+
+def render_fuzzel(tokens, theme):
+    p = palette(tokens, theme)
+    size = tokens["font"]["sizes_pt"]["large"]
+    return "\n".join([
+        "# " + HEADER, "[main]", "font=%s:size=%d" % (tokens["font"]["ui"], size),
+        "prompt=\"  \"", "width=36", "lines=10", "horizontal-pad=20", "vertical-pad=14", "inner-pad=8", "",
+        "[colors]",
+        "background=%sf2" % _bare(p["panel"]), "text=%sff" % _bare(p["text"]),
+        "prompt=%sff" % _bare(p["accent"]), "placeholder=%sff" % _bare(p["text_secondary"]),
+        "input=%sff" % _bare(p["text"]), "match=%sff" % _bare(p["accent"]),
+        "selection=%sff" % _bare(p["button"]), "selection-text=%sff" % _bare(p["text"]),
+        "selection-match=%sff" % _bare(p["accent"]), "border=%sff" % _bare(p["border"]), "",
+        "[border]", "width=1", "radius=%d" % tokens["radius"]["card"], ""])
+
+
+def render_mako(tokens, theme):
+    p = palette(tokens, theme)
+    size = tokens["font"]["sizes_pt"]["body"]
+    return "\n".join([
+        "# " + HEADER, "font=%s %d" % (tokens["font"]["ui"], size),
+        "background-color=%s" % p["panel"].lower(), "text-color=%s" % p["text"].lower(),
+        "border-color=%s" % p["border"].lower(), "progress-color=over %s" % p["accent"].lower(),
+        "border-size=1", "border-radius=%d" % tokens["radius"]["control"], "padding=12", "margin=12",
+        "default-timeout=6000", "layer=overlay", "anchor=top-right", "",
+        "[urgency=high]", "border-color=%s" % p["negative"].lower(), "default-timeout=0", ""])
+
+
+def render_sddm_theme(tokens, theme):
+    """theme.conf of the SDDM login theme (read by Main.qml as `config.<key>`)."""
+    p = palette(tokens, theme)
+    keys = ("window", "view", "panel", "button", "text", "text_secondary", "accent", "accent_alt", "on_accent",
+            "border", "negative")
+    out = ["# " + HEADER, "[General]"]
+    out += ["%s=%s" % (k, p[k]) for k in keys]
+    out += ["font=%s" % tokens["font"]["ui"],
+            "background=/usr/share/wallpapers/Heiss-Everyday/contents/images/3840x2160.png",
+            "logo=/usr/share/heiss/heiss-glyph-sand.svg", ""]
+    return "\n".join(out)

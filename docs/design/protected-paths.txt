@@ -6,10 +6,7 @@ profile/airootfs/usr/local/bin/heiss-boot-branding.sh
 profile/airootfs/usr/share/heiss/
 profile/airootfs/usr/share/plymouth/themes/heiss/
 profile/airootfs/etc/sddm.conf.d/
-profile/airootfs/usr/share/plasma/look-and-feel/
-profile/airootfs/usr/local/bin/heiss-setup-dock.sh
 profile/airootfs/usr/share/wallpapers/
-profile/airootfs/usr/share/color-schemes/
 profile/airootfs/usr/share/libalpm/hooks/
 profile/airootfs/usr/share/icons/hicolor/
 profile/airootfs/usr/local/bin/heiss-cleanup.sh

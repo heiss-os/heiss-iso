@@ -10,8 +10,9 @@ sys.path.insert(0, os.path.dirname(HERE))
 from heiss_core import manifest as mf  # noqa: E402
 
 SCRIPT = os.path.join(REPO, "core", "data", "heiss-gtk-audit")
-# what makes GTK applications follow the KDE theme: GTK sync, GTK theme, both portal backends
-GTK_PREREQUISITES = {"kde-gtk-config", "breeze-gtk", "xdg-desktop-portal-kde", "xdg-desktop-portal-gtk"}
+# what makes GTK and Qt applications follow the Heiss theme in the Hyprland session: both portal backends, the icon
+# theme, the Qt platform theme and the Wayland plugin
+GTK_PREREQUISITES = {"xdg-desktop-portal-hyprland", "xdg-desktop-portal-gtk", "adwaita-icon-theme", "qt6ct", "qt6-wayland"}
 
 
 class GtkPrerequisites(unittest.TestCase):

@@ -134,7 +134,7 @@ def welcome_pages(out, lang, theme, shots):
     while True:
         sid = vm.w.step_id
         if sid == "addons":   # one ticked box, to see the marker (the row itself must look like the others)
-            vm.w.set("addons", ["addon-kitty"])
+            vm.w.set("addons", ["addon-lts-kernel"])
             bridge._set(vm.screen())
         shot(win, bridge, "%02d-%s" % (seen, sid))
         set_size(win, 800, 600)
@@ -193,7 +193,7 @@ def control_pages(out, lang, theme, shots):
         f.write('NAME="Heiss OS"\nPRETTY_NAME="Heiss OS"\nBUILD_ID=rolling\nHOME_URL="https://example.org/home"\n'
                 'DOCUMENTATION_URL="https://example.org/docs"\nBUG_REPORT_URL="https://example.org/bugs"\n'
                 'SUPPORT_URL="https://example.org/support"\n')
-    answers = dict(ans.DEFAULTS, profile="cyber", addons=["addon-kitty", "addon-thunar"])
+    answers = dict(ans.DEFAULTS, profile="cyber", addons=["addon-lts-kernel"])
     ans.save(os.path.join(scratch, "profile.toml"), answers)
     state = {"schema_version": 1, "applied": {"profile": "cyber", "addons": []},
              "packages": ["pkg-%03d" % i for i in range(40)], "services": ["firewalld.service"], "flatpaks": []}
@@ -219,7 +219,7 @@ def control_pages(out, lang, theme, shots):
     env = m.Env(
         os_release=os.path.join(scratch, "os-release"), system_answers=os.path.join(scratch, "profile.toml"),
         user_dir=user, state_file=os.path.join(scratch, "state.json"), profiles_dir=os.path.join(REPO, "profiles"),
-        kde_value=lambda f, g, k: "HeissDark" if theme == "dark" else "HeissLight",
+        theme_get=lambda: theme,
         apply_theme=lambda t: (True, ""), online=lambda: True, run_pending_item=lambda it, step: None,
         run_check=lambda: [{"name": "units", "status": "OK", "detail": "all units active", "commands": []},
                            {"name": "firewall", "status": "WARN", "detail": "firewalld is not enabled", "commands": []},

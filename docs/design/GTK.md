@@ -1,5 +1,7 @@
 # GTK applications: how they get the Heiss theme
 
+Status 2026-11-18: written for the KDE preview. In the Hyprland session GTK gets its theme from `heiss theme` (generated `settings.ini`, CSS and GSettings), see `docs/DIRECTION-HYPRLAND.md` section 5; this file is rewritten in H1b.
+
 Status: audit and plan, no GTK configuration is shipped by Heiss yet. Facts marked (db) come from the Arch package database, read in CI on 2026-11-10 (versions: Plasma 6.8.2, kde-gtk-config 6.8.2, xdg-desktop-portal 1.22.1). Everything about runtime behavior is NOT verified: nobody has run a GTK application in a Heiss session yet.
 
 ## What is already in the ISO (Essentials, so also Base and Custom)

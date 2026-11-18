@@ -1,0 +1,42 @@
+#!/bin/sh
+# Heiss OS: puts the default desktop configuration into the user's home at the first login.
+# Source: /usr/share/heiss/desktop (replace the files there, no code change needed). A file the user already has is
+# never overwritten. The Heiss colors go to ~/.config/heiss/theme/ (dark first); `heiss theme` switches them later.
+# Called by heiss-session before the compositor starts. Writes only below the user's own config directory.
+SRC="${HEISS_DESKTOP_SRC:-/usr/share/heiss/desktop}"   # the override is for tests; everything is written below the user's own directories
+CFG="${XDG_CONFIG_HOME:-$HOME/.config}"
+STATE="${XDG_STATE_HOME:-$HOME/.local/state}/heiss"
+THEME="$CFG/heiss/theme"
+
+copy() {   # copy SOURCE-RELATIVE-PATH DEST-RELATIVE-PATH (only when the destination does not exist)
+  [ -e "$SRC/$1" ] || return 0
+  [ -e "$CFG/$2" ] || [ -L "$CFG/$2" ] && return 0
+  mkdir -p "$(dirname "$CFG/$2")" && cp "$SRC/$1" "$CFG/$2"
+}
+
+copy hypr/hyprland.conf hypr/hyprland.conf
+copy hypr/hypridle.conf hypr/hypridle.conf
+copy hypr/hyprlock.conf hypr/hyprlock.conf
+copy hypr/heiss-user.conf hypr/heiss-user.conf
+copy waybar/config.jsonc waybar/config.jsonc
+copy waybar/style.css waybar/style.css
+
+# theme files of the active theme (dark at the first login), kept in one place
+if [ ! -e "$THEME/hypr-colors.conf" ]; then
+  mkdir -p "$THEME"
+  for f in hypr-colors.conf waybar-colors.css fuzzel.ini mako.conf; do
+    [ -e "$SRC/theme/dark/$f" ] && cp "$SRC/theme/dark/$f" "$THEME/$f"
+  done
+  [ -e /usr/share/wallpapers/Heiss-Everyday/contents/images/3840x2160.png ] \
+    && ln -sfn /usr/share/wallpapers/Heiss-Everyday/contents/images/3840x2160.png "$THEME/wallpaper"
+fi
+# launcher and notifications read their own config path: link them to the theme files
+for pair in "fuzzel/fuzzel.ini:fuzzel.ini" "mako/config:mako.conf"; do
+  dest="$CFG/${pair%%:*}"
+  if [ ! -e "$dest" ] && [ ! -L "$dest" ] && [ -e "$THEME/${pair##*:}" ]; then
+    mkdir -p "$(dirname "$dest")" && ln -s "$THEME/${pair##*:}" "$dest"
+  fi
+done
+
+mkdir -p "$STATE" && : > "$STATE/desktop-first-login"
+exit 0

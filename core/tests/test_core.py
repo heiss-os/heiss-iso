@@ -89,7 +89,7 @@ class TrailingNewline(unittest.TestCase):
 
 class Answers(unittest.TestCase):
     def test_defaults_and_roundtrip(self):
-        doc = ans.validate({"profile": "cyber", "addons": ["addon-kitty"]})
+        doc = ans.validate({"profile": "cyber", "addons": ["addon-lts-kernel"]})
         self.assertEqual(ans.loads(ans.dumps(doc)), doc)
         self.assertEqual(doc["appearance"]["animations"], "full")
 
@@ -125,7 +125,7 @@ class Resolver(unittest.TestCase):
 
     def test_fresh_install_base(self):
         p = self.plan("base")
-        self.assertIn("kate", p.install_packages)
+        self.assertIn("mousepad", p.install_packages)
         self.assertIn("NetworkManager.service", p.enable_services)
         self.assertEqual(p.remove_packages, [])
         self.assertEqual(len(p.install_packages), len(set(p.install_packages)))
@@ -152,30 +152,30 @@ class Resolver(unittest.TestCase):
         self.assertIn("wireshark-qt", p2.remove_packages)
         self.assertNotIn("nmap", p2.remove_packages)          # still required by another package
         self.assertEqual(p2.kept_packages["nmap"], ["zenmap-user-pkg"])
-        self.assertNotIn("kate", p2.remove_packages)
+        self.assertNotIn("mousepad", p2.remove_packages)
 
     def test_shared_package_stays_when_still_wanted(self):
-        p1 = self.plan("developer", ["addon-kitty"])
+        p1 = self.plan("developer", ["addon-developer-extended"])
         sysm = FakeSystem(installed=p1.next_state["packages"], services=p1.next_state["services"])
         p2 = self.plan("developer", state=p1.next_state, system=sysm)
-        self.assertEqual(p2.remove_packages, ["kitty"])
+        self.assertEqual(sorted(p2.remove_packages), ["docker", "docker-compose", "jdk-openjdk"])
 
     def test_adopt_only_explicit_and_unowned(self):
-        sysm = FakeSystem(installed={"kate", "ark", "libfoo"}, explicit={"kate"})
+        sysm = FakeSystem(installed={"mousepad", "ark", "libfoo"}, explicit={"mousepad"})
         p = self.plan("base", system=sysm, adopt=True)
-        self.assertEqual(p.adopt_packages, ["kate"])
-        self.assertNotIn("kate", p.install_packages)
+        self.assertEqual(p.adopt_packages, ["mousepad"])
+        self.assertNotIn("mousepad", p.install_packages)
         self.assertEqual(self.plan("base", system=sysm).adopt_packages, [])
 
     def test_forget_vanished_packages(self):
-        st1 = dict(EMPTY_STATE, packages=["kitty"])
+        st1 = dict(EMPTY_STATE, packages=["nmap"])
         p = self.plan("base", state=st1)
-        self.assertEqual(p.forget_packages, ["kitty"])
-        self.assertNotIn("kitty", p.next_state["packages"])
+        self.assertEqual(p.forget_packages, ["nmap"])
+        self.assertNotIn("nmap", p.next_state["packages"])
 
     def test_wrong_kinds(self):
         with self.assertRaises(ValidationError):
-            self.plan("addon-kitty")
+            self.plan("addon-lts-kernel")
         with self.assertRaises(ValidationError):
             self.plan("base", ["base"])
 

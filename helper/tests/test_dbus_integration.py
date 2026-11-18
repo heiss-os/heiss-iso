@@ -78,7 +78,7 @@ class DBusGlue(BusBase):
         self.assertEqual(self.call("Ping")["value"][0], "0.1.0")
 
     def test_install_streams_signals_to_caller(self):
-        r = self.call("InstallPackages", GLib.Variant("(as)", (["kate"],)))
+        r = self.call("InstallPackages", GLib.Variant("(as)", (["mousepad"],)))
         job = r["value"][0]
         self.wait_finished()
         finished = [s for s in self.signals if s[0] == "JobFinished"][0]
@@ -89,7 +89,7 @@ class DBusGlue(BusBase):
 
     def test_unauthorized_error_name(self):
         self.auth.allow = False
-        r = self.call("InstallPackages", GLib.Variant("(as)", (["kate"],)))
+        r = self.call("InstallPackages", GLib.Variant("(as)", (["mousepad"],)))
         self.assertEqual(r["error"], "org.heiss.Helper1.Error.NotAuthorized")
         self.assertEqual(self.runner.calls, [])
 
@@ -112,7 +112,7 @@ class ClientAgainstService(BusBase):
 
     def test_call_streams_output_and_returns_on_success(self):
         lines = []
-        self.client_api.call("InstallPackages", (["kate"],), lines.append)
+        self.client_api.call("InstallPackages", (["mousepad"],), lines.append)
         self.assertTrue(any("ran pacman" in l for l in lines))
         self.assertEqual(self.runner.calls[-1][:3], ["pacman", "-S", "--needed"])
 
@@ -129,7 +129,7 @@ class ClientAgainstService(BusBase):
     def test_unauthorized_raises_with_code(self):
         self.auth.allow = False
         with self.assertRaises(HeissError) as cm:
-            self.client_api.call("InstallPackages", (["kate"],), lambda l: None)
+            self.client_api.call("InstallPackages", (["mousepad"],), lambda l: None)
         self.assertIn("NotAuthorized", str(cm.exception))
 
     def test_invalid_raises_with_code(self):

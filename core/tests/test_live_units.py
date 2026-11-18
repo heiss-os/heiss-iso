@@ -2,6 +2,7 @@
 (enabled units, aliases, masks), cloud-init and the live sshd are gone, the autostart entries are
 pinned, and the "quiet by default" files are in place."""
 import json
+import re
 import os
 import unittest
 
@@ -35,7 +36,6 @@ LINKS = {
     "system/sound.target.wants/livecd-alsa-unmuter.service": "../livecd-alsa-unmuter.service",
     "system/sysinit.target.wants/systemd-timesyncd.service": LIB + "systemd-timesyncd.service",
     "system/sysinit.target.wants/systemd-time-wait-sync.service": LIB + "systemd-time-wait-sync.service",
-    "user/default.target.wants/heiss-theme-sync.path": "../heiss-theme-sync.path",
 }
 # D-Bus activation aliases: the link name differs from the unit on purpose.
 ALIASES = {"dbus-org.freedesktop.ModemManager1.service", "dbus-org.freedesktop.nm-dispatcher.service",
@@ -47,14 +47,8 @@ NEVER = {"sshd.service", "sshd.socket", "reflector.service", "reflector.timer", 
          "cloud-init-network.service", "cloud-config.service", "cloud-final.service", "geoclue.service",
          "avahi-daemon.service", "avahi-daemon.socket", "fwupd.service", "fwupd-refresh.timer",
          "packagekit.service", "packagekit-offline-update.service"}
-# Every autostart entry of the live desktop and what it runs: none of them may fetch anything.
-AUTOSTART = {
-    "heiss-installer-autostart.desktop": "/usr/local/bin/heiss-start-installer.sh",
-    "heiss-open-link.desktop": 'sh -c "test -d /run/archiso/bootmnt && exec /usr/local/bin/heiss-open-link"',
-    "heiss-set-wallpaper.desktop": "sh /usr/local/bin/heiss-set-wallpaper.sh",
-    "heiss-setup-dock.desktop": "sh /usr/local/bin/heiss-setup-dock.sh",
-    "heiss-theme-sync.desktop": "sh /usr/local/bin/heiss-theme-sync.sh",
-}
+# Programs the default Hyprland configuration starts (exec-once): none of them may fetch anything.
+EXEC_ONCE = ["heiss-wallpaper", "waybar", "mako", "hypridle", "hyprpolkitagent", "nm-applet --indicator", "blueman-applet"]
 
 
 def packages(name):
@@ -114,14 +108,23 @@ class SystemdLinks(unittest.TestCase):
 
 
 class Autostart(unittest.TestCase):
-    def test_autostart_entries_and_their_commands_are_the_listed_ones(self):
-        d = os.path.join(AIROOTFS, "etc", "xdg", "autostart")
-        found = {}
-        for name in os.listdir(d):
-            execs = [l.split("=", 1)[1].strip() for l in settings(os.path.join(d, name)) if l.startswith("Exec=")]
-            self.assertEqual(len(execs), 1, name)
-            found[name] = execs[0]
-        self.assertEqual(found, AUTOSTART)
+    def test_no_xdg_autostart_entries_in_the_image(self):
+        self.assertFalse(os.path.exists(os.path.join(AIROOTFS, "etc", "xdg", "autostart")))
+
+    def test_session_starts_the_two_live_helpers_only_in_the_live_system(self):
+        with open(os.path.join(REPO, "desktop", "bin", "heiss-session"), encoding="utf-8") as f:
+            text = f.read()
+        m = re.search(r"if \[ -d /run/archiso/bootmnt \]; then\n(.*?)\nfi", text, re.S)
+        self.assertIsNotNone(m)
+        self.assertEqual(re.findall(r"/usr/local/bin/[\w.-]+", m.group(1)),
+                         ["/usr/local/bin/heiss-start-installer.sh", "/usr/local/bin/heiss-open-link"])
+
+    def test_default_hyprland_config_starts_the_listed_programs(self):
+        with open(os.path.join(REPO, "desktop", "hypr", "hyprland.conf"), encoding="utf-8") as f:
+            started = [l.split("=", 1)[1].strip() for l in f if l.startswith("exec-once")]
+        self.assertEqual(started, EXEC_ONCE)
+        for cmd in started:
+            self.assertNotRegex(cmd, r"curl|wget|http")
 
 
 class LivePackages(unittest.TestCase):

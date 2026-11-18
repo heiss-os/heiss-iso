@@ -4,7 +4,7 @@
 Every file there is either the hidden Calamares override or a "hide stub": same desktop file id
 as the stock entry, NoDisplay=true, Hidden=true, no Exec (so it cannot drift from the package).
 
-Always: stub shape; a hidden id is not a default application in mimeapps.list and not a dock pin.
+Always: stub shape; a hidden id is not a default application in mimeapps.list.
 With --require-file-db (CI, after `pacman -Fy`): the id is shipped by an official package, so a
 stub for an entry that no longer exists fails instead of rotting.
 """
@@ -17,11 +17,7 @@ import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DIR = os.path.join(ROOT, "profile", "airootfs", "usr", "local", "share", "applications")
-NOT_STUBS = {"calamares.desktop"}   # hidden override with its own rules, checked by check-launchers.py
-
-
-LAYOUT = os.path.join(ROOT, "profile", "airootfs", "usr", "share", "plasma", "look-and-feel",
-                      "org.heiss.%s.desktop", "contents", "layouts", "org.kde.plasma.desktop-layout.js")
+NOT_STUBS = {"calamares.desktop"}   # hidden override of the installer fallback (removed together with Calamares)
 
 
 def load(name):
@@ -44,15 +40,6 @@ def desktop_keys(text):
     return out
 
 
-def pinned_ids():
-    ids = set()
-    for theme in ("dark", "light"):
-        with open(LAYOUT % theme, encoding="utf-8") as f:
-            m = re.search(r'writeConfig\(\s*"launchers"\s*,\s*\[(.*?)\]\s*\)', f.read(), re.S)
-        ids |= {x.split(":", 1)[-1] for x in re.findall(r'"([^"]*)"', m.group(1))} if m else set()
-    return ids
-
-
 def stub_problems(fname, keys):
     problems = []
     if keys.get("Type") != "Application":
@@ -66,11 +53,10 @@ def stub_problems(fname, keys):
 
 
 def used_ids(mimeapps):
-    """Desktop ids that must stay visible: dock pins and default applications."""
-    pins = pinned_ids()
+    """Desktop ids that must stay visible: the default applications."""
     with open(mimeapps.PATH, encoding="utf-8") as f:
         data, _ = mimeapps.parse(f.read())
-    return pins | {i for ids in data.values() for i in ids}
+    return {i for ids in data.values() for i in ids}
 
 
 def owners(desktop_id):
@@ -93,7 +79,7 @@ def main(argv):
             problems += stub_problems(fname, desktop_keys(f.read()))
         hidden.append(fname)
         if fname in keep:
-            problems.append("%s is a dock pin or a default application and must stay visible" % fname)
+            problems.append("%s is a default application and must stay visible" % fname)
     if "--require-file-db" in argv:
         for fname in hidden:
             pk = owners(fname)

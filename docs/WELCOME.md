@@ -1,5 +1,7 @@
 # Heiss Welcome (first-run wizard): plan and state
 
+Status 2026-11-18: dormant. `heiss-welcome` is no longer in the ISO package list and its autostart entry is gone; the installer questions move to the terminal installer (H3) and the key-binding window comes in H2 (`docs/DIRECTION-HYPRLAND.md`). Its theme step now calls `heiss theme set`.
+
 Master plan section 7. Stack as in `docs/ARCHITECTURE.md`: PySide6 + QML (Kirigami), official packages (`pyside6` 6.12.0, `kirigami` 6.31.0, `qt6-declarative` 6.12.0 exist in the repositories; installed size of pyside6 52 MiB; `pyside6` is a dependency of `heiss-welcome` and `heiss-control`, both in `profile/packages.x86_64`).
 
 ## Split into PRs

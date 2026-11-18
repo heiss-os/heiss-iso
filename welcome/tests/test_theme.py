@@ -10,7 +10,7 @@ sys.path.insert(0, os.path.join(REPO, "core"))
 sys.path.insert(0, os.path.dirname(HERE))
 from heiss_core import wizard as wz  # noqa: E402
 from heiss_welcome.app import build  # noqa: E402
-from heiss_welcome.theme import LNF, apply_theme  # noqa: E402
+from heiss_welcome.theme import apply_theme  # noqa: E402
 
 PROFILES = os.path.join(REPO, "profiles")
 
@@ -27,11 +27,11 @@ class Run:
 
 
 class ApplyTheme(unittest.TestCase):
-    def test_dark_and_light_use_the_heiss_look_and_feel(self):
-        for theme, lnf in (("dark", "org.heiss.dark.desktop"), ("light", "org.heiss.light.desktop")):
+    def test_dark_and_light_run_heiss_theme_set(self):
+        for theme in ("dark", "light"):
             run = Run()
             self.assertEqual(apply_theme(theme, run), (True, ""))
-            self.assertEqual(run.calls, [["plasma-apply-lookandfeel", "--apply", lnf]])
+            self.assertEqual(run.calls, [["heiss", "theme", "set", theme]])
 
     def test_auto_changes_nothing(self):
         run = Run()
@@ -45,11 +45,6 @@ class ApplyTheme(unittest.TestCase):
         ok, msg = apply_theme("dark", Run(raises=FileNotFoundError("plasma-apply-lookandfeel")))
         self.assertFalse(ok)
         self.assertIn("cannot switch the theme", msg)
-
-    def test_the_ids_match_the_shipped_look_and_feel_packages(self):
-        for lnf in LNF.values():
-            self.assertTrue(os.path.isdir(os.path.join(REPO, "profile", "airootfs", "usr", "share", "plasma",
-                                                       "look-and-feel", lnf)), lnf)
 
 
 class Wizard(unittest.TestCase):

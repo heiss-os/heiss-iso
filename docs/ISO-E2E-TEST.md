@@ -97,7 +97,7 @@ heiss check --report ~/heiss-check.txt
 sudo heiss check --report /tmp/heiss-check-root.txt
 ```
 
-Items: failed units (system and user), profile and state file consistency, theme sync (`heiss theme status`), launcher menu (hide stubs and duplicate names), the 37 packages removed in PR 49 absent (a package that Heiss itself installed for Cyber is expected), keyboard shortcuts and the Konsole part behind "Open Terminal Here" (`docs/design/SHORTCUTS.md`, `docs/apps/TERMINAL-HERE.md`), helper (`org.heiss.Helper1` answers `Ping`, polkit and D-Bus files installed), no live leftovers (liveuser, archiso packages, root locked). The report holds the full output, the exact commands and their raw output (except the read-only commands of the theme item, which are listed by `heiss theme status`).
+Items: failed units (system and user), profile and state file consistency, launcher menu (hide stubs and duplicate names), the 37 packages removed in PR 49 absent (a package that Heiss itself installed for Cyber is expected), the Hyprland session (session files, configs, SDDM theme present, no KDE packages left; a WARN until the first login has copied `~/.config/hypr/hyprland.conf`), helper (`org.heiss.Helper1` answers `Ping`, polkit and D-Bus files installed), no live leftovers (liveuser, archiso packages, root locked). The report holds the full output, the exact commands and their raw output (except the read-only commands of the theme item, which are listed by `heiss theme status`).
 
 Run it after step 3 and after step 4 above. A fresh install before any `heiss profile apply` is expected to give `WARN profile-state` (no state file yet).
 
@@ -112,7 +112,7 @@ Run it after step 3 and after step 4 above. A fresh install before any `heiss pr
 - `fakeroot` printed `payload not recognized` during `makepkg` on the build VM: the packages were still created and inspected, but the cause is unknown.
 - Everything about the real polkit call: it was only tested against a fake in CI.
 
-## Theme sync and terminals (added with `heiss theme sync`)
+## Theme sync and terminals (KDE preview image only, obsolete: `heiss theme sync` is removed)
 
 In the desktop session:
 
@@ -123,7 +123,23 @@ journalctl --user -u heiss-theme-sync --no-pager | tail -20
 cat ~/.local/state/heiss/theme-sync.log
 ```
 
-Open a NEW Konsole window and keep one that was open before the switch: both must show the Light colors. Switch back to Heiss Dark and repeat. Expected in the log: six `theme-sync:` lines per switch; anything marked `warn` or `failed` is what I need to see. Details and the list of unverified assumptions: `docs/design/THEME-SYNC.md`.
+Open a NEW Konsole window and keep one that was open before the switch: both must show the Light colors. Switch back to Heiss Dark and repeat. Expected in the log: six `theme-sync:` lines per switch; anything marked `warn` or `failed` is what I need to see. Details and the list of unverified assumptions: Details were in the removed THEME-SYNC document (see git history before H1a).
+
+## The Hyprland session (H1; nothing of it has run yet)
+
+Before the first boot: in the VM settings enable 3D acceleration (VirtualBox: Display, Graphics Controller VMSVGA, tick "Enable 3D Acceleration"). Without it the session retries once with software rendering (about 10 s longer); the boot entry "safe graphics" starts software rendering at once.
+
+In the live session and again after an installation:
+
+```bash
+cat ~/.local/state/heiss/session.log
+ls ~/.config/hypr ~/.config/waybar ~/.config/heiss/theme
+heiss check
+```
+
+Expected: the log has `starting Hyprland` and no `exited with`; the three directories hold the copied files (`hyprland.conf`, `heiss-user.conf`, `config.jsonc`, `hypr-colors.conf`, `wallpaper`); `heiss check` shows `OK session`.
+
+The calls to `heiss theme` in the old windows fail until `heiss theme` is rebuilt (next PR); that is expected.
 
 ## Looking at the windows without a display (`scripts/render-gui.py`)
 

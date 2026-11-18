@@ -58,7 +58,7 @@ class Order(unittest.TestCase):
         self.assertEqual(calls[1][1][1], [])        # enable-only call: nothing to disable
 
     def test_adopt_comes_first_and_only_with_flag(self):
-        sysm = FakeSystem(installed={"kate"}, explicit={"kate"})
+        sysm = FakeSystem(installed={"mousepad"}, explicit={"mousepad"})
         self.assertEqual(ap.build_calls(plan_for("base", system=sysm, adopt=True))[0][0], "AdoptPackages")
         self.assertNotIn("AdoptPackages", [c[0] for c in ap.build_calls(plan_for("base", system=sysm))])
 

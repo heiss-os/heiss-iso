@@ -1,15 +1,16 @@
 {
   "comment": "pkgrel per package. Bump a value when the dependency list or manifest of that package changes (pacman only sees an update when the version changes).",
   "pkgver": "0.1.0",
-  "heiss-profile-essentials": 2,
-  "heiss-profile-base": 2,
+  "heiss-profile-essentials": 3,
+  "heiss-profile-base": 3,
   "heiss-profile-cyber": 2,
   "heiss-profile-developer": 2,
-  "heiss-core": 20,
+  "heiss-core": 21,
   "heiss-helper": 7,
-  "heiss-theme": 1,
+  "heiss-theme": 2,
   "heiss-keyring": 1,
-  "heiss-welcome": 12,
-  "heiss-control": 17,
-  "heiss-safe-graphics": 4
+  "heiss-welcome": 13,
+  "heiss-control": 18,
+  "heiss-safe-graphics": 4,
+  "heiss-desktop": 1
 }
