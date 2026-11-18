@@ -3,7 +3,7 @@
 # Source: /usr/share/heiss/desktop (replace the files there, no code change needed). A file the user already has is
 # never overwritten. The Heiss colors go to ~/.config/heiss/theme/ (dark first); `heiss theme` switches them later.
 # Called by heiss-session before the compositor starts. Writes only below the user's own config directory.
-SRC=/usr/share/heiss/desktop
+SRC="${HEISS_DESKTOP_SRC:-/usr/share/heiss/desktop}"   # the override is for tests; everything is written below the user's own directories
 CFG="${XDG_CONFIG_HOME:-$HOME/.config}"
 STATE="${XDG_STATE_HOME:-$HOME/.local/state}/heiss"
 THEME="$CFG/heiss/theme"

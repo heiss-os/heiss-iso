@@ -62,7 +62,7 @@ class FirstLogin(unittest.TestCase):
         text = read("bin", "heiss-session")
         self.assertIn("WLR_RENDERER_ALLOW_SOFTWARE=1", text)
         self.assertIn("nomodeset", text)
-        self.assertIn("/usr/bin/heiss-first-login", text)
+        self.assertIn("heiss-first-login", text)
 
     def test_session_entry_runs_the_session_script(self):
         text = read("session", "heiss.desktop")
@@ -115,3 +115,99 @@ class NoPlasmaLeft(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RunTheScripts(unittest.TestCase):
+    """Run heiss-first-login and heiss-session in a temporary home (no Hyprland, no root)."""
+
+    def setUp(self):
+        import tempfile
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        t = self.tmp.name
+        self.home, self.src, self.bin = os.path.join(t, "home"), os.path.join(t, "src"), os.path.join(t, "bin")
+        for d in (self.home, self.bin):
+            os.makedirs(d)
+        for rel in ("hypr/hyprland.conf", "hypr/hypridle.conf", "hypr/hyprlock.conf", "hypr/heiss-user.conf",
+                    "waybar/config.jsonc", "waybar/style.css", "theme/dark/hypr-colors.conf",
+                    "theme/dark/waybar-colors.css", "theme/dark/fuzzel.ini", "theme/dark/mako.conf"):
+            p = os.path.join(self.src, rel)
+            os.makedirs(os.path.dirname(p), exist_ok=True)
+            with open(p, "w", encoding="utf-8") as f:
+                f.write("source:" + rel + "\n")
+        self.env = dict(os.environ, HOME=self.home, HEISS_DESKTOP_SRC=self.src, HEISS_SESSION_BIN=self.bin,
+                        XDG_CONFIG_HOME=os.path.join(self.home, ".config"),
+                        XDG_STATE_HOME=os.path.join(self.home, ".local/state"))
+        for k in ("XKB_DEFAULT_LAYOUT", "XKB_DEFAULT_OPTIONS", "XKB_DEFAULT_VARIANT", "WLR_RENDERER_ALLOW_SOFTWARE"):
+            self.env.pop(k, None)
+
+    def run_script(self, name, **kw):
+        import subprocess
+        return subprocess.run(["sh", os.path.join(DESKTOP, "bin", name)], env=self.env, capture_output=True, text=True,
+                              timeout=60, **kw)
+
+    def cfg(self, *p):
+        return os.path.join(self.home, ".config", *p)
+
+    def test_first_login_copies_links_and_marks(self):
+        r = self.run_script("heiss-first-login")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        for rel in ("hypr/hyprland.conf", "hypr/heiss-user.conf", "waybar/config.jsonc", "waybar/style.css"):
+            self.assertTrue(os.path.isfile(self.cfg(rel)), rel)
+        self.assertTrue(os.path.isfile(self.cfg("heiss/theme/hypr-colors.conf")))
+        self.assertTrue(os.path.islink(self.cfg("fuzzel/fuzzel.ini")))
+        self.assertTrue(os.path.islink(self.cfg("mako/config")))
+        self.assertEqual(os.path.realpath(self.cfg("fuzzel/fuzzel.ini")), os.path.realpath(self.cfg("heiss/theme/fuzzel.ini")))
+        self.assertTrue(os.path.isfile(os.path.join(self.home, ".local/state/heiss/desktop-first-login")))
+
+    def test_first_login_never_overwrites_a_users_file(self):
+        os.makedirs(self.cfg("hypr"))
+        mine = self.cfg("hypr", "hyprland.conf")
+        with open(mine, "w", encoding="utf-8") as f:
+            f.write("my own config\n")
+        os.makedirs(self.cfg("mako"))
+        os.symlink("/nonexistent", self.cfg("mako", "config"))     # even a dangling link of the user stays
+        self.assertEqual(self.run_script("heiss-first-login").returncode, 0)
+        self.assertEqual(self.run_script("heiss-first-login").returncode, 0)
+        with open(mine, encoding="utf-8") as f:
+            self.assertEqual(f.read(), "my own config\n")
+        self.assertEqual(os.readlink(self.cfg("mako", "config")), "/nonexistent")
+
+    def fake_hyprland(self, body):
+        for name, text in (("Hyprland", body), ("heiss-first-login", "#!/bin/sh\nexit 0\n")):
+            p = os.path.join(self.bin, name)
+            with open(p, "w", encoding="utf-8") as f:
+                f.write(text)
+            os.chmod(p, 0o755)
+
+    def test_session_retries_once_with_software_rendering_when_hyprland_fails_fast(self):
+        counter = os.path.join(self.tmp.name, "runs")
+        self.fake_hyprland('#!/bin/sh\necho "run soft=${WLR_RENDERER_ALLOW_SOFTWARE:-no}" >> "%s"\nexit 1\n' % counter)
+        r = self.run_script("heiss-session")
+        self.assertEqual(r.returncode, 1)
+        with open(counter, encoding="utf-8") as f:
+            runs = f.read().splitlines()
+        with open("/proc/cmdline", encoding="utf-8") as f:
+            nomodeset = "nomodeset" in f.read().split()
+        if nomodeset:
+            self.skipTest("this machine itself runs with nomodeset")
+        self.assertEqual(runs, ["run soft=no", "run soft=1"])
+
+    def test_session_does_not_retry_when_hyprland_succeeds(self):
+        counter = os.path.join(self.tmp.name, "runs")
+        self.fake_hyprland('#!/bin/sh\necho run >> "%s"\nexit 0\n' % counter)
+        self.assertEqual(self.run_script("heiss-session").returncode, 0)
+        with open(counter, encoding="utf-8") as f:
+            self.assertEqual(len(f.read().splitlines()), 1)
+
+    def test_session_passes_the_system_keyboard_layout_on_and_refuses_odd_values(self):
+        kb = os.path.join(self.tmp.name, "00-keyboard.conf")
+        with open(kb, "w", encoding="utf-8") as f:
+            f.write('Section "InputClass"\n  Option "XkbLayout" "us,ru"\n  Option "XkbVariant" ""\n'
+                    '  Option "XkbOptions" "grp:alt_shift_toggle;touch /tmp/x"\nEndSection\n')
+        self.env["HEISS_KB_FILE"] = kb
+        out = os.path.join(self.tmp.name, "env")
+        self.fake_hyprland('#!/bin/sh\necho "L=$XKB_DEFAULT_LAYOUT O=${XKB_DEFAULT_OPTIONS:-unset} D=$XDG_CURRENT_DESKTOP" > "%s"\nexit 0\n' % out)
+        self.assertEqual(self.run_script("heiss-session").returncode, 0)
+        with open(out, encoding="utf-8") as f:
+            self.assertEqual(f.read().strip(), "L=us,ru O=unset D=Hyprland")

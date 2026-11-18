@@ -9,7 +9,8 @@ LOG="${XDG_STATE_HOME:-$HOME/.local/state}/heiss/session.log"
 mkdir -p "$(dirname "$LOG")"
 log() { printf '%s %s\n' "$(date '+%F %T')" "$*" >> "$LOG"; }
 
-/usr/bin/heiss-first-login >> "$LOG" 2>&1
+BIN="${HEISS_SESSION_BIN:-/usr/bin}"   # the override is for tests
+"$BIN/heiss-first-login" >> "$LOG" 2>&1
 
 export XDG_CURRENT_DESKTOP=Hyprland XDG_SESSION_TYPE=wayland XDG_SESSION_DESKTOP=Hyprland
 export XCURSOR_THEME=Adwaita XCURSOR_SIZE=24
@@ -17,7 +18,7 @@ export QT_QPA_PLATFORMTHEME=qt6ct QT_QPA_PLATFORM="wayland;xcb"
 export MOZ_ENABLE_WAYLAND=1
 
 # Keyboard layout: Hyprland does not read the X11 keyboard file the installer writes, so pass it on (heiss-user.conf wins).
-kb=/etc/X11/xorg.conf.d/00-keyboard.conf
+kb="${HEISS_KB_FILE:-/etc/X11/xorg.conf.d/00-keyboard.conf}"
 if [ -r "$kb" ]; then
   opt() { sed -n "s/^[[:space:]]*Option[[:space:]]*\"$1\"[[:space:]]*\"\(.*\)\"/\1/p" "$kb" | head -n 1; }
   # only plain keyboard names are passed on (letters, digits and , : + _ - and spaces)
@@ -40,13 +41,13 @@ fi
 
 start=$(date +%s)
 log "starting Hyprland"
-/usr/bin/Hyprland >> "$LOG" 2>&1
+"$BIN/Hyprland" >> "$LOG" 2>&1
 rc=$?
 log "Hyprland exited with $rc after $(( $(date +%s) - start )) s"
 if [ "$rc" -ne 0 ] && [ $(( $(date +%s) - start )) -lt 10 ] && [ -z "$WLR_RENDERER_ALLOW_SOFTWARE" ]; then
   software
   log "starting Hyprland again"
-  /usr/bin/Hyprland >> "$LOG" 2>&1
+  "$BIN/Hyprland" >> "$LOG" 2>&1
   rc=$?
   log "Hyprland exited with $rc"
 fi
