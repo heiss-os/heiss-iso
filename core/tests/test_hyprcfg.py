@@ -256,5 +256,65 @@ class Load(unittest.TestCase):
         self.assertEqual(hc.read_modifier(self.d), "")
 
 
+class Blocks(unittest.TestCase):
+    def setUp(self):
+        self.d = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.d)
+        self.path = os.path.join(self.d, "hypr", "heiss-user.lua")
+
+    def text(self):
+        with open(self.path, encoding="utf-8") as f:
+            return f.read()
+
+    def test_a_block_is_created_replaced_and_removed_and_the_users_lines_stay(self):
+        write(self.path, "-- mine\nhl.config({ general = { gaps_out = 30 } })\n")
+        hc.set_block(self.d, "keyboard", 'hl.config({ input = { kb_layout = "de" } })')
+        self.assertEqual(hc.get_block(self.d, "keyboard"), 'hl.config({ input = { kb_layout = "de" } })')
+        hc.set_block(self.d, "display", "hl.monitor({ scale = 2 })")
+        hc.set_block(self.d, "keyboard", 'hl.config({ input = { kb_layout = "us,ru" } })')
+        t = self.text()
+        self.assertTrue(t.startswith("-- mine\nhl.config({ general = { gaps_out = 30 } })\n"))
+        self.assertEqual(t.count("-- heiss:keyboard begin"), 1)
+        self.assertIn('kb_layout = "us,ru"', t)
+        self.assertNotIn('kb_layout = "de"', t)
+        self.assertEqual(hc.get_block(self.d, "display"), "hl.monitor({ scale = 2 })")
+        hc.set_block(self.d, "keyboard", None)
+        self.assertNotIn("keyboard", self.text())
+        self.assertIn("gaps_out = 30", self.text())
+        self.assertIsNone(hc.get_block(self.d, "keyboard"))
+        self.assertTrue(self.text().endswith("\n"))
+
+    def test_creates_the_file_and_is_idempotent(self):
+        hc.set_block(self.d, "display", "hl.monitor({ scale = 1.5 })")
+        first = self.text()
+        hc.set_block(self.d, "display", "hl.monitor({ scale = 1.5 })")
+        self.assertEqual(self.text(), first)
+        hc.set_block(self.d, "keyboard", None)   # removing a block that is not there changes nothing
+        self.assertEqual(self.text(), first)
+
+    def test_the_blocks_are_read_by_the_key_parser_without_harm_and_lua_accepts_the_file(self):
+        hc.set_block(self.d, "keyboard", 'hl.config({ input = { kb_layout = "de" } })')
+        self.assertEqual(hc.parse_text(self.text())[0], [])
+        if LUA:
+            stub = os.path.join(self.d, "stub.lua")
+            write(stub, LUA_STUB)
+            r = subprocess.run([LUA, stub, self.path], capture_output=True, text=True, timeout=20, cwd=self.d)
+            self.assertEqual(r.returncode, 0, r.stderr)
+
+    def test_refuses_unknown_blocks_hostile_text_and_a_directory(self):
+        for bad in (("other", "x"), ("keyboard", "a\r\nb"), ("keyboard", "-- heiss:keyboard end\nevil()")):
+            with self.assertRaises(ValueError):
+                hc.set_block(self.d, *bad)
+        os.makedirs(self.path)
+        with self.assertRaises((OSError, ValueError)):
+            hc.set_block(self.d, "keyboard", "x()")
+
+    def test_a_begin_marker_without_end_is_left_alone_and_a_second_block_is_added(self):
+        write(self.path, "-- heiss:keyboard begin (written by the Heiss settings, edit outside these two lines)\nbroken\n")
+        hc.set_block(self.d, "keyboard", "ok()")
+        self.assertIn("broken", self.text())
+        self.assertIn("ok()", self.text())
+
+
 if __name__ == "__main__":
     unittest.main()

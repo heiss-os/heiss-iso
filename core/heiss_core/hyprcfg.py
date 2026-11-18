@@ -366,17 +366,13 @@ def read_modifier(cfg_dir):
     return v if v in MODIFIERS else ""
 
 
-def write_modifier(cfg_dir, value):
-    """Store the choice (atomically, in a fresh temporary file next to it). Raises ValueError for anything but ALT
-    or SUPER, OSError when the directory or the file cannot be written."""
-    if value not in MODIFIERS:
-        raise ValueError("the modifier is ALT or SUPER")
-    path = os.path.join(cfg_dir, MODIFIER_FILE)
+def _atomic_write(path, text):
+    """Write `text` to `path` through a fresh temporary file in the same directory (mode 0644, fsync, cleanup on error)."""
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    fd, tmp = tempfile.mkstemp(prefix=".modifier.", dir=os.path.dirname(path))
+    fd, tmp = tempfile.mkstemp(prefix="." + os.path.basename(path) + ".", dir=os.path.dirname(path))
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as f:
-            f.write(value + "\n")
+            f.write(text)
             f.flush()
             os.fsync(f.fileno())
         os.chmod(tmp, 0o644)
@@ -387,6 +383,66 @@ def write_modifier(cfg_dir, value):
         except OSError:
             pass
         raise
+
+
+def write_modifier(cfg_dir, value):
+    """Store the choice (atomically). Raises ValueError for anything but ALT or SUPER, OSError when the directory
+    or the file cannot be written."""
+    if value not in MODIFIERS:
+        raise ValueError("the modifier is ALT or SUPER")
+    _atomic_write(os.path.join(cfg_dir, MODIFIER_FILE), value + "\n")
+
+
+# ------------------------------------------------------------------ blocks of heiss-user.lua
+# The settings window keeps what it writes (keyboard layout, display scale) between two marker lines of
+# ~/.config/hypr/heiss-user.lua. Everything outside the markers is the user's and is never touched.
+
+USER_FILE = os.path.join("hypr", "heiss-user.lua")
+BLOCKS = ("keyboard", "display")
+
+
+def _marks(name):
+    return ("-- heiss:%s begin (written by the Heiss settings, edit outside these two lines)" % name,
+            "-- heiss:%s end" % name)
+
+
+def get_block(cfg_dir, name):
+    """The Lua text between the markers of block `name`, or None."""
+    if name not in BLOCKS:
+        raise ValueError("unknown block")
+    try:
+        lines = _read(os.path.join(cfg_dir, USER_FILE)).split("\n")
+    except (OSError, ValueError):
+        return None
+    begin, end = _marks(name)
+    if begin in lines and end in lines[lines.index(begin):]:
+        return "\n".join(lines[lines.index(begin) + 1:lines.index(end, lines.index(begin))])
+    return None
+
+
+def set_block(cfg_dir, name, body):
+    """Put `body` (Lua text; None removes the block) between the markers of block `name`, creating the file and
+    the block when missing. Refuses a heiss-user.lua that is not a regular file or is too large."""
+    if name not in BLOCKS:
+        raise ValueError("unknown block")
+    if body is not None and ("\r" in body or "-- heiss:" in body):
+        raise ValueError("a block holds plain Lua lines")
+    path = os.path.join(cfg_dir, USER_FILE)
+    try:
+        lines = _read(path).split("\n")
+    except FileNotFoundError:
+        lines = []
+    begin, end = _marks(name)
+    if begin in lines and end in lines[lines.index(begin):]:
+        i = lines.index(begin)
+        j = lines.index(end, i)
+        lines[i:j + 1] = [] if body is None else [begin] + body.split("\n") + [end]
+    elif body is not None:
+        while lines and lines[-1] == "":
+            lines.pop()
+        lines += ([""] if lines else []) + [begin] + body.split("\n") + [end]
+    text = "\n".join(lines)
+    _atomic_write(path, text + ("\n" if text and not text.endswith("\n") else ""))
 
 
 def load(cfg_dir=None):

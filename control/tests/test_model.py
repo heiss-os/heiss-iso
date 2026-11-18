@@ -1,5 +1,5 @@
-import json
 import os
+import shutil
 import sys
 import tempfile
 import unittest
@@ -8,1604 +8,278 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(os.path.dirname(HERE))
 sys.path.insert(0, os.path.join(REPO, "core"))
 sys.path.insert(0, os.path.dirname(HERE))
+from heiss_core import hyprcfg  # noqa: E402
 from heiss_control import model as m  # noqa: E402
-from heiss_control import privacy_view as pvw  # noqa: E402
-from heiss_control import runner  # noqa: E402
-from heiss_control import security as sec  # noqa: E402
-from heiss_control import theme as th  # noqa: E402
-from heiss_control import tools  # noqa: E402
-from heiss_control import updates_view as upv  # noqa: E402
-from heiss_control import hardware_view as hwv  # noqa: E402
-from heiss_core import hardware as hwc  # noqa: E402
+from heiss_control import system_tools as sysx  # noqa: E402
 from heiss_control.strings import S  # noqa: E402
 
-OS_RELEASE = 'NAME="Heiss OS"\nPRETTY_NAME="Heiss OS"\nBUILD_ID=rolling\nHOME_URL="https://example.org/h"\n' \
-             'BUG_REPORT_URL="https://example.org/b"\n'
+SHIPPED = os.path.join(REPO, "desktop", "hypr", "hyprland.lua")
 
 
-class Fixture(unittest.TestCase):
+class Calls:
+    def __init__(self, reload_rc=0):
+        self.runs, self.launched, self.themes, self.reload_rc = [], [], [], reload_rc
+
+    def run(self, argv, timeout=10):
+        self.runs.append(argv)
+        if argv[0] == "hyprctl":
+            return self.reload_rc, "" if self.reload_rc == 0 else "no instance"
+        if argv[0] == "nmcli":
+            return 0, "connected:full\n"
+        return 127, ""
+
+    def launch(self, key):
+        self.launched.append(key)
+        return (key != "bluetooth", "blueman-manager" if key == "bluetooth" else key)
+
+    def apply_theme(self, theme):
+        self.themes.append(theme)
+        return (theme == "dark", "" if theme == "dark" else "boom")
+
+
+class Base(unittest.TestCase):
     def setUp(self):
-        self.tmp = tempfile.TemporaryDirectory()
-        self.addCleanup(self.tmp.cleanup)
-        self.d = self.tmp.name
-        self.env = m.Env(os_release=self.p("os-release"), system_answers=self.p("profile.toml"),
-                         user_dir=self.p("user"), state_file=self.p("state.json"),
-                         kernel=lambda: "9.9.9-test", plasma=lambda: "6.8.2",
-                         profiles_dir=os.path.join(REPO, "profiles"), theme_get=lambda: "dark",
-                         apply_theme=lambda theme: (True, ""),
-                         run_check=lambda: [{"name": "units", "status": "OK", "detail": "fine", "commands": []}],
-                         open_settings=lambda: (True, ""),
-                         privacy_facts=lambda chosen: [{"id": "level", "status": "info", "code": chosen or "unset", "data": ""},
-                                                       {"id": "wifi_mac", "status": "warn", "code": "preserve", "data": ""},
-                                                       {"id": "lock", "status": "ok", "code": "on", "data": "3"}],
-                         update_facts=lambda: [{"id": "pending", "status": "warn", "code": "some", "data": "3"},
-                                               {"id": "reboot", "status": "ok", "code": "no", "data": ""}],
-                         hardware_data=lambda: {"facts": [{"id": "form", "status": "info", "code": "laptop", "data": ""},
-                                                          {"id": "gpu", "status": "info", "code": "some", "data": "Intel (8086:9a49)"}],
-                                                "drivers": [{"id": "gpu-intel", "name": {"en": "Intel graphics", "ru": "Графика Intel"},
-                                                             "description": {"en": "Mesa", "ru": "Mesa ru"}, "warning": {}, "safe": True,
-                                                             "state": "missing", "missing": ["mesa"]},
-                                                            {"id": "gpu-nvidia-legacy", "name": {"en": "Old NVIDIA", "ru": "Старая NVIDIA"},
-                                                             "description": {"en": "d", "ru": "д"}, "warning": {"en": "careful <b>", "ru": "осторожно"},
-                                                             "safe": False, "state": "nothing", "missing": []}],
-                                                "report": "Heiss OS hardware report\nkernel: 1\n"},
-                         online=lambda: True, run_pending_item=lambda item, on_step: None,
-                         security_facts=lambda: [{"id": "firewall", "status": "ok", "code": "active_enabled", "data": ""},
-                                                 {"id": "listening", "status": "warn", "code": "some", "data": "22, 631"},
-                                                 {"id": "secure_boot", "status": "info", "code": "bios", "data": ""}])
-
-    def p(self, name):
-        return os.path.join(self.d, name)
-
-    def write(self, name, text):
-        os.makedirs(os.path.dirname(self.p(name)), exist_ok=True)
-        with open(self.p(name), "w", encoding="utf-8") as f:
-            f.write(text)
-
-    def cards(self, model=None):
-        return {c["id"]: c for c in (model or m.Model(self.env)).overview()["cards"]}
-
-
-class Pages(Fixture):
-    def test_sidebar_has_every_page_once_and_marks_the_current_one(self):
-        side = m.Model(self.env).sidebar()
-        self.assertEqual([s["id"] for s in side], list(m.PAGE_IDS))
-        self.assertEqual([s["id"] for s in side if s["current"]], ["overview"])
-
-    def test_open_ignores_unknown_pages(self):
-        mod = m.Model(self.env)
-        mod.open("about")
-        mod.open("../etc/passwd")
-        self.assertEqual(mod.page, "about")
-
-    def test_unbuilt_page_is_marked_soon_and_has_no_data(self):
-        mod = m.Model(self.env)
-        mod.open("power")
-        s = mod.screen()
-        self.assertFalse(s["built"])
-        for key in ("overview", "profiles", "appearance", "security", "updates", "hardware", "network", "advanced", "about"):
-            self.assertNotIn(key, s)
-
-    def test_every_language_has_every_key_of_english(self):
-        self.assertEqual(set(S["ru"]), set(S["en"]))
-
-    def test_every_page_has_title_and_keywords_in_both_languages(self):
-        for lang in S:
-            for p in m.PAGE_IDS:
-                self.assertTrue(S[lang]["page." + p] and S[lang]["kw." + p], (lang, p))
-
-    def test_no_string_key_is_defined_twice_in_one_language(self):
-        import ast
-        with open(os.path.join(os.path.dirname(HERE), "heiss_control", "strings.py"), encoding="utf-8") as f:
-            tree = ast.parse(f.read())
-        table = next(n.value for n in tree.body if isinstance(n, ast.Assign) and n.targets[0].id == "S")
-        for lang, sub in zip(table.keys, table.values):
-            keys = [k.value for k in sub.keys]
-            self.assertEqual([k for k in set(keys) if keys.count(k) > 1], [], lang.value)
-
-    def test_unknown_language_falls_back_to_english(self):
-        self.assertEqual(m.Model(self.env, "de").language, "en")
-
-
-class Search(Fixture):
-    def test_empty_query_finds_nothing(self):
-        self.assertEqual(m.Model(self.env).search("   "), [])
-
-    def test_title_match_comes_before_keyword_match(self):
-        ids = [h["id"] for h in m.Model(self.env).search("update")]
-        self.assertEqual(ids[0], "updates")
-
-    def test_keyword_and_case_insensitive(self):
-        self.assertEqual([h["id"] for h in m.Model(self.env).search("WIREGUARD")], ["network"])
-
-    def test_all_words_must_match(self):
-        self.assertEqual(m.Model(self.env).search("wireguard nvidia"), [])
-
-    def test_russian_search(self):
-        self.assertEqual([h["id"] for h in m.Model(self.env, "ru").search("брандмауэр")], ["security"])
-
-    def test_hit_says_whether_the_page_is_built(self):
-        self.assertEqual(m.Model(self.env).search("kernel")[0], {"id": "about", "title": "About", "built": True})
-
-
-class Overview(Fixture):
-    def test_nothing_saved_yet_is_shown_as_not_set_not_as_an_error(self):
-        c = self.cards()
-        self.assertEqual(c["profile"]["value"], "not set yet")
-        self.assertEqual(c["profile"]["error"], "")
-        self.assertEqual(c["managed"]["value"], "0")
-        self.assertEqual(c["pending"]["value"], "0")
-        self.assertEqual(c["kernel"]["value"], "9.9.9-test")
-
-    def test_system_answers_win_over_user_answers(self):
-        self.write("profile.toml", 'schema_version = 1\nprofile = "cyber"\n[privacy]\nlevel = "maximum"\n')
-        self.write("user/answers.toml", 'schema_version = 1\nprofile = "developer"\n')
-        c = self.cards()
-        self.assertEqual(c["profile"]["value"], "Cyber")
-        self.assertEqual(c["privacy"]["value"], "Maximum")
-
-    def test_user_answers_used_when_there_is_no_system_file(self):
-        self.write("user/answers.toml", 'schema_version = 1\nprofile = "developer"\n')
-        self.assertEqual(self.cards()["profile"]["value"], "Developer")
-
-    def test_broken_answers_give_an_error_on_the_card_and_other_cards_still_work(self):
-        self.write("profile.toml", "this is = = not toml")
-        c = self.cards()
-        self.assertEqual(c["profile"]["value"], "unknown")
-        self.assertTrue(c["profile"]["error"].startswith("Could not read"))
-        self.assertEqual(c["kernel"]["value"], "9.9.9-test")
-
-    def test_state_file_counts_packages(self):
-        self.write("state.json", json.dumps({"schema_version": 1, "packages": ["a", "b"], "services": [], "flatpaks": []}))
-        self.assertEqual(self.cards()["managed"]["value"], "2")
-
-    def test_broken_state_is_an_error_on_its_card_only(self):
-        self.write("state.json", "{")
-        c = self.cards()
-        self.assertTrue(c["managed"]["error"])
-        self.assertEqual(c["pending"]["error"], "")
-
-    def test_pending_counts_and_detail(self):
-        from heiss_core import wizard as wz
-        q = wz.PendingQueue(self.p("user/pending.json"))
-        q.add("apply-profile", {"profile": "base", "addons": []}, now=1)
-        c = self.cards()["pending"]
-        self.assertEqual((c["value"], c["detail"]), ("1", "1 waiting"))
-
-    def test_russian_labels(self):
-        c = self.cards(m.Model(self.env, "ru"))
-        self.assertEqual(c["profile"]["title"], "Профиль")
-        self.assertEqual(c["profile"]["value"], "пока не задан")
-
-    def test_reading_changes_nothing(self):
-        self.write("profile.toml", 'schema_version = 1\nprofile = "base"\n')
-        before = sorted(os.listdir(self.d))
-        m.Model(self.env).screen()
-        self.assertEqual(sorted(os.listdir(self.d)), before)
-
-
-class Profiles(Fixture):
-    def page(self, lang="en"):
-        mod = m.Model(self.env, lang)
-        mod.open("profiles")
-        return mod.screen()["profiles"]
-
-    def rows(self, lang="en"):
-        return {r["label"]: r["value"] for r in self.page(lang)["rows"]}
-
-    def test_nothing_chosen_nothing_installed(self):
-        r = self.rows()
-        self.assertEqual((r["Chosen profile"], r["Applied profile"], r["Add-ons"]), ("not set yet", "not set yet", "none"))
-        self.assertEqual([s["items"] for s in self.page()["sections"]], [[], [], []])
-        self.assertEqual(self.page()["errors"], [])
-
-    def test_names_come_from_the_manifests_in_both_languages(self):
-        self.write("profile.toml", 'schema_version = 1\nprofile = "cyber"\n')
-        self.assertEqual(self.rows()["Chosen profile"], "Cyber")
-        self.assertEqual(self.rows("ru")["Выбранный профиль"], "Кибербезопасность")
-        self.write("profile.toml", 'schema_version = 1\nprofile = "base"\n')
-        self.assertEqual(self.rows("ru")["Выбранный профиль"], "Базовый")
-
-    def test_unknown_profile_id_is_shown_as_it_is(self):
-        self.write("profile.toml", 'schema_version = 1\nprofile = "zzz"\n')
-        self.assertEqual(self.rows()["Chosen profile"], "zzz")
-
-    def test_state_lists_are_sorted_and_counted(self):
-        self.write("state.json", json.dumps({"schema_version": 1, "applied": {"profile": "base", "addons": []},
-                                             "packages": ["b", "a"], "services": ["s.service"], "flatpaks": []}))
-        p = self.page()
-        self.assertEqual(self.rows()["Applied profile"], "Base")
-        self.assertEqual(p["sections"][0], {"title": "Packages installed by Heiss OS (2)", "items": ["a", "b"]})
-        self.assertEqual(p["sections"][2]["title"], "Flatpak apps installed by Heiss OS (0)")
-
-    def test_long_lists_are_cut(self):
-        pk = ["p%04d" % i for i in range(m.MAX_LIST + 5)]
-        self.write("state.json", json.dumps({"schema_version": 1, "applied": {"profile": None, "addons": []},
-                                             "packages": pk, "services": [], "flatpaks": []}))
-        items = self.page()["sections"][0]["items"]
-        self.assertEqual((len(items), items[-1]), (m.MAX_LIST + 1, "... +5"))
-
-    def test_pending_items_are_listed_with_status(self):
-        from heiss_core import wizard as wz
-        wz.PendingQueue(self.p("user/pending.json")).add("apply-profile", {"profile": "cyber", "addons": []}, now=1)
-        self.assertEqual(self.page()["pending"], [{"id": 1, "text": "Apply profile Cyber", "status": "waiting", "error": ""}])
-
-    def test_each_broken_source_is_its_own_error(self):
-        self.write("profile.toml", "= = =")
-        self.write("state.json", "{")
-        self.write("user/pending.json", "{")
-        self.assertEqual(len(self.page()["errors"]), 3)
-
-    def test_missing_manifests_directory_is_reported_and_ids_are_shown(self):
-        self.env.profiles_dir = self.p("nope")
-        self.write("profile.toml", 'schema_version = 1\nprofile = "cyber"\n')
-        self.assertEqual(len(self.page()["errors"]), 1)
-        self.assertEqual(self.rows()["Chosen profile"], "cyber")
-
-    def test_overview_card_uses_the_profile_name(self):
-        self.write("profile.toml", 'schema_version = 1\nprofile = "base"\n')
-        self.assertEqual(self.cards()["profile"]["value"], "Base")
-
-
-class Appearance(Fixture):
-    def mod(self):
-        mod = m.Model(self.env)
-        mod.open("appearance")
-        return mod
-
-    def test_current_scheme_is_read_and_marked(self):
-        a = self.mod().screen()["appearance"]
-        self.assertEqual(a["current"], "Dark")
-        self.assertEqual([(c["id"], c["selected"]) for c in a["choices"]], [("dark", True), ("light", False)])
-
-    def test_other_or_unreadable_scheme_is_unknown(self):
-        for fn in (lambda: "", lambda: "BreezeDark", lambda: 1 / 0):
-            self.env.theme_get = fn
-            a = self.mod().screen()["appearance"]
-            self.assertEqual(a["current"], "unknown")
-            self.assertFalse(any(c["selected"] for c in a["choices"]))
-
-    def test_only_dark_and_light_are_accepted_and_one_at_a_time(self):
-        mod = self.mod()
-        for bad in ("auto", "", None, "../x", "DARK"):
-            self.assertFalse(mod.begin_theme(bad))
-        self.assertEqual(mod.theme_state, "idle")
-        self.assertTrue(mod.begin_theme("light"))
-        self.assertFalse(mod.begin_theme("dark"))
-        self.assertEqual(mod.screen()["appearance"]["state"], "running")
-
-    def test_switch_runs_the_applier_and_reports_success(self):
-        seen = []
-        self.env.apply_theme = lambda t: (seen.append(t), (True, ""))[1]
-        mod = self.mod()
-        mod.begin_theme("light")
-        mod.finish_theme("light")
-        self.assertEqual((seen, mod.theme_state), (["light"], "ok"))
-        self.assertTrue(mod.begin_theme("dark"))   # free again
-
-    def test_failure_and_exception_are_reported_not_raised(self):
-        mod = self.mod()
-        self.env.apply_theme = lambda t: (False, "No such package")
-        mod.begin_theme("dark")
-        mod.finish_theme("dark")
-        self.assertEqual((mod.theme_state, mod.theme_message), ("failed", "No such package"))
-
-        def boom(t):
-            raise RuntimeError("x")
-        self.env.apply_theme = boom
-        mod.begin_theme("dark")
-        mod.finish_theme("dark")
-        self.assertEqual((mod.theme_state, mod.theme_message), ("failed", "x"))
-
-
-class Hardening(Fixture):
-    def test_every_qml_text_is_plain_text(self):
-        # Text defaults to AutoText: a package name or error string that looks like HTML would be rendered
-        import re
-        with open(os.path.join(os.path.dirname(HERE), "heiss_control", "qml", "Main.qml"), encoding="utf-8") as f:
-            qml = f.read()
-        texts = re.findall(r"(?<![A-Za-z])Text \{([^\n]*)", qml)
-        self.assertGreater(len(texts), 10)
-        for line in texts:
-            self.assertIn("textFormat: Text.PlainText", line)
-
-    def test_error_texts_are_cut_and_flattened(self):
-        self.write("profile.toml", "x = '" + "A" * 2000 + "\n" + "B" * 50 + "'")
-        err = {c["id"]: c for c in m.Model(self.env).overview()["cards"]}["profile"]["error"]
-        self.assertLessEqual(len(err), m.MAX_MESSAGE)
-        self.assertNotIn("\n", err)
-
-    def test_theme_failure_message_is_cut(self):
-        self.env.apply_theme = lambda t: (False, "x" * 5000)
-        mod = m.Model(self.env)
-        mod.begin_theme("dark")
-        mod.finish_theme("dark")
-        self.assertEqual(len(mod.theme_message), m.MAX_MESSAGE)
-
-    def test_markup_in_a_pending_error_is_kept_as_text_and_cut(self):
-        import json as j
-        q = [{"id": 1, "kind": "apply-profile", "payload": {"profile": "base", "addons": []}, "created": 1,
-              "status": "failed", "error": "<img src='http://x'>" + "y" * 1000}]
-        self.write("user/pending.json", j.dumps(q))
-        p = m.Model(self.env)
-        p.open("profiles")
-        item = p.screen()["profiles"]["pending"][0]
-        self.assertTrue(item["error"].startswith("<img"))
-        self.assertLessEqual(len(item["error"]), m.MAX_MESSAGE)
-
-
-class FakeSystem:
-    """Stands in for security.RealSystem: answers by argv, records every call."""
-    def __init__(self, answers=None, files=None, paths=()):
-        self.answers, self.files, self.paths, self.calls = answers or {}, files or {}, set(paths), []
-
-    def run(self, argv):
-        self.calls.append(list(argv))
-        return self.answers.get(tuple(argv), (127, ""))
-
-    def read_bytes(self, path):
-        return self.files.get(path)
-
-    def exists(self, path):
-        return path in self.paths
-
-
-class SecurityFacts(unittest.TestCase):
-    def one(self, fn, sh):
-        return fn(sh)
-
-    def test_firewall_states(self):
-        act = ("systemctl", "is-active", "firewalld")
-        ena = ("systemctl", "is-enabled", "firewalld")
-        self.assertEqual(sec.firewall(FakeSystem({act: (0, "active\n"), ena: (0, "enabled\n")}))["code"], "active_enabled")
-        self.assertEqual(sec.firewall(FakeSystem({act: (0, "active\n"), ena: (1, "disabled\n")}))["code"], "active_not_enabled")
-        self.assertEqual(sec.firewall(FakeSystem({act: (3, "inactive\n")}))["code"], "inactive")
-        self.assertEqual(sec.firewall(FakeSystem())["code"], "unknown")   # systemctl missing (exit 127)
-
-    def test_ssh(self):
-        key = ("systemctl", "is-active", "sshd")
-        self.assertEqual(sec.ssh(FakeSystem({key: (0, "active\n")}))["status"], "warn")
-        self.assertEqual(sec.ssh(FakeSystem({key: (3, "inactive\n")}))["status"], "ok")
-        self.assertEqual(sec.ssh(FakeSystem())["status"], "info")
-
-    def test_disk_encryption_follows_the_ancestors_of_the_root_device(self):
-        fm = ("findmnt", "-n", "-o", "SOURCE", "/")
-        ls = lambda dev: ("lsblk", "-s", "-r", "-n", "-o", "TYPE", "--", dev)
-        self.assertEqual(sec.disk_encryption(FakeSystem({fm: (0, "/dev/mapper/root\n"), ls("/dev/mapper/root"): (0, "crypt\npart\ndisk\n")}))["code"], "encrypted")
-        self.assertEqual(sec.disk_encryption(FakeSystem({fm: (0, "/dev/sda2\n"), ls("/dev/sda2"): (0, "part\ndisk\n")}))["code"], "plain")
-        # btrfs subvolume suffix is removed before the device name is used
-        sh = FakeSystem({fm: (0, "/dev/sda2[/@]\n"), ls("/dev/sda2"): (0, "part\ndisk\n")})
-        self.assertEqual(sec.disk_encryption(sh)["code"], "plain")
-        self.assertIn(list(ls("/dev/sda2")), sh.calls)
-
-    def test_disk_encryption_does_not_trust_odd_sources(self):
-        fm = ("findmnt", "-n", "-o", "SOURCE", "/")
-        for out in ("overlay\n", "-rf /\n", "", "tmpfs\n"):
-            sh = FakeSystem({fm: (0, out)})
-            self.assertEqual(sec.disk_encryption(sh)["code"], "unknown", out)
-            self.assertEqual(sh.calls, [list(fm)])   # nothing else was run with that text
-        self.assertEqual(sec.disk_encryption(FakeSystem())["code"], "unknown")
-
-    def test_secure_boot(self):
-        self.assertEqual(sec.secure_boot(FakeSystem())["code"], "bios")
-        on = bytes([6, 0, 0, 0, 1])
-        off = bytes([6, 0, 0, 0, 0])
-        self.assertEqual(sec.secure_boot(FakeSystem(files={sec.SECURE_BOOT_VAR: on}, paths=["/sys/firmware/efi"]))["code"], "enabled")
-        self.assertEqual(sec.secure_boot(FakeSystem(files={sec.SECURE_BOOT_VAR: off}, paths=["/sys/firmware/efi"]))["code"], "disabled")
-        self.assertEqual(sec.secure_boot(FakeSystem(paths=["/sys/firmware/efi"]))["code"], "unknown")
-        self.assertEqual(sec.secure_boot(FakeSystem(files={sec.SECURE_BOOT_VAR: b"\x06"}, paths=["/sys/firmware/efi"]))["code"], "unknown")
-
-    def test_listening_ignores_loopback_and_lists_the_rest(self):
-        key = ("ss", "-H", "-l", "-t", "-n")
-        out = ("LISTEN 0 128 0.0.0.0:22 0.0.0.0:*\nLISTEN 0 128 [::]:22 [::]:*\nLISTEN 0 4096 127.0.0.1:631 0.0.0.0:*\n"
-               "LISTEN 0 4096 [::1]:631 [::]:*\nLISTEN 0 4096 [::ffff:127.0.0.1]:9 [::]:*\nLISTEN 0 5 *:8080 *:*\nLISTEN 0 1 127.0.0.53%lo:53 0.0.0.0:*\ngarbage\n")
-        r = sec.listening(FakeSystem({key: (0, out)}))
-        self.assertEqual((r["code"], r["data"]), ("some", "22, 8080"))
-        self.assertEqual(sec.listening(FakeSystem({key: (0, "LISTEN 0 1 127.0.0.1:631 0.0.0.0:*\n")}))["code"], "none")
-        self.assertEqual(sec.listening(FakeSystem())["code"], "unknown")
-
-    def test_many_ports_are_cut(self):
-        key = ("ss", "-H", "-l", "-t", "-n")
-        out = "".join("LISTEN 0 1 0.0.0.0:%d 0.0.0.0:*\n" % p for p in range(1000, 1100))
-        data = sec.listening(FakeSystem({key: (0, out)}))["data"]
-        self.assertTrue(data.endswith(" ..."))
-        self.assertEqual(len(data.replace(" ...", "").split(", ")), sec.MAX_PORTS)
-
-    def test_one_broken_fact_does_not_hide_the_others(self):
-        class Bad(FakeSystem):
-            def run(self, argv):
-                if argv[0] == "ss":
-                    raise RuntimeError("boom")
-                return super().run(argv)
-        facts = sec.collect(Bad())
-        self.assertEqual([f["id"] for f in facts], ["firewall", "disk", "secure_boot", "ssh", "listening"])
-        self.assertEqual(facts[-1], {"id": "listening", "status": "info", "code": "unknown", "data": ""})
-
-    def test_every_command_is_a_literal_list_with_a_fixed_environment(self):
-        sh = FakeSystem()
-        sec.collect(sh)
-        self.assertTrue(sh.calls)
-        for argv in sh.calls:
-            self.assertIn(argv[0], ("systemctl", "findmnt", "lsblk", "ss"))
-        self.assertEqual(sec.ENV["PATH"], "/usr/bin:/bin")
-
-    def test_real_system_never_raises_for_a_missing_tool(self):
-        self.assertEqual(sec.RealSystem().run(["/nonexistent/tool"]), (127, ""))
-        self.assertIsNone(sec.RealSystem().read_bytes("/nonexistent/file"))
-
-
-class SecurityPage(Fixture):
-    def mod(self, lang="en"):
-        mod = m.Model(self.env, lang)
-        mod.open("security")
-        return mod
-
-    def test_page_is_built_and_starts_idle(self):
-        s = self.mod().screen()
-        self.assertTrue(s["built"])
-        self.assertEqual((s["security"]["state"], s["security"]["items"], s["security"]["summary"]), ("idle", [], ""))
-
-    def test_facts_become_plain_language_with_advice_only_for_warnings(self):
-        mod = self.mod()
-        self.assertTrue(mod.begin_security())
-        self.assertFalse(mod.begin_security())
-        mod.finish_security()
-        p = mod.screen()["security"]
-        by = {i["id"]: i for i in p["items"]}
-        self.assertEqual(by["firewall"]["detail"], "The firewall is on and starts at every boot.")
-        self.assertEqual(by["firewall"]["advice"], "")
-        self.assertIn("22, 631", by["listening"]["detail"])
-        self.assertTrue(by["listening"]["advice"])
-        self.assertEqual(by["secure_boot"]["statusLabel"], "For your information")
-        self.assertEqual(p["summary"], "1 of 3 checks look fine, 1 need a look, the rest are for information.")
-        self.assertNotIn("score", p["summary"].lower())
-
-    def test_russian(self):
-        mod = self.mod("ru")
-        mod.begin_security()
-        mod.finish_security()
-        by = {i["id"]: i for i in mod.screen()["security"]["items"]}
-        self.assertEqual(by["firewall"]["title"], "Брандмауэр")
-        self.assertIn("22, 631", by["listening"]["detail"])
-
-    def test_unknown_ids_codes_and_statuses_are_shown_safely(self):
-        self.env.security_facts = lambda: [{"id": "zzz", "status": "<b>PANIC</b>", "code": "x%sy", "data": "d" * 5000},
-                                           {"id": "firewall", "status": "ok", "code": "no_such_code", "data": ""}]
-        mod = self.mod()
-        mod.begin_security()
-        mod.finish_security()
-        items = mod.screen()["security"]["items"]
-        self.assertEqual(items[0]["status"], "info")
-        self.assertEqual(items[0]["detail"], "Could not be judged.")
-        self.assertEqual(items[1]["detail"], "Could not be judged.")
-
-    def test_percent_signs_in_data_never_break_the_text(self):
-        self.env.security_facts = lambda: [{"id": "listening", "status": "warn", "code": "some", "data": "%s %d %(x)s"}]
-        mod = self.mod()
-        mod.begin_security()
-        mod.finish_security()
-        self.assertIn("%s %d %(x)s", mod.screen()["security"]["items"][0]["detail"])
-
-    def test_a_failing_source_is_reported_and_frees_the_button(self):
-        def boom():
-            raise RuntimeError("no luck")
-        self.env.security_facts = boom
-        mod = self.mod()
-        mod.begin_security()
-        mod.finish_security()
-        p = mod.screen()["security"]
-        self.assertEqual((p["state"], p["items"]), ("failed", []))
-        self.assertIn("no luck", p["message"])
-        self.assertTrue(mod.begin_security())
-
-    def test_malformed_results_are_a_failure_not_a_crash(self):
-        for bad in (None, 5, [None], [{"id": 1}], [{"status": "ok"}]):
-            self.env.security_facts = lambda bad=bad: bad
-            mod = self.mod()
-            mod.begin_security()
-            mod.finish_security()
-            self.assertEqual(mod.sec_state, "failed", bad)
-
-    def test_every_code_the_checks_can_return_has_text_in_both_languages(self):
-        import re
-        with open(os.path.join(os.path.dirname(HERE), "heiss_control", "security.py"), encoding="utf-8") as f:
-            src = f.read()
-        pairs = set(re.findall(r'_item\("(\w+)", "(\w+)", "(\w+)"', src))
-        self.assertGreater(len(pairs), 12)
-        from heiss_control.strings import S
-        for lang in S:
-            for item_id, status, code in pairs:
-                self.assertIn("sec.%s.%s" % (item_id, code), S[lang], (lang, item_id, code))
-                self.assertIn("sec.status." + status, S[lang])
-            for item_id in {p[0] for p in pairs if p[1] == "warn"}:
-                self.assertIn("sec.%s.advice" % item_id, S[lang], (lang, item_id))
-
-
-class PendingActions(Fixture):
-    def queue(self):
-        from heiss_core import wizard as wz
-        return wz.PendingQueue(self.p("user/pending.json"))
-
-    def add(self, profile="cyber", addons=()):
-        return self.queue().add("apply-profile", {"profile": profile, "addons": list(addons)}, now=1)["id"]
-
-    def mod(self):
-        mod = m.Model(self.env)
-        mod.open("profiles")
-        return mod
-
-    def test_nothing_waiting_means_nothing_starts(self):
-        mod = self.mod()
-        self.assertFalse(mod.begin_pending())
-        self.assertEqual(mod.pend_state, "idle")
-
-    def test_offline_starts_nothing_and_says_so(self):
-        self.add()
-        self.env.online = lambda: False
-        called = []
-        self.env.run_pending_item = lambda item, on_step: called.append(item)
-        mod = self.mod()
-        self.assertFalse(mod.begin_pending())
-        self.assertEqual(mod.screen()["profiles"]["run"]["state"], "offline")
-        self.assertEqual(called, [])
-        self.assertEqual(len(self.queue().list()), 1)
-
-    def test_run_applies_in_order_removes_the_done_items_and_reports_steps(self):
-        a, b = self.add("base"), self.add("cyber", ["wireshark"])
-        seen, steps = [], []
-
-        def run_item(item, on_step):
-            seen.append((item["id"], item["payload"]))
-            on_step(1, 2, "install packages")
-        self.env.run_pending_item = run_item
-        mod = self.mod()
-        self.assertTrue(mod.begin_pending())
-        self.assertFalse(mod.begin_pending())   # one run at a time
-        mod.finish_pending(lambda: steps.append(mod.pend_step))
-        self.assertEqual([i for i, _ in seen], [a, b])
-        self.assertEqual(steps, ["1/2 install packages"] * 2)
-        self.assertEqual((mod.pend_state, mod.pend_step), ("ok", ""))
-        self.assertEqual(self.queue().list(), [])
-
-    def test_a_failure_stops_the_run_and_keeps_the_item_with_its_message(self):
-        from heiss_core.errors import HeissError
-        self.add("base")
-        self.add("cyber")
-
-        def run_item(item, on_step):
-            raise HeissError("pacman is locked " + "x" * 1000)
-        self.env.run_pending_item = run_item
-        mod = self.mod()
-        mod.begin_pending()
-        mod.finish_pending()
-        self.assertEqual(mod.pend_state, "failed")
-        self.assertLessEqual(len(mod.pend_message), m.MAX_MESSAGE)
-        items = self.queue().list()
-        self.assertEqual([i["status"] for i in items], ["failed", "pending"])
-        self.assertTrue(mod.begin_pending())   # retry is possible
-
-    def test_unexpected_exceptions_do_not_leave_the_button_stuck(self):
-        self.add()
-
-        def run_item(item, on_step):
-            raise RuntimeError("boom")
-        self.env.run_pending_item = run_item
-        mod = self.mod()
-        mod.begin_pending()
-        mod.finish_pending()
-        self.assertEqual(mod.pend_state, "failed")
-        self.assertTrue(mod.begin_pending())
-
-    def test_broken_queue_file_is_an_error_not_a_crash(self):
-        self.write("user/pending.json", "{")
-        mod = self.mod()
-        self.assertFalse(mod.begin_pending())
-        self.assertEqual(mod.pend_state, "failed")
-        self.assertTrue(mod.pend_message)
-
-    def test_remove_drops_one_item_and_refuses_bad_ids_and_a_running_run(self):
-        a, b = self.add("base"), self.add("cyber")
-        mod = self.mod()
-        for bad in ("1", None, True, 1.0, [1]):
-            self.assertFalse(mod.remove_pending(bad))
-        self.assertEqual(len(self.queue().list()), 2)
-        self.assertTrue(mod.remove_pending(a))
-        self.assertEqual([i["id"] for i in self.queue().list()], [b])
-        mod.begin_pending()
-        self.assertFalse(mod.remove_pending(b))
-        self.assertEqual(len(self.queue().list()), 1)
-
-    def test_removing_the_failed_item_clears_its_error(self):
-        from heiss_core.errors import HeissError
-        a = self.add("base")
-
-        def run_item(item, on_step):
-            raise HeissError("pacman is locked")
-        self.env.run_pending_item = run_item
-        mod = self.mod()
-        mod.begin_pending()
-        mod.finish_pending()
-        self.assertEqual(mod.pend_state, "failed")
-        self.assertTrue(mod.remove_pending(a))
-        run = mod.screen()["profiles"]["run"]
-        self.assertEqual((run["state"], run["message"]), ("idle", ""))
-
-    def test_screen_offers_the_labels_and_the_warning_in_both_languages(self):
-        for lang, word in (("en", "password"), ("ru", "пароль")):
-            mod = m.Model(self.env, lang)
-            mod.open("profiles")
-            run = mod.screen()["profiles"]["run"]
-            self.assertIn(word, run["warning"])
-            self.assertTrue(run["label"] and run["removeLabel"])
-
-
-class Runner(unittest.TestCase):
-    def item(self, profile="cyber", addons=("wireshark",), kind="apply-profile"):
-        return {"id": 1, "kind": kind, "payload": {"profile": profile, "addons": list(addons)}, "status": "pending"}
-
-    def test_argv_uses_the_equals_form_and_no_shell(self):
-        self.assertEqual(runner.argv_for(self.item(), ["heiss"]),
-                         ["heiss", "profile", "apply", "--yes", "--adopt", "--profile=cyber", "--addon=wireshark"])
-
-    def test_bad_ids_and_kinds_are_refused_before_anything_runs(self):
-        for bad in (self.item("--yes"), self.item("base\n"), self.item("Base"), self.item("a b"), self.item("base", ["x;y"]),
-                    self.item("base", [""]), self.item(kind="rm"), {"kind": "apply-profile"}, {}, self.item("x" * 50)):
-            from heiss_core.errors import HeissError
-            with self.assertRaises(HeissError):
-                runner.argv_for(bad, ["heiss"])
-
-    def test_the_child_is_isolated_and_gets_a_clean_environment(self):
-        seen = {}
-
-        class P:
-            stdout = iter(())
-            returncode = 0
-
-            def __enter__(self):
-                return self
-
-            def __exit__(self, *a):
-                return False
-
-        def popen(argv, **kw):
-            seen["argv"], seen["kw"] = argv, kw
-            return P()
-        env = {"PATH": "/usr/bin", "HOME": "/home/u", "XDG_RUNTIME_DIR": "/run/user/1000", "PYTHONPATH": "/tmp/evil",
-               "PYTHONSTARTUP": "/tmp/x.py", "LD_PRELOAD": "/tmp/e.so", "LD_LIBRARY_PATH": "/tmp",
-               "GCONV_PATH": "/tmp", "GIO_EXTRA_MODULES": "/tmp", "HEISS_PROFILES": "/tmp/m", "LOCPATH": "/tmp",
-               "GI_TYPELIB_PATH": "/tmp/t", "G_SLICE": "x", "GSETTINGS_BACKEND": "memory", "DBUS_SYSTEM_BUS_ADDRESS": "unix:path=/x",
-               "DBUS_SESSION_BUS_ADDRESS": "unix:path=/run/user/1000/bus", "WAYLAND_DISPLAY": "wayland-0"}
-        env.update({"SSH_AUTH_SOCK": "/s", "BASH_ENV": "/x", "FUTURE_LOADER_PATH": "/x", "PATH": "/home/u/evil:/usr/bin"})
-        runner.run_item(self.item(), None, None, popen, env)
-        self.assertEqual(seen["argv"][1:4], ["-I", "-m", "heiss_core"])
-        self.assertEqual(seen["kw"]["cwd"], "/")
-        self.assertEqual(seen["kw"]["env"], {"PATH": "/usr/bin:/bin", "HOME": "/home/u", "XDG_RUNTIME_DIR": "/run/user/1000",
-                                           "DBUS_SESSION_BUS_ADDRESS": "unix:path=/run/user/1000/bus",
-                                           "WAYLAND_DISPLAY": "wayland-0"})
-        self.assertNotIn("shell", seen["kw"])
-
-    def test_hw_remove_argv_takes_only_a_valid_id(self):
-        self.assertEqual(runner.hw_remove_argv("gpu-nvidia-open", ["heiss"]), ["heiss", "hw", "remove", "--yes", "gpu-nvidia-open"])
-        from heiss_core.errors import HeissError
-        for bad in ("--yes", "-x", "gpu-nvidia-open\n", "GPU", "a b", "", None, 5, ["x"], "x" * 50, "../x"):
-            with self.assertRaises(HeissError, msg=repr(bad)):
-                runner.hw_remove_argv(bad, ["heiss"])
-
-    def test_hw_remove_runs_isolated_and_reports_the_last_error(self):
-        base = self.fake('echo "== remove"; echo "heiss: the helper refused" >&2; exit 1')
-        from heiss_core.errors import HeissError
-        with self.assertRaises(HeissError) as cm:
-            runner.run_hw_remove("gpu-nvidia-open", None, base)
-        self.assertEqual(str(cm.exception), "the helper refused")
-        runner.run_hw_remove("gpu-nvidia-open", None, self.fake("exit 0"))
-        seen = {}
-
-        class P:
-            stdout = iter(())
-            returncode = 0
-
-            def __enter__(self):
-                return self
-
-            def __exit__(self, *a):
-                return False
-
-        def popen(argv, **kw):
-            seen["argv"], seen["kw"] = argv, kw
-            return P()
-        runner.run_hw_remove("gpu-nvidia-open", None, None, popen, {"HOME": "/h", "PYTHONPATH": "/x", "LD_PRELOAD": "/y"})
-        self.assertEqual(seen["argv"][1:], ["-I", "-m", "heiss_core", "hw", "remove", "--yes", "gpu-nvidia-open"])
-        self.assertEqual((seen["kw"]["cwd"], sorted(seen["kw"]["env"])), ("/", ["HOME", "PATH"]))
-
-    def fake(self, script):
-        import stat
-        import tempfile
-        d = tempfile.mkdtemp()
-        self.addCleanup(__import__("shutil").rmtree, d)
-        path = os.path.join(d, "fakeheiss")
-        with open(path, "w") as f:
-            f.write("#!/bin/sh\n" + script)
-        os.chmod(path, os.stat(path).st_mode | stat.S_IXUSR)
-        return [path]
-
-    def test_steps_are_reported_and_success_returns(self):
-        steps = []
-        base = self.fake('echo "[1/2] install packages"; echo noise; echo "[2/2] enable services"; exit 0')
-        runner.run_item(self.item(), lambda n, t, d: steps.append((n, t, d)), base)
-        self.assertEqual(steps, [(1, 2, "install packages"), (2, 2, "enable services")])
-
-    def test_the_child_gets_exactly_the_expected_arguments(self):
-        import tempfile
-        log = os.path.join(tempfile.mkdtemp(), "args")
-        self.addCleanup(__import__("shutil").rmtree, os.path.dirname(log))
-        base = self.fake('printf "%%s\\n" "$@" > %s' % log)
-        runner.run_item(self.item(), None, base)
-        with open(log) as f:
-            self.assertEqual(f.read().split(), ["profile", "apply", "--yes", "--adopt", "--profile=cyber", "--addon=wireshark"])
-
-    def test_failure_reports_the_heiss_line_or_the_last_line(self):
-        from heiss_core.errors import HeissError
-        with self.assertRaises(HeissError) as e:
-            runner.run_item(self.item(), None, self.fake('echo "heiss: pacman is locked"; echo trailing; exit 1'))
-        self.assertEqual(str(e.exception), "pacman is locked")
-        with self.assertRaises(HeissError) as e:
-            runner.run_item(self.item(), None, self.fake('echo only line; exit 2'))
-        self.assertEqual(str(e.exception), "only line")
-        with self.assertRaises(HeissError) as e:
-            runner.run_item(self.item(), None, self.fake('exit 3'))
-        self.assertIn("without a message", str(e.exception))
-
-    def test_a_broken_step_callback_does_not_stop_the_command(self):
-        def bad(n, t, d):
-            raise RuntimeError("x")
-        runner.run_item(self.item(), bad, self.fake('echo "[1/1] a"; echo "[1/1] b"; exit 0'))
-
-    def test_missing_command_and_non_utf8_output(self):
-        from heiss_core.errors import HeissError
-        with self.assertRaises(HeissError):
-            runner.run_item(self.item(), None, ["/nonexistent/heiss"])
-        runner.run_item(self.item(), None, self.fake("printf '\\377\\376\\n'; exit 0"))
-
-
-class FakePrivacySystem:
-    def __init__(self, files=None, kde=None, answers=None):
-        self.files, self.kde, self.answers, self.calls = files or {}, kde or {}, answers or {}, []
-
-    def read_text(self, path):
-        return self.files.get(path)
-
-    def kde_value(self, key, default):
-        return self.kde.get(key, default) if self.kde is not None else None
-
-    def run(self, argv):
-        self.calls.append(argv)
-        return self.answers.get(tuple(argv), (127, ""))
-
-
-NM = "/etc/NetworkManager/conf.d/80-heiss-privacy.conf"
-
-
-def nm_file(wifi):
-    return "# Written by Heiss OS\n[device]\nwifi.scan-rand-mac-address=yes\n\n[connection]\nwifi.cloned-mac-address=%s\nethernet.cloned-mac-address=preserve\n" % wifi
-
-
-class PrivacyFacts(unittest.TestCase):
-    def facts(self, sh, chosen):
-        return {f["id"]: f for f in pvw.collect(chosen, sh)}
-
-    def test_every_level_matches_what_the_helper_writes(self):
-        from heiss_core import privacy as pv
-        for level in pv.LEVELS:
-            wifi = pv.dropins(level)[0]["content"]
-            kde = {k["key"]: k["value"] for k in pv.kde_settings(level)}
-            f = self.facts(FakePrivacySystem({NM: wifi}, kde), level)
-            self.assertEqual((f["wifi_mac"]["status"], f["lock"]["status"]), ("ok", "ok"), level)
-            self.assertEqual(f["level"]["code"], level)
-
-    def test_defaults_count_as_the_standard_level(self):
-        f = self.facts(FakePrivacySystem(), "standard")      # no drop-in, keys unset: KDE and NetworkManager defaults
-        self.assertEqual((f["wifi_mac"]["code"], f["wifi_mac"]["status"], f["lock"]["status"]), ("preserve", "ok", "ok"))
-
-    def test_a_difference_from_the_chosen_level_is_a_warning(self):
-        f = self.facts(FakePrivacySystem({NM: nm_file("preserve")}, {"Timeout": "30"}), "maximum")
-        self.assertEqual((f["wifi_mac"]["status"], f["lock"]["status"]), ("warn", "warn"))
-        self.assertEqual(f["lock"]["data"], "30")
-
-    def test_without_a_chosen_level_nothing_is_a_warning(self):
-        f = self.facts(FakePrivacySystem({NM: nm_file("random")}, {"Autolock": "false"}), None)
-        self.assertEqual((f["level"]["code"], f["wifi_mac"]["status"], f["lock"]["status"]), ("unset", "info", "info"))
-        self.assertEqual(self.facts(FakePrivacySystem(), "bogus")["level"]["code"], "unset")
-
-    def test_lock_off_is_a_warning_only_when_a_level_is_chosen(self):
-        self.assertEqual(self.facts(FakePrivacySystem(kde={"Autolock": "false"}), "standard")["lock"]["code"], "off")
-        self.assertEqual(self.facts(FakePrivacySystem(kde={"Autolock": "false"}), "standard")["lock"]["status"], "warn")
-
-    def test_odd_values_are_shown_not_trusted(self):
-        f = self.facts(FakePrivacySystem({NM: nm_file("<b>x</b>")}, {"Timeout": "abc"}), "standard")
-        self.assertEqual((f["wifi_mac"]["code"], f["wifi_mac"]["data"]), ("other", "<b>x</b>"))
-        self.assertEqual((f["lock"]["code"], f["lock"]["status"]), ("unknown", "info"))
-
-    def test_unreadable_lock_settings_are_unknown(self):
-        sh = FakePrivacySystem()
-        sh.kde = None
-        self.assertEqual(self.facts(sh, "standard")["lock"]["code"], "unknown")
-
-    def test_one_broken_fact_does_not_hide_the_others(self):
-        class Bad(FakePrivacySystem):
-            def read_text(self, path):
-                raise RuntimeError("boom")
-        f = self.facts(Bad(), "standard")
-        self.assertEqual(f["wifi_mac"], {"id": "wifi_mac", "status": "info", "code": "unknown", "data": ""})
-        self.assertIn("lock", f)
-
-    def test_real_system_reads_with_fixed_argument_lists(self):
-        sh = FakePrivacySystem()
-        pvw.firewall(sh, None)
-        self.assertEqual(sh.calls[0], ["systemctl", "is-active", "firewalld"])
-        self.assertIsNone(pvw.RealSystem().read_text("/nonexistent/file"))
-        self.assertIsNone(pvw.RealSystem().kde_value("Autolock", "true") if not __import__("shutil").which("kreadconfig6") else None)
-
-
-class NetworkPage(Fixture):
-    def mod(self, lang="en"):
-        mod = m.Model(self.env, lang)
-        mod.open("network")
-        return mod
-
-    def test_the_chosen_level_reaches_the_facts_and_the_page_is_plain_language(self):
-        self.write("profile.toml", 'schema_version = 1\nprofile = "base"\n[privacy]\nlevel = "enhanced"\n')
-        mod = self.mod()
-        self.assertTrue(mod.begin_network())
-        self.assertFalse(mod.begin_network())
-        mod.finish_network()
-        p = mod.screen()["network"]
-        by = {i["id"]: i for i in p["items"]}
-        self.assertEqual(by["level"]["detail"], "Enhanced.")
-        self.assertEqual(by["lock"]["detail"], "The screen locks automatically after 3 min.")
-        self.assertTrue(by["wifi_mac"]["advice"])
-        self.assertEqual(by["lock"]["advice"], "")
-        self.assertEqual(len(p["soon"]), 4)
-        self.assertEqual(p["soonTitle"], "Coming soon")
-        self.assertIn("heiss profile apply --privacy", p["note"])
-
-    def test_no_answers_means_unset(self):
-        mod = self.mod()
-        mod.begin_network()
-        mod.finish_network()
-        by = {i["id"]: i for i in mod.screen()["network"]["items"]}
-        self.assertIn("No level has been chosen", by["level"]["detail"])
-
-    def test_russian(self):
-        mod = self.mod("ru")
-        mod.begin_network()
-        mod.finish_network()
-        p = mod.screen()["network"]
-        self.assertEqual({i["id"]: i for i in p["items"]}["wifi_mac"]["title"], "MAC-адрес Wi-Fi")
-        self.assertIn("DNS", p["soon"][0])
-
-    def test_a_failing_source_is_reported_and_frees_the_button(self):
-        def boom(chosen):
-            raise RuntimeError("no luck")
-        self.env.privacy_facts = boom
-        mod = self.mod()
-        mod.begin_network()
-        mod.finish_network()
-        p = mod.screen()["network"]
-        self.assertEqual((p["state"], p["items"]), ("failed", []))
-        self.assertTrue(mod.begin_network())
-
-    def test_malformed_results_and_broken_answers_do_not_crash(self):
-        self.write("profile.toml", "= = =")
-        for bad in (None, 5, [None], [{"id": 1}], [{"status": "ok"}]):
-            self.env.privacy_facts = lambda chosen, bad=bad: bad
-            mod = self.mod()
-            mod.begin_network()
-            mod.finish_network()
-            self.assertEqual(mod.net_state, "failed", bad)
-
-    def test_every_code_the_checks_can_return_has_text_in_both_languages(self):
-        from heiss_control.strings import S
-        for lang in S:
-            for fact, codes in pvw.CODES.items():
-                self.assertIn("nw." + fact, S[lang])
-                for code in codes:
-                    self.assertIn("nw.%s.%s" % (fact, code), S[lang], (lang, fact, code))
-            for fact in ("wifi_mac", "lock", "firewall"):
-                self.assertIn("nw.%s.advice" % fact, S[lang])
-            for k in ("dns", "vpn", "bluetooth", "hardened"):
-                self.assertIn("nw.soon." + k, S[lang])
-
-
-class FakeUpdateSystem:
-    def __init__(self, answers=None, log=None, today=None, release="6.1.0-arch1", paths=(), cut=False):
-        import datetime
-        self.answers, self.log, self.paths, self.release, self.cut = answers or {}, log, set(paths), release, cut
-        self.day = today or datetime.date(2026, 11, 14)
-
-    def run(self, argv):
-        return self.answers.get(tuple(argv), (127, ""))
-
-    def read_tail(self, path):
-        return self.log if self.log is None else (self.log, self.cut)
-
-    def today(self):
-        return self.day
-
-    def kernel_release(self):
-        return self.release
-
-    def exists(self, path):
-        return path in self.paths
-
-
-LOG = "[2026-10-01T10:00:00+0300] [PACMAN] starting full system upgrade\n[2026-11-10T10:00:00+0300] [PACMAN] starting full system upgrade\n"
-
-
-class UpdateFacts(unittest.TestCase):
-    def facts(self, sh):
-        return {f["id"]: f for f in upv.collect(sh)}
-
-    def test_pending_counts_lines_and_no_updates_is_exit_one(self):
-        f = self.facts(FakeUpdateSystem({("pacman", "-Qu"): (0, "a 1 -> 2\nb 1 -> 2\n")}))
-        self.assertEqual((f["pending"]["status"], f["pending"]["code"], f["pending"]["data"]), ("warn", "some", "2"))
-        f = self.facts(FakeUpdateSystem({("pacman", "-Qu"): (1, "")}))
-        self.assertEqual(f["pending"]["code"], "none")
-        f = self.facts(FakeUpdateSystem({("pacman", "-Qu"): (2, "")}))
-        self.assertEqual(f["pending"]["code"], "unknown")
-        self.assertEqual(self.facts(FakeUpdateSystem())["pending"]["code"], "unknown")
-        locked = FakeUpdateSystem({("pacman", "-Qu"): (1, "")}, paths=[upv.PACMAN_LOCK])
-        self.assertEqual(self.facts(locked)["pending"]["code"], "unknown")
-
-    def test_last_upgrade_uses_the_newest_entry_and_ages(self):
-        f = self.facts(FakeUpdateSystem(log=LOG))
-        self.assertEqual((f["last"]["code"], f["last"]["data"]), ("recent", "2026-11-10"))
-        import datetime
-        f = self.facts(FakeUpdateSystem(log=LOG, today=datetime.date(2026, 12, 20)))
-        self.assertEqual((f["last"]["status"], f["last"]["code"]), ("warn", "old"))
-        self.assertEqual(self.facts(FakeUpdateSystem(log="[2026-11-10T10:00:00+0300] [ALPM] installed x\n"))["last"]["code"], "never")
-        self.assertEqual(self.facts(FakeUpdateSystem(log="[x] y\n", cut=True))["last"]["code"], "unknown")
-        self.assertEqual(self.facts(FakeUpdateSystem(log=None))["last"]["code"], "unknown")
-        self.assertEqual(self.facts(FakeUpdateSystem(log=LOG, today=datetime.date(2026, 1, 1)))["last"]["code"], "unknown")
-        self.assertEqual(self.facts(FakeUpdateSystem(log="[2026-13-45T1:1] [PACMAN] starting full system upgrade\n"))["last"]["code"], "unknown")
-
-    def test_reboot_needed_when_the_running_kernel_modules_are_gone(self):
-        self.assertEqual(self.facts(FakeUpdateSystem(paths=["/usr/lib/modules/6.1.0-arch1"]))["reboot"]["code"], "no")
-        self.assertEqual(self.facts(FakeUpdateSystem())["reboot"]["code"], "yes")
-        self.assertEqual(self.facts(FakeUpdateSystem(release="../x"))["reboot"]["code"], "unknown")
-
-    def test_snapshots_by_file_system(self):
-        q = ("findmnt", "-n", "-o", "FSTYPE", "/")
-        f = self.facts(FakeUpdateSystem({q: (0, "ext4\n")}))["snapshots"]
-        self.assertEqual((f["code"], f["data"]), ("not_btrfs", "ext4"))
-        self.assertEqual(self.facts(FakeUpdateSystem({q: (0, "btrfs\n")}))["snapshots"]["code"], "btrfs_no_snapper")
-        self.assertEqual(self.facts(FakeUpdateSystem({q: (0, "btrfs\n")}, paths=[upv.SNAPPER_ROOT]))["snapshots"]["code"], "ready")
-        self.assertEqual(self.facts(FakeUpdateSystem({q: (0, "ext4 <b>x\n")}))["snapshots"]["code"], "unknown")
-        self.assertEqual(self.facts(FakeUpdateSystem())["snapshots"]["code"], "unknown")
-
-    def test_one_broken_check_does_not_hide_the_others(self):
-        class Bad(FakeUpdateSystem):
-            def read_tail(self, path):
-                raise RuntimeError("x")
-        f = self.facts(Bad())
-        self.assertEqual((f["last"]["code"], len(f)), ("unknown", 4))
-
-    def test_real_system_commands_are_fixed_lists_and_missing_file_is_none(self):
-        self.assertIsNone(upv.RealSystem().read_tail("/nonexistent/file"))
-        import tempfile
-        with tempfile.TemporaryDirectory() as d:
-            big = os.path.join(d, "log")
-            with open(big, "w") as f:
-                f.write("[2026-11-10T10:00:00+0300] [PACMAN] starting full system upgrade\n" + "x" * (upv.MAX_LOG + 10))
-            text, cut = upv.RealSystem().read_tail(big)
-            self.assertTrue(cut)
-            self.assertEqual(len(text.encode()), upv.MAX_LOG)
-            small = os.path.join(d, "small")
-            with open(small, "w") as f:
-                f.write("abc")
-            self.assertEqual(upv.RealSystem().read_tail(small), ("abc", False))
-        self.assertEqual(len(upv.collect()), 4)
-
-
-class UpdatesPage(Fixture):
-    def mod(self, lang="en"):
-        mod = m.Model(self.env, lang)
-        mod.open("updates")
-        return mod
-
-    def test_page_is_built_plain_language_with_advice_only_for_warnings(self):
-        mod = self.mod()
-        self.assertTrue(mod.begin_updates())
-        self.assertFalse(mod.begin_updates())
-        mod.finish_updates()
-        p = mod.screen()["updates"]
-        by = {i["id"]: i for i in p["items"]}
-        self.assertEqual(by["pending"]["detail"], "3 updates are waiting (as of the last refresh of the package list).")
-        self.assertTrue(by["pending"]["advice"])
-        self.assertEqual(by["reboot"]["advice"], "")
-        self.assertIn("sudo pacman -Syu", p["note"])
-        self.assertTrue(mod.screen()["built"])
-
-    def test_russian_and_failure(self):
-        mod = self.mod("ru")
-        mod.begin_updates()
-        mod.finish_updates()
-        self.assertEqual({i["id"]: i for i in mod.screen()["updates"]["items"]}["pending"]["title"], "Ожидающие обновления")
-
-        def boom():
-            raise RuntimeError("no luck")
-        self.env.update_facts = boom
-        mod = self.mod()
-        mod.begin_updates()
-        mod.finish_updates()
-        self.assertEqual((mod.screen()["updates"]["state"], mod.screen()["updates"]["items"]), ("failed", []))
-        self.assertTrue(mod.begin_updates())
-
-    def test_every_code_has_text_in_both_languages(self):
-        for lang in S:
-            for fact, codes in upv.CODES.items():
-                self.assertIn("up." + fact, S[lang])
-                for code in codes:
-                    self.assertIn("up.%s.%s" % (fact, code), S[lang], (lang, fact, code))
-            for fact in ("pending", "last", "reboot"):
-                self.assertIn("up.%s.advice" % fact, S[lang])
-
-
-HW_DIR = os.path.join(REPO, "hardware")
-FIX = os.path.join(REPO, "core", "tests", "fixtures", "hw")
-
-
-class HardwareFacts(unittest.TestCase):
-    def data(self, fixture, installed, kernel="6.1"):
-        return hwv.collect(hardware_dir=HW_DIR, facts=hwc.load_fixture(os.path.join(FIX, fixture)), installed=installed, kernel=kernel)
-
-    def test_hybrid_laptop_facts_and_driver_states(self):
-        d = self.data("nvidia-hybrid-laptop", {"nvidia-prime", "intel-ucode"})
-        by = {f["id"]: f for f in d["facts"]}
-        self.assertEqual((by["form"]["code"], by["hybrid"]["code"]), ("laptop", "yes"))
-        self.assertIn("NVIDIA (10de:", by["gpu"]["data"])
-        st = {x["id"]: x for x in d["drivers"]}
-        self.assertEqual(st["hybrid-nvidia-intel"]["state"], "installed")
-        self.assertEqual(st["cpu-microcode-intel"]["state"], "installed")
-        self.assertEqual(st["gpu-intel"]["state"], "missing")
-        self.assertIn("mesa", st["gpu-intel"]["missing"])
-
-    def test_nothing_to_install_and_unknown_when_pacman_gives_no_list(self):
-        empty = hwc.HwProfile(id="p", name={}, description={}, safe_by_default=True, match={})
-        self.assertEqual(hwv.driver_state(empty, {"x"}), "nothing")
-        st = {x["id"]: x for x in self.data("nvidia-desktop-old", {"x"})["drivers"]}
-        self.assertEqual(st["gpu-nvidia-legacy"]["state"], "missing")
-        st = {x["id"]: x for x in self.data("nvidia-desktop-old", set())["drivers"]}
-        self.assertEqual({x["state"] for x in st.values()}, {"unknown"})
-
-    def test_report_has_no_personal_data(self):
-        for fx in sorted(os.listdir(FIX)):
-            facts = hwc.load_fixture(os.path.join(FIX, fx))
-            d = hwv.collect(hardware_dir=HW_DIR, facts=facts, installed={"a"}, kernel="6.1")
-            text = d["report"]
-            for secret in (facts.sys_vendor, facts.product_name, *[x.slot for x in facts.pci]):
-                if secret:
-                    self.assertNotIn(secret, text, (fx, secret))
-            self.assertIn("kernel: 6.1", text)
-
-    def test_report_keeps_unusual_kernel_and_cpu_strings_out(self):
-        facts = hwc.load_fixture(os.path.join(FIX, "amd-gpu-desktop"))
-        facts.cpu_vendor = "JohnSmithCPU"
-        d = hwv.collect(hardware_dir=HW_DIR, facts=facts, installed={"a"}, kernel="6.1-john-smith's custom")
-        self.assertIn("kernel: other", d["report"])
-        self.assertIn("cpu vendor: other", d["report"])
-        self.assertNotIn("john", d["report"].lower())
-
-    def test_a_hostile_virtualization_string_cannot_forge_report_lines(self):
-        facts = hwc.load_fixture(os.path.join(FIX, "virtualbox-vmsvga"))
-        facts.virt = "x\nhostname: bob"
-        d = hwv.collect(hardware_dir=HW_DIR, facts=facts, installed={"a"}, kernel="6.1")
-        self.assertNotIn("hostname: bob", d["report"])
-        self.assertIn("virtualization: other", d["report"])
-        self.assertEqual({f["id"]: f for f in d["facts"]}["form"]["data"], "other")
-
-    def test_a_long_report_is_cut_with_a_marker(self):
-        self.assertTrue(m.Model._report_text("x" * (m.MAX_REPORT + 5)).endswith("[truncated]\n"))
-        self.assertEqual(m.Model._report_text("short"), "short")
-
-    def test_every_code_and_state_has_text_in_both_languages(self):
-        for lang in S:
-            for fact, codes in hwv.CODES.items():
-                self.assertIn("hw." + fact, S[lang])
-                for c in codes:
-                    self.assertIn("hw.%s.%s" % (fact, c), S[lang], (lang, fact, c))
-            for st in hwv.DRIVER_STATES:
-                self.assertIn("hw.state." + st, S[lang])
-        for p in hwc.load_profiles(HW_DIR).values():
-            self.assertTrue(p.name["en"] and p.name["ru"])
-
-    def test_real_run_on_this_machine_does_not_crash(self):
-        d = hwv.collect(hardware_dir=HW_DIR)
-        self.assertTrue(d["report"].startswith("Heiss OS hardware report"))
-
-
-class HardwareNeeds(unittest.TestCase):
-    """A driver proposal that needs the safe graphics boot entry says so in the data and in the copied report."""
-
-    def collect(self, caps):
-        facts = hwc.load_fixture(os.path.join(FIX, "nvidia-desktop-modern"))
-        return hwv.collect(hardware_dir=HW_DIR, facts=facts, installed={"a"}, kernel="6.1", caps=caps)
-
-    def test_missing_entry_is_reported(self):
-        d = self.collect(set())
-        nv = next(x for x in d["drivers"] if x["id"] == "gpu-nvidia-open")
-        self.assertEqual(nv["needs"], ["safe-graphics-entry"])
-        self.assertIn("driver proposal gpu-nvidia-open: missing (missing: nvidia-open nvidia-utils linux-lts nvidia-open-lts) "
-                      "(not offered: needs safe-graphics-entry)", d["report"])
-
-    def test_present_entry_changes_nothing(self):
-        d = self.collect({"safe-graphics-entry"})
-        self.assertTrue(all(x["needs"] == [] for x in d["drivers"]))
-        self.assertNotIn("not offered", d["report"])
-
-
-class HardwareWording(unittest.TestCase):
-    """Vendor names, uncut warnings and the colours the page may use."""
-
-    def test_cpu_vendor_is_the_shared_readable_name(self):
-        facts = hwc.load_fixture(os.path.join(FIX, "nvidia-hybrid-laptop"))   # GenuineIntel
-        d = hwv.collect(hardware_dir=HW_DIR, facts=facts, installed={"a"}, kernel="6.1")
-        cpu = {f["id"]: f for f in d["facts"]}["cpu"]
-        self.assertEqual((cpu["code"], cpu["data"]), ("named", "Intel"))
-        self.assertIn("cpu vendor: intel", d["report"])
-        facts.cpu_vendor = "AuthenticAMD"
-        cpu = {f["id"]: f for f in hwv.collect(hardware_dir=HW_DIR, facts=facts, installed={"a"}, kernel="6.1")["facts"]}["cpu"]
-        self.assertEqual(cpu["data"], "AMD")
-
-    def test_every_shipped_warning_is_shown_whole(self):
-        for p in hwc.load_profiles(HW_DIR).values():
-            for lang in ("en", "ru"):
-                text = " ".join(p.warnings.get(lang, "").split())
-                self.assertLessEqual(len(text), m.MAX_WARNING, (p.id, lang))
-                mod = m.Model(m.Env(), lang)
-                self.assertEqual(mod._localized(p.warnings or {}, m.MAX_WARNING), text, (p.id, lang))
-
-    def test_nvidia_card_shows_recovery_step_and_the_threshold_detail(self):
-        p = hwc.load_profiles(HW_DIR)["gpu-nvidia-open"]
-        for lang in ("en", "ru"):
-            shown = m.Model(m.Env(), lang)._localized(p.warnings, m.MAX_WARNING)
-            self.assertIn("Heiss OS, safe graphics", shown)
-            self.assertIn("0x1e00", shown)
-            self.assertTrue(shown.rstrip().endswith("."), shown)   # not cut in the middle of a sentence
-
-    def test_palette_literals_in_the_qml_are_the_design_tokens(self):
-        import re
-        sys.path.insert(0, os.path.join(REPO, "scripts"))
-        import heiss_tokens as ht
-        tokens = ht.load()
-        with open(os.path.join(os.path.dirname(HERE), "heiss_control", "qml", "Main.qml"), encoding="utf-8") as f:
-            qml = f.read()
-        want = {"cautionText": "neutral_text"}
-        for prop, token in want.items():
-            dark, light = re.search(r'property color %s: win\.dark \? "(#[0-9A-Fa-f]{6})" : "(#[0-9A-Fa-f]{6})"' % prop, qml).groups()
-            self.assertEqual((dark.upper(), light.upper()),
-                             (ht.palette(tokens, "dark")[token].upper(), ht.palette(tokens, "light")[token].upper()), prop)
-
-    def test_the_search_field_sets_its_own_font(self):
-        with open(os.path.join(os.path.dirname(HERE), "heiss_control", "qml", "Main.qml"), encoding="utf-8") as f:
-            qml = f.read()
-        field = qml[qml.index("id: searchField"):qml.index("onTextChanged")]
-        self.assertIn("font.family:", field)
-        self.assertIn('"sans-serif"', field)   # never a monospace face when Inter is missing
-
-
-class HardwarePage(Fixture):
-    def mod(self, lang="en"):
-        mod = m.Model(self.env, lang)
-        mod.open("hardware")
-        return mod
-
-    def test_page_lists_facts_drivers_and_report(self):
-        mod = self.mod()
-        self.assertTrue(mod.begin_hardware())
-        self.assertFalse(mod.begin_hardware())
-        mod.finish_hardware()
-        p = mod.screen()["hardware"]
-        self.assertTrue(mod.screen()["built"])
-        self.assertEqual(p["summary"], "")
-        self.assertEqual({i["id"]: i for i in p["items"]}["gpu"]["detail"], "Intel (8086:9a49).")
-        d = {x["id"]: x for x in p["drivers"]}
-        self.assertEqual((d["gpu-intel"]["status"], d["gpu-intel"]["stateLabel"]), ("info", "Can be installed"))   # not a problem: not red
-        self.assertIn("--hardware=gpu-intel", d["gpu-intel"]["advice"])
-        self.assertIn("mesa", d["gpu-intel"]["missing"])
-        self.assertEqual((d["gpu-nvidia-legacy"]["status"], d["gpu-nvidia-legacy"]["advice"]), ("ok", ""))
-        self.assertEqual(d["gpu-nvidia-legacy"]["warning"], "careful <b>")   # plain text, QML draws it literally
-        self.assertTrue(p["report"].startswith("Heiss OS"))
-
-    def test_russian_names(self):
-        mod = self.mod("ru")
-        mod.begin_hardware()
-        mod.finish_hardware()
-        self.assertEqual(mod.screen()["hardware"]["drivers"][0]["title"], "Графика Intel")
-
-    def test_copy_puts_the_report_on_the_clipboard_once_there_is_one(self):
-        mod = self.mod()
+        self.d = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.d)
+        os.makedirs(os.path.join(self.d, "hypr"))
+        shutil.copy(SHIPPED, os.path.join(self.d, "hypr", "hyprland.lua"))
+        self.calls = Calls()
+        self.env = m.Env(cfg_dir=self.d, os_release=os.path.join(self.d, "os-release"), system_answers=os.path.join(self.d, "no.toml"),
+                         state_file=os.path.join(self.d, "no.json"), profiles_dir=os.path.join(REPO, "profiles"),
+                         theme_get=lambda: "dark", apply_theme=self.calls.apply_theme, run=self.calls.run, launch=self.calls.launch,
+                         monitors=lambda: [{"name": "A", "width": 1920, "height": 1080, "refresh": 60.0, "scale": 1.0}],
+                         layouts=lambda: {"us", "ru", "de"}, hardware_data=lambda: {"facts": [], "drivers": [], "report": "r"},
+                         run_check=lambda: [], kernel=lambda: "6.1")
+        self.m = m.Model(self.env)
+
+    def do(self, job, arg=""):
+        ok = self.m.begin(job, arg)
+        if ok:
+            self.m.finish(job, arg)
+        return ok
+
+    def blocks(self, page):
+        self.m.open(page)
+        return self.m.screen()["blocks"]
+
+    def user(self):
+        with open(os.path.join(self.d, "hypr", "heiss-user.lua"), encoding="utf-8") as f:
+            return f.read()
+
+
+class Jobs(Base):
+    def test_unknown_jobs_and_values_are_refused_and_nothing_runs(self):
+        for job, arg in (("rm", ""), ("theme", "blue"), ("modifier", "CTRL"), ("modifier", "alt"), ("scale", "3"), ("scale", "1;x"),
+                         ("launch", "sh"), ("launch", "../bin/sh"), ("layout", "us;rm"), ("layout", "US"), ("layout", ""), ("theme", None)):
+            self.assertFalse(self.m.begin(job, arg), (job, arg))
+        self.assertEqual((self.calls.runs, self.calls.launched, self.calls.themes), ([], [], []))
+        self.assertEqual(self.m.busy, "")
+
+    def test_one_job_at_a_time(self):
+        self.assertTrue(self.m.begin("theme", "dark"))
+        self.assertFalse(self.m.begin("scale", "1"))
+        self.m.finish("theme", "dark")
+        self.assertEqual(self.m.busy, "")
+        self.assertTrue(self.m.begin("scale", "1"))
+
+    def test_theme_success_and_failure_show_their_message(self):
+        self.do("theme", "dark")
+        self.m.open("appearance")
+        self.assertEqual(self.m.msg["theme"][0], "ok")
+        self.do("theme", "light")
+        self.assertEqual(self.m.msg["theme"][0], "error")
+        self.assertIn("boom", self.m.msg["theme"][1])
+
+    def test_modifier_is_written_and_hyprland_reloaded_and_the_page_shows_it(self):
+        self.do("modifier", "SUPER")
+        self.assertEqual(hyprcfg.read_modifier(self.d), "SUPER")
+        self.assertIn(["hyprctl", "reload"], self.calls.runs)
+        self.assertEqual(self.m.msg["modifier"][0], "ok")
+        ch = [b for b in self.blocks("keyboard") if b["type"] == "choice"][0]
+        self.assertEqual([o["value"] for o in ch["options"] if o["selected"]], ["SUPER"])
+        self.assertTrue(ch["enabled"])
+        # and the welcome window's reader sees the same
+        self.assertTrue(all(b.keys[0] == "SUPER" for b in hyprcfg.load(self.d).bindings if b.keys[0] in ("ALT", "SUPER")))
+
+    def test_a_failed_reload_is_a_warning_not_a_lost_setting(self):
+        self.calls.reload_rc = 1
+        self.do("modifier", "SUPER")
+        self.assertEqual(hyprcfg.read_modifier(self.d), "SUPER")
+        self.assertEqual(self.m.msg["modifier"][0], "warn")
+
+    def test_an_own_configuration_disables_the_switch_and_says_why(self):
+        with open(os.path.join(self.d, "hypr", "hyprland.lua"), "w", encoding="utf-8") as f:
+            f.write('local mainMod = "SUPER"\n')
+        blocks = self.blocks("keyboard")
+        ch = [b for b in blocks if b["type"] == "choice"][0]
+        self.assertFalse(ch["enabled"])
+        self.assertEqual([o["value"] for o in ch["options"] if o["selected"]], ["SUPER"])
+        self.assertTrue([b for b in blocks if b["type"] == "message" and b["tone"] == "warn"])
+
+    def test_layout_is_validated_against_the_system_list_and_written_as_a_block(self):
+        for bad in ("xx", "us,xx", "usa1", "us,ru,de,us,ru"):
+            self.assertFalse(self.do("layout", bad), bad)
+        self.assertEqual(self.m.msg["layout"][0], "error")
+        self.assertFalse(os.path.exists(os.path.join(self.d, "hypr", "heiss-user.lua")))
+        self.assertTrue(self.do("layout", "us,ru"))
+        t = self.user()
+        self.assertIn('kb_layout = "us,ru", kb_options = "grp:ctrl_shift_toggle"', t)
+        self.assertTrue(self.do("layout", "de"))
+        self.assertNotIn("ctrl_shift_toggle", self.user())
+        field = [b for b in self.blocks("keyboard") if b["type"] == "field"][0]
+        self.assertEqual(field["value"], "de")
+
+    def test_layout_without_the_system_list_still_checks_the_shape(self):
+        self.env.layouts = lambda: set()
+        self.assertTrue(self.do("layout", "xx"))
+        self.assertFalse(self.do("layout", "x"))
+
+    def test_scale_is_written_and_shown(self):
+        self.do("scale", "1.5")
+        self.assertIn("scale = 1.5", self.user())
+        ch = [b for b in self.blocks("display") if b["type"] == "choice"][0]
+        self.assertEqual([o["value"] for o in ch["options"] if o["selected"]], ["1.5"])
+
+    def test_user_lines_outside_the_blocks_survive(self):
+        with open(os.path.join(self.d, "hypr", "heiss-user.lua"), "w", encoding="utf-8") as f:
+            f.write("-- mine\nhl.config({ general = { gaps_out = 30 } })\n")
+        self.do("scale", "2")
+        self.do("layout", "ru")
+        self.assertTrue(self.user().startswith("-- mine\nhl.config({ general = { gaps_out = 30 } })"))
+
+    def test_an_unwritable_config_is_an_error_message(self):
+        os.makedirs(os.path.join(self.d, "hypr", "heiss-user.lua"))
+        self.do("scale", "2")
+        self.assertEqual(self.m.msg["scale"][0], "error")
+        self.assertEqual(self.m.busy, "")
+
+    def test_launch_uses_the_fixed_table_and_reports_a_missing_program(self):
+        self.do("launch", "audio")
+        self.do("launch", "bluetooth")
+        self.assertEqual(self.calls.launched, ["audio", "bluetooth"])
+        acts = {b["id"]: b for b in self.blocks("network") if b["type"] == "action"}
+        self.assertEqual(acts["launch:network"]["message"], "")
+        self.assertIn("blueman-manager", acts["launch:bluetooth"]["message"])
+
+    def test_detect_and_check_fill_their_pages(self):
+        self.env.hardware_data = lambda: {"facts": [{"id": "form", "status": "info", "code": "vm", "data": "oracle"},
+                                                     {"id": "cpu", "status": "info", "code": "other", "data": ""}],
+                                          "drivers": [{"id": "d", "name": {"en": "Driver"}, "description": {}, "warning": {}, "state": "weird"}],
+                                          "report": "R" * 20000}
+        self.env.run_check = lambda: [{"name": "a", "status": "BAD", "detail": "x" * 1000}]
+        self.do("detect")
+        self.do("check")
+        hw = self.blocks("hardware")
+        rows = [b for b in hw if b["type"] == "rows"]
+        self.assertEqual(rows[0]["rows"][0]["value"], "Virtual machine (oracle)")
+        self.assertEqual(rows[1]["rows"][0]["value"], S["en"]["hardware.state.unknown"])
+        report = [b for b in hw if b["type"] == "report"][0]
+        self.assertLessEqual(len(report["text"]), m.MAX_REPORT + 20)
+        items = [b for b in self.blocks("system") if b["type"] == "items"][0]["items"]
+        self.assertEqual(items[0]["status"], "WARN")
+        self.assertLessEqual(len(items[0]["detail"]), m.MAX_MESSAGE)
+
+    def test_a_failing_source_never_stops_the_window(self):
+        def boom(*a, **k):
+            raise RuntimeError("source exploded")
+        for name in ("theme_get", "monitors", "kernel", "hardware_data", "run_check", "layouts"):
+            setattr(self.env, name, boom)
+        self.env.run = lambda argv, timeout=10: (127, "x")
+        self.do("detect")
+        self.do("check")
+        for p in m.PAGES:
+            s = self.m.screen() if self.m.open(p) is None else None
+            self.assertTrue(s["blocks"], p)
+            self.assertEqual(s["page"], p)
+        self.assertEqual(self.m.msg["hardware"][0], "error")
+
+    def test_copy_report_puts_the_report_on_the_clipboard(self):
         got = []
-        mod.copy_report(got.append)
-        self.assertEqual((got, mod.screen()["hardware"]["copied"]), ([], ""))
-        mod.begin_hardware()
-        mod.finish_hardware()
-        mod.copy_report(got.append)
-        self.assertEqual(got, ["Heiss OS hardware report\nkernel: 1\n"])
-        self.assertEqual(mod.screen()["hardware"]["copied"], "Copied.")
-        mod.begin_hardware()
-        self.assertEqual(mod.screen()["hardware"]["copied"], "")
-
-    def test_failure_and_malformed_data_are_reported_and_free_the_button(self):
-        for bad in (None, {}, {"facts": [], "drivers": [{"id": "x"}], "report": ""}):
-            self.env.hardware_data = lambda bad=bad: bad
-            mod = self.mod()
-            mod.begin_hardware()
-            mod.finish_hardware()
-            self.assertEqual(mod.hw_state, "failed", bad)
-            self.assertTrue(mod.begin_hardware())
-
-    def test_unknown_state_is_shown_as_unknown_and_empty_list_says_so(self):
-        self.env.hardware_data = lambda: {"facts": [], "drivers": [{"id": "a", "name": {"en": "A"}, "description": {}, "warning": {},
-                                                                    "safe": True, "state": "weird", "missing": []}], "report": "r"}
-        mod = self.mod()
-        mod.begin_hardware()
-        mod.finish_hardware()
-        d = mod.screen()["hardware"]["drivers"][0]
-        self.assertEqual((d["state"], d["status"], d["title"]), ("unknown", "info", "A"))
-        self.env.hardware_data = lambda: {"facts": [], "drivers": [{"id": "a\x00b\nc", "name": {}, "description": {}, "warning": {},
-                                                                    "safe": True, "state": "installed", "missing": []}], "report": "r"}
-        mod = self.mod()
-        mod.begin_hardware()
-        mod.finish_hardware()
-        self.assertEqual(mod.screen()["hardware"]["drivers"][0]["id"], "abc")
-        self.env.hardware_data = lambda: {"facts": [], "drivers": [], "report": "r"}
-        mod = self.mod()
-        mod.begin_hardware()
-        mod.finish_hardware()
-        self.assertTrue(mod.screen()["hardware"]["driversNone"])
+        self.m.copy_report(got.append)
+        self.assertEqual(got, [])
+        self.do("detect")
+        self.m.copy_report(got.append)
+        self.assertEqual(got, ["r"])
 
 
-class DriverRemoval(Fixture):
-    NV = {"id": "gpu-nvidia-open", "name": {"en": "NVIDIA", "ru": "NVIDIA ru"}, "description": {"en": "d", "ru": "д"},
-          "warning": {}, "safe": False, "state": "installed", "missing": [],
-          "remove": {"packages": ["nvidia-open", "nvidia-utils"], "kept": ["linux-lts"]}}
+class Pages(Base):
+    def test_every_page_has_a_title_and_a_sidebar_entry_in_both_languages(self):
+        for lang in ("en", "ru"):
+            self.m.set_language(lang)
+            for p in m.PAGES:
+                s = self.m.screen() if self.m.open(p) is None else None
+                self.assertEqual(s["title"], S[lang]["page." + p])
+                self.assertEqual([x["id"] for x in s["sidebar"]], list(m.PAGES))
+        self.m.set_language("xx")
+        self.assertEqual(self.m.language, "ru")
+        self.m.open("nope")
+        self.assertIn(self.m.page, m.PAGES)
 
-    def setUp(self):
-        super().setUp()
-        self.calls = []
-        self.data = {"facts": [], "drivers": [dict(self.NV)], "report": "r\n"}
-        self.env.hardware_data = lambda: self.data
-        self.env.run_hw_remove = lambda i: self.calls.append(i)
+    def test_system_page_links_are_https_only(self):
+        with open(self.env.os_release, "w", encoding="utf-8") as f:
+            f.write('PRETTY_NAME="Heiss OS"\nHOME_URL="javascript:alert(1)"\nDOCUMENTATION_URL="https://example.org/d"\nBUG_REPORT_URL="file:///etc/passwd"\n')
+        links = [b for b in self.blocks("system") if b["type"] == "links"][0]["links"]
+        self.assertEqual([l["url"] for l in links], ["https://example.org/d"])
 
-    def mod(self, lang="en"):
-        mod = m.Model(self.env, lang)
-        mod.open("hardware")
-        mod.begin_hardware()
-        mod.finish_hardware()
-        return mod
+    def test_network_page_shows_the_nmcli_state(self):
+        rows = [b for b in self.blocks("network") if b["type"] == "rows"][0]["rows"]
+        self.assertEqual(rows[0]["value"], "connected, full")
 
-    def test_the_button_data_names_what_goes_and_what_stays(self):
-        d = self.mod().screen()["hardware"]["drivers"][0]
-        self.assertTrue(d["removable"])
-        self.assertEqual(d["removeLabel"], "Remove this driver")
-        self.assertEqual(d["removeInfo"], "Removes: nvidia-open nvidia-utils. Stays: linux-lts.")
-
-    def test_a_malformed_kept_list_does_not_break_the_page(self):
-        for kept in (None, [], ["a"]):
-            self.data = {"facts": [], "drivers": [dict(self.NV, remove={"packages": ["p"], "kept": kept})], "report": ""}
-            self.assertEqual(self.mod().hw_state, "done", kept)
-
-    def test_no_plan_no_button(self):
-        for rm in (None, {}, {"packages": [], "kept": []}, "x"):
-            self.data = {"facts": [], "drivers": [dict(self.NV, remove=rm)], "report": ""}
-            mod = self.mod()
-            self.assertFalse(mod.screen()["hardware"]["drivers"][0]["removable"], rm)
-            self.assertFalse(mod.begin_hw_remove("gpu-nvidia-open"))
-
-    def test_only_a_listed_driver_with_a_plan_can_start(self):
-        mod = self.mod()
-        for bad in ("other", "", None, "--yes", "gpu-nvidia-open\n"):
-            self.assertFalse(mod.begin_hw_remove(bad), repr(bad))
-        self.assertEqual((self.calls, mod.hwr_state), ([], "idle"))
-
-    def test_a_run_calls_the_runner_with_the_id_and_detects_again(self):
-        mod = self.mod()
-        self.assertTrue(mod.begin_hw_remove("gpu-nvidia-open"))
-        self.assertFalse(mod.begin_hw_remove("gpu-nvidia-open"))      # one at a time
-        self.assertEqual(mod.screen()["hardware"]["remove"]["state"], "running")
-        self.data = {"facts": [], "drivers": [dict(self.NV, state="missing", remove=None)], "report": "r\n"}   # after the removal
-        seen = []
-        orig = self.env.hardware_data
-        self.env.hardware_data = lambda: (seen.append(mod.hwr_state), orig())[1]
-        mod.finish_hw_remove()
-        self.assertEqual(seen, ["running"])        # still "running" (button off) while the page is detected again
-        self.assertEqual(self.calls, ["gpu-nvidia-open"])
-        p = mod.screen()["hardware"]
-        self.assertEqual((p["remove"]["state"], mod.hw_state), ("ok", "done"))
-        self.assertFalse(p["drivers"][0]["removable"])
-        self.assertIn("Restart", p["remove"]["done"])
-
-    def test_a_failure_is_shown_and_the_button_works_again(self):
-        def boom(i):
-            raise RuntimeError("polkit dismissed")
-        self.env.run_hw_remove = boom
-        mod = self.mod()
-        mod.begin_hw_remove("gpu-nvidia-open")
-        mod.finish_hw_remove()
-        p = mod.screen()["hardware"]
-        self.assertEqual(p["remove"]["state"], "failed")
-        self.assertIn("polkit dismissed", p["remove"]["message"])
-        self.assertTrue(p["drivers"][0]["removable"])
-        self.assertTrue(mod.begin_hw_remove("gpu-nvidia-open"))
-
-    def test_not_while_a_saved_action_or_detection_runs(self):
-        mod = self.mod()
-        mod.pend_state = "running"
-        self.assertFalse(mod.begin_hw_remove("gpu-nvidia-open"))
-        mod.pend_state, mod.hw_state = "idle", "running"
-        self.assertFalse(mod.begin_hw_remove("gpu-nvidia-open"))
-
-    def test_nothing_else_starts_while_a_removal_runs(self):
-        from heiss_core import wizard as wz
-        mod = self.mod()
-        wz.PendingQueue(self.p("user/pending.json")).add("apply-profile", {"profile": "base", "addons": []})
-        self.assertTrue(mod.begin_hw_remove("gpu-nvidia-open"))
-        self.assertFalse(mod.begin_pending())
-        self.assertFalse(mod.begin_hardware())
-        item = wz.PendingQueue(self.p("user/pending.json")).list()[0]["id"]
-        mod.remove_pending(item)
-        self.assertEqual(len(wz.PendingQueue(self.p("user/pending.json")).list()), 1)   # not removed meanwhile
-        mod.finish_hw_remove()
-        self.assertTrue(mod.begin_hardware())
-
-    def test_russian_texts_exist_and_data_is_bounded(self):
-        mod = self.mod("ru")
-        d = mod.screen()["hardware"]["drivers"][0]
-        self.assertEqual(d["removeLabel"], "Удалить этот драйвер")
-        self.data = {"facts": [], "drivers": [dict(self.NV, remove={"packages": ["p" * 500] * 100, "kept": []})], "report": ""}
-        d = self.mod().screen()["hardware"]["drivers"][0]
-        self.assertLess(len(d["removeInfo"]), 20 * 70)
-
-
-class RemovalPlan(unittest.TestCase):
-    """hardware_view.removals_of: the same plan `heiss hw remove` makes, never for a safe driver."""
-
-    def setUp(self):
-        self.tmp = tempfile.TemporaryDirectory()
-        self.addCleanup(self.tmp.cleanup)
-        self.state = os.path.join(self.tmp.name, "state.json")
-        self.cat = hwc.load_profiles(HW_DIR)
-
-    def save(self, packages):
-        import json
-        with open(self.state, "w") as f:
-            json.dump({"schema_version": 1, "applied": {"profile": "base", "addons": []}, "packages": packages,
-                       "services": [], "flatpaks": []}, f)
-
-    def test_nvidia_installed_by_heiss_gets_a_plan_that_keeps_the_lts_kernel(self):
-        nv = ["nvidia-open", "nvidia-utils", "linux-lts", "nvidia-open-lts"]
-        self.save(nv)
-        r = hwv.removals_of(self.cat, set(nv), os.path.join(REPO, "profiles"), self.state)
-        self.assertEqual(sorted(r["gpu-nvidia-open"]["packages"]), ["nvidia-open", "nvidia-open-lts", "nvidia-utils"])
-        self.assertEqual(r["gpu-nvidia-open"]["kept"], ["linux-lts"])
-
-    def test_nothing_from_heiss_or_a_safe_driver_or_an_unreadable_state_gives_no_plan(self):
-        self.save([])
-        self.assertEqual(hwv.removals_of(self.cat, {"nvidia-open", "mesa"}, os.path.join(REPO, "profiles"), self.state), {})
-        self.save(["mesa", "virtualbox-guest-utils"])
-        r = hwv.removals_of(self.cat, {"mesa", "virtualbox-guest-utils"}, os.path.join(REPO, "profiles"), self.state)
-        self.assertEqual([k for k in r if self.cat[k].safe_by_default], [])
-        with open(self.state, "w") as f:
-            f.write("{not json")
-        self.assertEqual(hwv.removals_of(self.cat, {"nvidia-open"}, os.path.join(REPO, "profiles"), self.state), {})
-        self.assertEqual(hwv.removals_of(self.cat, {"nvidia-open"}, "/nonexistent", self.state), {})
-        with open(self.state, "wb") as f:
-            f.write(b"\xff\xfe")                      # not UTF-8: no button, and no crash of the whole page
-        self.assertEqual(hwv.removals_of(self.cat, {"nvidia-open"}, os.path.join(REPO, "profiles"), self.state), {})
-
-    def test_collect_carries_the_plan_into_the_driver_data(self):
-        nv = ["nvidia-open", "nvidia-utils", "linux-lts", "nvidia-open-lts"]
-        self.save(nv)
-        facts = hwc.load_fixture(os.path.join(FIX, "nvidia-hybrid-laptop"))
-        d = hwv.collect(hardware_dir=HW_DIR, facts=facts, installed=set(nv), kernel="6.1", caps={"safe-graphics-entry"},
-                        manifests_dir=os.path.join(REPO, "profiles"), state_file=self.state)
-        by = {x["id"]: x for x in d["drivers"]}
-        self.assertIsNotNone(by["gpu-nvidia-open"]["remove"])
-        self.assertTrue(all(x["remove"] is None for x in d["drivers"] if x["id"] != "gpu-nvidia-open" and x["safe"]))
-
-
-class Advanced(Fixture):
-    def mod(self):
-        mod = m.Model(self.env)
-        mod.open("advanced")
-        return mod
-
-    def test_page_is_built_and_starts_idle(self):
-        s = self.mod().screen()
-        self.assertTrue(s["built"])
-        self.assertEqual((s["advanced"]["state"], s["advanced"]["items"]), ("idle", []))
-
-    def test_check_runs_once_at_a_time_and_lists_the_items(self):
-        mod = self.mod()
-        self.assertTrue(mod.begin_check())
-        self.assertFalse(mod.begin_check())
-        mod.finish_check()
-        a = mod.screen()["advanced"]
-        self.assertEqual(a["state"], "done")
-        self.assertEqual(a["items"], [{"name": "units", "status": "OK", "detail": "fine"}])
-        self.assertTrue(mod.begin_check())   # free again
-
-    def test_unknown_status_becomes_warn_and_text_is_cut(self):
-        self.env.run_check = lambda: [{"name": "n" * 1000, "status": "<b>HACK</b>", "detail": "d\n" * 1000}]
-        mod = self.mod()
-        mod.begin_check()
-        mod.finish_check()
-        item = mod.screen()["advanced"]["items"][0]
-        self.assertEqual(item["status"], "WARN")
-        self.assertLessEqual(len(item["name"]), m.MAX_MESSAGE)
-        self.assertLessEqual(len(item["detail"]), m.MAX_MESSAGE)
-        self.assertNotIn("\n", item["detail"])
-
-    def test_a_failing_check_is_reported_not_raised(self):
-        def boom():
-            raise RuntimeError("no luck")
-        self.env.run_check = boom
-        mod = self.mod()
-        mod.begin_check()
-        mod.finish_check()
-        a = mod.screen()["advanced"]
-        self.assertEqual((a["state"], a["items"]), ("failed", []))
-        self.assertIn("no luck", a["message"])
-        self.assertTrue(mod.begin_check())
-
-    def test_malformed_check_result_is_a_failure_not_a_crash(self):
-        for bad in (None, 5, [{"name": "x"}], {"name": 1, "status": "OK", "detail": 2}):
-            self.env.run_check = lambda bad=bad: bad
-            mod = self.mod()
-            mod.begin_check()
-            mod.finish_check()
-            self.assertEqual((mod.check_state, mod.check_items), ("failed", []), bad)
-            self.assertTrue(mod.check_message)
-
-    def test_open_settings_reports_a_failure_and_clears_it(self):
-        mod = self.mod()
-        self.env.open_settings = lambda: (False, "nope")
-        mod.open_stock_settings()
-        self.assertEqual(mod.screen()["advanced"]["settingsMessage"], "nope")
-        self.env.open_settings = lambda: (True, "")
-        mod.open_stock_settings()
-        self.assertEqual(mod.screen()["advanced"]["settingsMessage"], "")
-        def boom():
-            raise RuntimeError("x")
-        self.env.open_settings = boom
-        mod.open_stock_settings()
-        self.assertEqual(mod.settings_message, "x")
+    def test_the_display_page_lists_the_screens(self):
+        rows = [b for b in self.blocks("display") if b["type"] == "rows"][0]["rows"]
+        self.assertEqual(rows, [{"label": "A", "value": "1920x1080, 60 Hz, 100%"}])
 
 
 class Tools(unittest.TestCase):
-    def test_open_settings_uses_a_fixed_argument_list_and_detaches(self):
-        seen = {}
+    def test_launch_table_is_fixed_and_missing_programs_are_reported(self):
+        started = []
+        ok, name = sysx.launch("audio", which=lambda n: "/usr/bin/" + n, popen=lambda argv, **kw: started.append(argv))
+        self.assertEqual((ok, name, started), (True, "pavucontrol", [["pavucontrol"]]))
+        self.assertEqual(sysx.launch("rm -rf", which=lambda n: "x", popen=lambda *a, **k: 1 / 0), (False, "rm -rf"))
+        self.assertEqual(sysx.launch("audio", which=lambda n: None)[0], False)
 
-        def popen(argv, **kw):
-            seen["argv"], seen["kw"] = argv, kw
-        self.assertEqual(tools.open_settings(popen), (True, ""))
-        self.assertEqual(seen["argv"], ["systemsettings"])
-        self.assertTrue(seen["kw"]["start_new_session"])
-        self.assertNotIn("shell", seen["kw"])
+        def fail(*a, **k):
+            raise OSError("no")
+        self.assertEqual(sysx.launch("audio", which=lambda n: "x", popen=fail)[0], False)
 
-    def test_open_settings_failure_is_returned(self):
-        def popen(argv, **kw):
-            raise FileNotFoundError("systemsettings")
-        ok, msg = tools.open_settings(popen)
-        self.assertFalse(ok)
-        self.assertIn("cannot start System Settings", msg)
+    def test_monitors_parses_hyprctl_json_and_drops_junk(self):
+        out = '[{"name":"A","width":1920,"height":1080,"refreshRate":59.94,"scale":1.5},{"name":"B"},"x",{"name":"C","width":"a","height":1}]'
+        rows = sysx.monitors(lambda argv: (0, out))
+        self.assertEqual(rows, [{"name": "A", "width": 1920, "height": 1080, "refresh": 59.9, "scale": 1.5}])
+        for bad in ((1, ""), (0, "not json"), (0, "{}")):
+            try:
+                self.assertEqual(sysx.monitors(lambda argv, b=bad: b), [])
+            except RuntimeError:
+                pass
 
-    def test_run_check_returns_plain_dicts(self):
-        from heiss_core import check as ck
-        orig = (ck.run_checks, ck.CheckEnv)
-        ck.run_checks = lambda env, profiles_dir, home=None, theme_env=None: [ck.Item("x", ck.OK, "d", [["a", "b"]])]
-        try:
-            self.assertEqual(tools.run_check(), [{"name": "x", "status": "OK", "detail": "d", "commands": ["a b"]}])
-        finally:
-            ck.run_checks, ck.CheckEnv = orig
+    def test_run_never_raises(self):
+        rc, out = sysx.run(["/nonexistent-program-xyz"])
+        self.assertEqual(rc, 127)
 
-
-class ThemeModule(unittest.TestCase):
-    class Run:
-        def __init__(self, rc=0, out="", err="", raises=None):
-            self.calls, self.rc, self.out, self.err, self.raises = [], rc, out, err, raises
-
-        def __call__(self, argv, **kw):
-            import subprocess
-            self.calls.append(argv)
-            if self.raises:
-                raise self.raises
-            return subprocess.CompletedProcess(argv, self.rc, self.out, self.err)
-
-    def test_dark_and_light_run_heiss_theme_set(self):
-        for theme in ("dark", "light"):
-            run = self.Run()
-            self.assertEqual(th.apply_theme(theme, run), (True, ""))
-            self.assertEqual(run.calls, [["heiss", "theme", "set", theme]])
-
-    def test_unknown_theme_runs_nothing(self):
-        run = self.Run()
-        self.assertFalse(th.apply_theme("auto", run)[0])
-        self.assertEqual(run.calls, [])
-
-    def test_failures_return_the_last_line(self):
-        self.assertEqual(th.apply_theme("dark", self.Run(rc=1, err="a\nCould not find theme")), (False, "Could not find theme"))
-        ok, msg = th.apply_theme("dark", self.Run(raises=FileNotFoundError("x")))
-        self.assertFalse(ok)
-        self.assertIn("cannot switch the theme", msg)
-
-    def test_tool_output_is_decoded_leniently_and_bounded(self):
-        self.assertEqual(th.apply_theme("dark", self.Run(rc=1, err="x" * 100000))[1], "x" * th.MAX_OUTPUT)
-        self.assertEqual(len(th.read_current(self.Run(out="y" * 100000))), 0)
-        ok, msg = th.apply_theme("dark", self.Run(raises=UnicodeDecodeError("utf-8", b"\xff", 0, 1, "bad")))
-        self.assertFalse(ok)
-
-    def test_subprocess_is_asked_to_replace_bad_bytes(self):
-        seen = {}
-
-        def run(argv, **kw):
-            import subprocess
-            seen.update(kw)
-            return subprocess.CompletedProcess(argv, 0, "", "")
-        th.apply_theme("dark", run)
-        self.assertEqual(seen["errors"], "replace")
-
-    def test_read_current_runs_heiss_theme_get(self):
-        run = self.Run(out="light\n")
-        self.assertEqual(th.read_current(run), "light")
-        self.assertEqual(run.calls, [["heiss", "theme", "get"]])
-        self.assertEqual(th.read_current(self.Run(rc=1)), "")
-        self.assertEqual(th.read_current(self.Run(out="BreezeDark")), "")
+    def test_known_layouts_reads_the_xkb_list(self):
+        with tempfile.NamedTemporaryFile("w", suffix=".lst") as f:
+            f.write("! model\n  pc105  Generic\n\n! layout\n  us  English (US)\n  ru  Russian\n\n! variant\n  intl  us: English (intl)\n")
+            f.flush()
+            self.assertEqual(sysx.known_layouts(f.name), {"us", "ru"})
+        self.assertEqual(sysx.known_layouts("/nonexistent"), set())
 
 
-class About(Fixture):
-    def test_rows_and_links_from_os_release(self):
-        self.write("os-release", OS_RELEASE)
-        mod = m.Model(self.env)
-        mod.open("about")
-        a = mod.screen()["about"]
-        rows = {r["label"]: r["value"] for r in a["rows"]}
-        self.assertEqual(rows, {"System": "Heiss OS", "Build": "rolling", "Kernel": "9.9.9-test", "Plasma": "6.8.2"})
-        self.assertEqual([l["label"] for l in a["links"]], ["Project", "Report a problem"])
-        self.assertIn("Heiss OS is not affiliated with Arch Linux.", a["notes"])
-
-    def test_missing_os_release_and_failing_plasma_do_not_raise(self):
-        def boom():
-            raise FileNotFoundError("plasmashell")
-        mod = m.Model(m.Env(os_release=self.p("none"), kernel=lambda: "k", plasma=boom))
-        a = mod.about()
-        rows = {r["label"]: r["value"] for r in a["rows"]}
-        self.assertEqual((rows["System"], rows["Plasma"]), ("unknown", "unknown"))
-        self.assertEqual(a["links"], [])
-
-    def test_non_utf8_os_release_does_not_raise(self):
-        with open(self.p("os-release"), "wb") as f:
-            f.write(b"\xff\xfe\x00PRETTY_NAME=\xc3\nBUILD_ID=rolling\n")
-        rows = {r["label"]: r["value"] for r in m.Model(self.env).about()["rows"]}
-        self.assertEqual(rows["Build"], "rolling")
-
-    def test_any_exception_from_plasma_or_kernel_is_contained(self):
-        def boom():
-            raise RuntimeError("x")
-        mod = m.Model(m.Env(os_release=self.p("none"), user_dir=self.p("u"), state_file=self.p("s"),
-                            system_answers=self.p("a"), kernel=boom, plasma=boom))
-        rows = {r["label"]: r["value"] for r in mod.about()["rows"]}
-        self.assertEqual((rows["Kernel"], rows["Plasma"]), ("unknown", "unknown"))
-        card = {c["id"]: c for c in mod.overview()["cards"]}["kernel"]
-        self.assertEqual(card["value"], "unknown")
-        self.assertTrue(card["error"])
-
-    def test_parse_os_release_ignores_comments_and_quotes(self):
-        self.assertEqual(m.parse_os_release('# c\nA="b c"\nD=e\n\nbad line\n'), {"A": "b c", "D": "e"})
-
-    def test_default_env_callables_are_not_bound_as_methods(self):
-        env = m.Env()
-        self.assertTrue(env.kernel())
+class Strings(unittest.TestCase):
+    def test_every_key_the_model_uses_exists_in_both_languages(self):
+        import re
+        with open(os.path.join(os.path.dirname(HERE), "heiss_control", "model.py"), encoding="utf-8") as f:
+            text = f.read()
+        used = set(re.findall(r'self\.tr\("([a-z_.]+)"\)', text)) | set(re.findall(r'self\.tr\("([a-z_.]+)" \+', text))
+        for key in used:
+            if key.endswith("."):
+                continue
+            for lang in ("en", "ru"):
+                self.assertIn(key, S[lang], key)
+        for pref in ("keyboard.alt", "keyboard.super", "theme.dark", "theme.light", "hardware.state.installed", "hardware.state.missing",
+                     "hardware.state.nothing", "hardware.state.unknown", "fact.form.laptop", "fact.form.desktop", "fact.form.vm",
+                     "fact.cpu.named", "fact.cpu.other", "fact.gpu.some", "fact.gpu.none", "fact.hybrid.yes", "fact.bluetooth.yes",
+                     "fact.bluetooth.no"):
+            self.assertIn(pref, S["en"])
 
 
 if __name__ == "__main__":

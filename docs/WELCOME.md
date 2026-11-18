@@ -25,7 +25,7 @@ Description order: the `description` option, else the comment lines directly abo
 
 ## Main modifier
 
-`~/.config/heiss/modifier` holds `ALT` (default, because the owner's host uses Super) or `SUPER`. The shipped `hyprland.lua` reads it at the top; any other content is ignored. `hyprcfg.write_modifier` writes it atomically and refuses anything else. A configuration that does not mention `heiss/modifier` is "own": the window says the settings do not change its main key. The switch is in the settings window (H2b).
+`~/.config/heiss/modifier` holds `ALT` (default, because the owner's host uses Super) or `SUPER`. The shipped `hyprland.lua` reads it at the top; any other content is ignored. `hyprcfg.write_modifier` writes it atomically and refuses anything else. A configuration that does not mention `heiss/modifier` is "own": the window says the settings do not change its main key. The switch is on the Keyboard page of the settings window (`docs/CONTROL-CENTER.md`).
 
 ## Not verified
 

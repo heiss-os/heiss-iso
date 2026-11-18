@@ -1,69 +1,30 @@
-# Heiss Control Center (Phase 6)
+# Heiss Settings (`heiss-control`)
 
-Status 2026-11-18: the theme switch below describes the KDE preview image; in the Hyprland session it is `heiss theme` (`docs/design/THEME.md`). Rewritten in H2. Dormant. `heiss-control` is no longer in the ISO package list; the Hyprland session gets a light settings window in H2 (`docs/DIRECTION-HYPRLAND.md`). The code stays until then; its theme calls now go through `heiss theme get|set`.
+Status 2026-11-18 (H2b): rewritten for the Hyprland session as one light settings window. The old Control Center (overview, profiles with saved actions, security center, updates and snapshots, network and privacy levels, backups, KDE System Settings link) is gone together with the privacy levels, backups and snapshots that were removed from the product (`DECISIONS.md`, direction change). Plan: `docs/DIRECTION-HYPRLAND.md`. Code that only the old window used (privacy levels, KDE settings, snapper) is removed from `heiss-core` and the helper in H2c.
 
-Split into small PRs. Status of each page:
+## Pages
 
-| Page | Status |
-|---|---|
-| Overview (profile, privacy level, Heiss-installed package count, pending actions, kernel) | built, read-only |
-| About (system, build, kernel, Plasma, links, licence, "not affiliated with Arch Linux") | built, read-only |
-| Search (page titles and keywords, en/ru) | built |
-| Profiles and software (chosen and applied profile, add-ons, what Heiss OS installed, pending actions) | built; shows what is chosen and installed; applies or removes saved actions (the wizard that saved them is gone since H2a; nothing writes them until the installer in H3; the code goes in H2c); changing the profile needs its own PR |
-| Appearance (Dark and Light switch) | built; the only page that changes anything, as the user |
-| Advanced (opens the stock KDE System Settings; runs `heiss check` and lists the result) | built; the check changes no settings (it takes a short-lived lock file in `$XDG_RUNTIME_DIR`, or in `~/.local/state/heiss` when that is not private to the user, shared with `heiss theme sync`, so the theme item shows WARN while a sync runs) |
-| Security Center (firewall, disk encryption, Secure Boot display, SSH, open network ports) | built, read-only: plain-language facts and advice, no fix buttons, no score |
-| Network and privacy (chosen level vs. what is in place: Wi-Fi MAC setting, screen lock, firewall; the not-yet-built items listed as coming soon) | built, read-only |
-| Updates and snapshots (updates waiting, last system update, restart needed, snapshots set up) | built, read-only |
-| Hardware and drivers (what was detected, driver state of each proposal, driver doctor report with a Copy button, "Remove this driver" for a driver that is not safe by default and that Heiss OS installed) | built; read-only except the removal button |
-| Power and display, Backups | later (sidebar entry exists, page says "Coming soon") |
+| Page | What it does | How |
+|---|---|---|
+| Appearance | Heiss Dark or Heiss Light | `heiss theme set dark\|light` on a worker thread |
+| Display | lists the screens; scale 100, 125, 150 or 200 % for every screen | `hyprctl monitors -j` (read); the scale is written to a block of `~/.config/hypr/heiss-user.lua` and Hyprland is reloaded (`hyprctl reload`) |
+| Keyboard | **main key Alt or Super**; keyboard layouts | the main key is `~/.config/heiss/modifier` (read by the shipped `hyprland.lua` and by the welcome window, `heiss_core.hyprcfg`); layouts are a block of `heiss-user.lua` (`kb_layout`, and `kb_options = "grp:ctrl_shift_toggle"` when there are several), checked against `/usr/share/X11/xkb/rules/base.lst`; then `hyprctl reload` |
+| Network and Bluetooth | network state; opens `nm-connection-editor` and `blueman-manager` | `nmcli -t -f STATE,CONNECTIVITY general`; programs from a fixed table |
+| Audio | opens `pavucontrol` | same table |
+| Packages | read-only: chosen profile, add-ons, applied profile, how many packages and services Heiss installed | `/etc/heiss/profile.toml`, `/var/lib/heiss/state.json`; changing the profile is `heiss profile` in a terminal for now |
+| Hardware | facts about the computer, driver proposals with their state, a report without personal data to copy | `heiss_core.hardware` (read-only) |
+| System | system, build, kernel, links from os-release (https only), `heiss check` | read-only |
 
-## Structure
+## Rules
 
-- `control/heiss_control/model.py`: what the window shows. No Qt. Every source (os-release, answers, state, pending queue, kernel, `plasmashell --version`) is injected through `Env`, so `control/tests/` run on fixtures without Qt. A source that fails shows its error on its own card and never stops the window.
-- `control/heiss_control/app.py`: PySide6 glue (one `control` object for QML). `control/heiss_control/qml/Main.qml`: sidebar, search, pages, colours from the Heiss tokens.
-- `control/heiss_control/strings.py`: en/ru; a test requires both languages to have the same keys.
+- No privileges, no helper, no polkit: everything runs as the user. No shell: only fixed argument lists (`system_tools.py`), a program is chosen from a table, never from text. The only free text is the layout line, which must match `[a-z]{2,3}(,[a-z]{2,3}){0,3}` and be known to xkeyboard-config; the Lua written is built from the validated pieces.
+- `heiss-user.lua` keeps what the window writes between two marker lines (`-- heiss:keyboard begin ...` / `end`, same for `display`); everything outside them is the user's and is never touched (`hyprcfg.set_block`, tested, including a run under Lua).
+- A hand-written `hyprland.lua` that does not read the modifier file keeps its own main key: the window shows the choice disabled and says why.
+- A page is a list of blocks (text, rows, choice, field, action, items, report, links, message) and `qml/Main.qml` draws any page from them; all logic is in `model.py` and tested without Qt (`control/tests/test_model.py`). Slow work runs on a worker thread; one job at a time.
+- Colours: the Heiss tokens; Dark or Light follows the desktop colour scheme. Language: `LC_ALL`, `LC_MESSAGES` or `LANG` starting with `ru` gives Russian.
+- Start: `Alt + I` (`heiss-control`), or the menu entry "Heiss Settings".
+- Look at it without a VM: `python3 scripts/render-gui.py --only control` (offscreen, fixture data).
 
-## Rules this shell follows
+## Not verified
 
-- The GUI never runs as root and never talks to the helper itself: saved actions and "Remove this driver" start `python -I -m heiss_core ...` in a child process, and that command asks the helper (polkit asks for the password). The only changes the GUI process itself makes are the Dark/Light switch (`plasma-apply-lookandfeel`, as the user, on a worker thread, same LnF ids as the wizard) and starting `systemsettings` detached from Advanced; the system check is `heiss check` run in the same process on a worker thread (it changes no settings; it only takes the short-lived theme-sync lock file (same directory rule)); a test checks that building any screen leaves the directories untouched.
-- Every `Text` in the QML is `Text.PlainText` and error messages are cut to 300 characters (a test enforces both; see DECISIONS.md, "Profiles and Appearance pages").
-- The sidebar already lists the final pages; a page that is not built says "Coming soon" instead of pretending.
-- Links open only if they start with `https://` and come from `os-release`.
-- Plain QtQuick.Controls like the wizard, not Kirigami (see DECISIONS.md, 2026-11-13).
-
-## Saved actions ("apply later")
-
-The wizard's "Save answers, apply later" and an apply attempted offline put an `apply-profile` item (`{profile, addons}`) into `~/.config/heiss/pending.json`. The Profiles page lists them. "Apply saved actions now" (only on a click, with a warning that it installs software, asks for the password and needs the network) refuses to start offline (NetworkManager's state from `nmcli`, as `heiss profile apply` does; a missing or failing `nmcli` counts as online and pacman then reports the real failure) and otherwise runs `heiss_core.wizard.PendingQueue.run` on a worker thread: for each item `heiss profile apply --yes --adopt --profile=ID --addon=ID...` in a child process (`control/heiss_control/runner.py`), which goes through the helper and polkit exactly like the wizard's Apply. The ids are checked against the manifest id pattern with `fullmatch` before they reach a command line and are passed in the `--option=value` form. Done items leave the queue; a failure stops the run, keeps the item as failed with the message, and "Apply" tries again. "Remove" drops one item without running it. Not carried over: the privacy level and hardware choices of the wizard (the queue holds only profile and add-ons). The queue file is locked (`pending.json.lock`) around every load-modify-save, never while an action runs, and a run merges its result into the file as it is then: an action another process saved during the run is kept, one removed meanwhile is not brought back. The child runs as `python -I -m heiss_core` in `/` with an allowlisted environment (home, locale, the session bus and display for the polkit agent, a fixed `PATH`; the list is in `docs/WELCOME.md`), so nothing in the user's directory or environment is imported before the helper call; consequently Apply does not work from a source checkout (`PYTHONPATH=...`), only from the installed packages.
-
-## Security Center: what it reads
-
-`control/heiss_control/security.py` runs five short, unprivileged checks on a worker thread (the first time the page is opened, and again on "Check again"; the window code is in `control/heiss_control/app.py`): `systemctl is-active/is-enabled firewalld`, `findmnt` then `lsblk -s` for a `crypt` layer under `/`, `/sys/firmware/efi` and the SecureBoot EFI variable (display only), `systemctl is-active sshd`, `ss -H -l -t -n` for non-loopback listening ports. Every command is a literal list with `PATH=/usr/bin:/bin` and `LC_ALL=C`; the only value from outside is the device name `findmnt` prints, passed to `lsblk` as one argument after `--` and only if it starts with `/dev/`. Nothing is changed, so there are no Fix buttons, no snapshot step and no "protection score" (five checks are too few for an honest number; the page says so). Not covered yet: root account lock (needs root to read), `arch-audit` and `lynis` wrapping (not in the ISO), pending updates (Updates page).
-
-## Network and privacy: what it reads
-
-`control/heiss_control/privacy_view.py` (first time the page is opened, and on "Check again", on a worker thread): the chosen level from the answers (`/etc/heiss/profile.toml`, else `~/.config/heiss/answers.toml`), the NetworkManager drop-in the level writes (`/etc/NetworkManager/conf.d/80-heiss-privacy.conf`, read as a file; no file means NetworkManager's own default, `preserve`), the screen-lock keys `Autolock`, `Timeout`, `LockGrace` of `kscreenlockerrc` via `kreadconfig6` with KDE's own defaults as `--default` (so an unset key counts as the default, which equals the Standard level; a key that cannot be read, or a non-numeric `Timeout` or `LockGrace`, is shown as unknown and is not compared, and `Autolock` false is "Look at this" when a level is chosen), and the firewall as in the Security Center. Each in-place value is compared with the table in `heiss_core.privacy`: equal is OK, different is "Look at this" with advice to apply the level again; with no level chosen nothing is compared. It shows the file and the settings, not the running NetworkManager's active value (that changes only when NetworkManager restarts), and it cannot change anything: re-applying a level is `heiss profile apply --privacy=LEVEL` or the wizard (a button comes with the profile-change PR). DNS over TLS, VPN and WireGuard, Bluetooth off and `linux-hardened` are listed as coming soon (the wizard no longer shows them).
-
-## Updates and snapshots: what it reads
-
-`control/heiss_control/updates_view.py` (first time the page is opened, and on "Check again", on a worker thread): `pacman -Qu` (reads the local package database; no network, no root, so the count is as of the last refresh; exit 1 with the pacman lock held counts as unknown, other pacman errors cannot be told from "no updates"), the last `starting full system upgrade` line in the last 256 KiB of `/var/log/pacman.log` (older than 30 days is a warning; "unknown" if the log is longer than that and the line is not in the tail, or if the date is in the future), whether `/usr/lib/modules/<running kernel>` still exists (if not, the kernel was replaced and a restart is needed), and `findmnt -n -o FSTYPE /` plus `/etc/snapper/configs/root` for snapshots. Commands are literal lists with `PATH=/usr/bin:/bin`. Nothing is changed: no update button, no rollback, no snapshot listing (`snapper list` needs root) and no Arch news (needs network).
-
-## Hardware and drivers: what it reads
-
-`control/heiss_control/hardware_view.py` (first time the page is opened, and on "Check again", on a worker thread) runs the same read-only detection as `heiss hw detect` (`heiss_core.hardware`: `lspci -nn -mm`, `/sys/class/dmi`, `/sys/class/power_supply`, `/sys/class/bluetooth`, `/proc/cpuinfo`, `systemd-detect-virt --vm`) against `/usr/share/heiss/hardware`, and `pacman -Qq` to see whether the packages of each matching profile are installed (installed, not installed, nothing to install, or unknown when pacman gives no list). A safe-by-default proposal that is missing is a warning, other missing ones are information. Texts come from the hardware profile files shipped by `heiss-core` (names, descriptions and warnings in en and ru) and are drawn as plain text. The driver doctor report is plain text with the kernel release, form factor, CPU vendor, virtualization type, GPU `vendor:device` ids, Bluetooth yes/no and the state of each proposal; it has no hostname, user name, serial numbers, PCI slot addresses, MAC addresses or DMI vendor and product strings (a test checks the PCI slots and DMI strings of every fixture). "Copy the report" puts it on the clipboard; nothing is sent anywhere. The kernel release is included only if it is plain (`[0-9A-Za-z.+_-]`, up to 40 characters), the CPU vendor only as intel, amd or other, and a report longer than 8000 characters ends with a "[truncated]" line. `HEISS_HARDWARE` overrides the profile directory (a test hook, the same variable the wizard reads; the page never runs as root). Installing a driver is not done here: the page names the wizard or `heiss profile apply --hardware=ID`. **"Remove this driver"** (Phase 7, step 4c): a driver that is not safe by default and for which `heiss_core.hwremove.plan_removal` finds packages that Heiss OS installed (state file, `pacman -Qq`) shows the plan ("Removes: ...", "Stays: linux-lts") and a button. A click (only a click, never on its own) starts `python -I -m heiss_core hw remove --yes ID` in a child process (`runner.run_hw_remove`: id checked with the manifest id pattern, cwd `/`, the same allowlisted environment as the saved-actions run); the command asks the helper (`RemoveHardware`, polkit asks for the password). The page is detected again afterwards. One removal at a time, and not while a saved action or a detection runs. `HEISS_STATE` and `HEISS_PROFILES` override the state file and manifest directory the plan reads (test hooks). A failure shows the last `heiss:` line of the command and leaves the button usable. Not built: a snapshot before driver changes (needs Btrfs and snapper, a separate Tier A item; the confirmation names its absence), install-time detection (a Calamares step is Tier A), the themed hardware settings. A proposal whose `requires` is not met (NVIDIA without `/etc/grub.d/41_heiss_safe` as an executable file) stays in the list and in the copied report, marked "(not offered: needs safe-graphics-entry)"; the driver data carries `needs`. It is not hidden.
-
-## Advanced page: what the check trusts
-
-The system items of `heiss check` run with a fixed `PATH=/usr/bin:/bin`; its theme item (`kreadconfig6`, `gsettings`, `busctl --user`) uses the user's own environment, as `heiss theme status` does. Every command line of the check is a literal list (read in `core/heiss_core/check.py`); values from files are only compared and shown. `systemsettings` is started through the user's `PATH`.
-
-## Known limit
-
-`plasmashell --version` runs on the GUI thread with a 3 s timeout when About is built. A hanging `plasmashell` would freeze the window for up to 3 s; the Appearance switch already runs on a worker thread, `plasmashell --version` does not yet.
-
-## Package
-
-`packages/heiss-control` (depends on `python`, `pyside6`, `heiss-core`) installs the app, `/usr/bin/heiss-control` and `/usr/share/applications/heiss-control.desktop` (visible in the launcher menu, Settings category). It is in `profile/packages.x86_64`, so it comes from `[heiss-local]`: run `scripts/heiss-packages-build.sh` before the ISO build. The dock pins are not changed (replacing the pinned System Settings is a Tier B item that needs its own "ok"). The icon is the stock `preferences-system`; a Heiss icon is not made yet.
-
-Optional dependencies: `systemsettings` (opened from Advanced), `kconfig` (`kreadconfig6`, reads the colour scheme) and `plasma-workspace` (`plasma-apply-lookandfeel`, switches it); without them the Appearance page shows "unknown" or an error text.
-
-Run from a checkout: `PYTHONPATH=core:control python -m heiss_control` (needs `pyside6`).
+The window in a real session, `hyprctl reload` applying the main key, the layouts and the scale, whether a second `hl.monitor` call in `heiss-user.lua` overrides the default one, the layout switch with Ctrl + Shift, the program launchers (`nm-connection-editor`, `blueman-manager`, `pavucontrol`). See the H2b block of the FINAL VM TEST LIST in `docs/PLAN-STATE.md`.
