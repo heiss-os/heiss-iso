@@ -2,7 +2,7 @@
 
 Read this file at the start of every session. Source plan: `heiss-master-prompt.md` (kept outside the repo, in `~/share/`).
 
-Last updated: 2026-11-17
+Last updated: 2026-11-18
 
 ## Done
 
@@ -10,6 +10,7 @@ See the phase and round sections below. Phases 0 to 7 are merged; round 23 (pre-
 
 ## In progress
 
+- Direction change to Hyprland and a terminal installer (`heiss-task-31.md`, plan in `docs/DIRECTION-HYPRLAND.md`). H0 plan and inventory (branch `docs/direction-hyprland`), then H1 the installed Hyprland session. Then, one PR each, after the owner's word: H2 welcome and settings windows, H3 terminal installer, H4 boot look, H5 cleanup. Round 25 stops at PR F plus the KDE preview image `heiss-2026.11.17`.
 - Round 25, shellcheck in the two Tier A scripts (branch `fix/shellcheck-tier-a-round25`, Tier A: `heiss-setup-dock.sh`, `heiss-calamares-build.sh`). PR A to F are merged (#116 to #121). Next: final rebuild checklist, then the `heiss-welcome` dependency finding from namcap.
 
 
@@ -21,6 +22,7 @@ See the phase and round sections below. Phases 0 to 7 are merged; round 23 (pre-
 
 ## Next
 
+- H1 (installed Hyprland session), then wait for the owner. The KDE preview image is not rebuilt.
 - First ISO build and static inspection of the image, then the owner's VM run of the FINAL VM TEST LIST. Later: Btrfs and snapshots, new neutral wallpapers.
 
 ## Open questions
@@ -363,6 +365,9 @@ Added in round 23 PR 5. Each line is run in part 3 of `heiss-task-28.md` (read-o
 ### Round 25, shellcheck in the Tier A scripts
 - [ ] After the next rebuild, fresh live session, wait 60 s after the desktop appears, then in Konsole `cat ~/.cache/heiss-dock.log`; expect a `start: live=true` line followed by `panel is already ours (layout script), nothing to build` (or `done, marker set`) and no `giving up` and no `FAILED` line (only the wait-loop counter of `heiss-setup-dock.sh` changed from `i` to `_`); the Dock shows Dolphin, Konsole, System Settings, Firefox.
 - [ ] On the build VM `bash scripts/heiss-calamares-build.sh`; expect the line `==> Что будет собираться:`, build lines with `-j<number of cores>` (for example `make -j4`), and `ls ~/localrepo/calamares-*.pkg.tar.zst` listing the package.
+
+### Direction change H0 (Hyprland, 2026-11-18)
+- [ ] After the first Hyprland image: boot the "safe graphics" entry on a machine with only the `linux` kernel installed (no `linux-lts`): the entry exists and reaches a login (the plan says it does not need the LTS add-on; `docs/DIRECTION-HYPRLAND.md`, section 6; never run).
 
 ## Round 20, item 3a (2026-11-11): hardware choices applied
 
