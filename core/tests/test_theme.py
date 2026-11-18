@@ -153,7 +153,18 @@ class Apply(unittest.TestCase):
         self.assertEqual(rc, 1)
         for t in ("colors", "gtk", "qt"):
             self.assertEqual(by[t].status, "failed", t)
-        self.assertEqual(by["color-scheme"].status, "changed")
+        for t in th.LIVE_TARGETS:
+            self.assertEqual(by[t].status, "skipped", t)
+        self.assertFalse([c for c in env.calls if c[:2] == ["gsettings", "set"]])
+
+    def test_a_file_that_is_not_utf8_counts_as_the_users_own(self):
+        os.makedirs(self.cfg("qt6ct"))
+        with open(self.cfg("qt6ct/qt6ct.conf"), "wb") as f:
+            f.write(b"\xff\xfe\x00 mine\n")
+        results, rc = th.apply(self.env, "light")
+        self.assertEqual({r.target: r for r in results}["qt"].status, "warn")
+        with open(self.cfg("qt6ct/qt6ct.conf"), "rb") as f:
+            self.assertEqual(f.read(), b"\xff\xfe\x00 mine\n")
 
     def test_gsettings_missing_or_failing(self):
         env = FakeEnv(self.d.name, scripted={"gsettings": (127, "no such file")})

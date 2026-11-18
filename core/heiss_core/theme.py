@@ -29,6 +29,7 @@ CURSOR, CURSOR_SIZE, ICONS, FONT = "Adwaita", "24", "Adwaita", "Inter 10"
 MARK = "# Heiss theme file: written by `heiss theme`, edit heiss-user.conf or remove this line to take over"
 CSS_MARK = "/* Heiss theme file: written by `heiss theme`, remove this line to take over */"
 TARGETS = ("colors", "wallpaper", "gtk", "qt", "color-scheme", "cursor", "reload")
+LIVE_TARGETS = ("color-scheme", "cursor", "reload")   # run only when every file target worked
 # Programs the reload step talks to: fixed argument lists
 RELOAD_COMMANDS = (("hyprctl", "reload"), ("makoctl", "reload"))
 
@@ -58,9 +59,9 @@ class RealEnv:
 
     def read(self, path):
         try:
-            with open(path, encoding="utf-8") as f:
+            with open(path, encoding="utf-8", errors="replace") as f:   # a file in another encoding is still "there"
                 return f.read()
-        except (OSError, UnicodeDecodeError):
+        except OSError:
             return None
 
     def write(self, path, text):
@@ -295,6 +296,9 @@ def apply(env, theme, dry_run=False, live=None):
                ("reload", lambda: target_reload(env, dry_run, live)))
     results = []
     for name, fn in targets:
+        if name in LIVE_TARGETS and any(r.status == "failed" for r in results):
+            results.append(Result(name, "skipped", "not applied: a file target failed, so the theme is not half switched"))
+            continue
         try:
             results.append(fn())
         except Exception as e:  # noqa: BLE001 - one broken target must not hide the others
