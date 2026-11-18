@@ -97,7 +97,7 @@ heiss check --report ~/heiss-check.txt
 sudo heiss check --report /tmp/heiss-check-root.txt
 ```
 
-Items: failed units (system and user), profile and state file consistency, launcher menu (hide stubs and duplicate names), the 37 packages removed in PR 49 absent (a package that Heiss itself installed for Cyber is expected), the Hyprland session (session files, configs, SDDM theme present, no KDE packages left; a WARN until the first login has copied `~/.config/hypr/hyprland.conf`), helper (`org.heiss.Helper1` answers `Ping`, polkit and D-Bus files installed), no live leftovers (liveuser, archiso packages, root locked). The report holds the full output, the exact commands and their raw output (except the read-only commands of the theme item, which are listed by `heiss theme status`).
+Items: failed units (system and user), profile and state file consistency, launcher menu (hide stubs and duplicate names), the 37 packages removed in PR 49 absent (a package that Heiss itself installed for Cyber is expected), the Hyprland session (session files, configs, SDDM theme present, no KDE packages left; a WARN until the first login has copied `~/.config/hypr/hyprland.lua`), helper (`org.heiss.Helper1` answers `Ping`, polkit and D-Bus files installed), no live leftovers (liveuser, archiso packages, root locked). The report holds the full output, the exact commands and their raw output (except the read-only commands of the theme item, which are listed by `heiss theme status`).
 
 Run it after step 3 and after step 4 above. A fresh install before any `heiss profile apply` is expected to give `WARN profile-state` (no state file yet).
 
