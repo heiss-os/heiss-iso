@@ -40,6 +40,19 @@ jobs:
       - name: mypy (light, mypy.ini)
         run: mypy core/heiss_core helper/heiss_helper
 
+  hyprland-config:
+    name: Hyprland verifies the shipped configuration (blocking)
+    runs-on: ubuntu-latest
+    container: archlinux:latest
+    steps:
+      - name: Install the same Hyprland package the image uses
+        run: pacman -Syu --noconfirm hyprland git
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Hyprland --verify-config on the file a user gets at the first login (Dark and Light)
+        run: bash scripts/check-hyprland-config.sh
+
   namcap:
     name: namcap on the built packages (informational)
     runs-on: ubuntu-latest

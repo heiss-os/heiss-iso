@@ -1,0 +1,3 @@
+-- Heiss OS: settings written by the installer and the Heiss settings window (keyboard layout, display, ...).
+-- Safe to edit by hand: this file is loaded last by hyprland.lua, so what it sets overrides the defaults there.
+-- Example: hl.config({ input = { kb_layout = "de" } })

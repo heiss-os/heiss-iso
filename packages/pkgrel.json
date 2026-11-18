@@ -5,12 +5,12 @@
   "heiss-profile-base": 3,
   "heiss-profile-cyber": 2,
   "heiss-profile-developer": 2,
-  "heiss-core": 22,
+  "heiss-core": 23,
   "heiss-helper": 7,
   "heiss-theme": 3,
   "heiss-keyring": 1,
   "heiss-welcome": 13,
   "heiss-control": 19,
   "heiss-safe-graphics": 4,
-  "heiss-desktop": 1
+  "heiss-desktop": 2
 }

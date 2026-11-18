@@ -199,7 +199,7 @@ class Checks(unittest.TestCase):
     def test_session_user_config_is_copied_at_first_login(self):
         r = self.items(healthy(), home="/home/me")["session"]
         self.assertEqual(r.status, ck.WARN)
-        env = healthy(files={"/home/me/.config/hypr/hyprland.conf": ""})
+        env = healthy(files={"/home/me/.config/hypr/hyprland.lua": ""})
         self.assertEqual(self.items(env, home="/home/me")["session"].status, ck.OK)
 
     def test_kde_packages_are_not_in_the_iso_list(self):
