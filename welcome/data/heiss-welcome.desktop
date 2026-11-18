@@ -1,10 +1,12 @@
 [Desktop Entry]
 Type=Application
-Name=Heiss Welcome
-Comment=First-run setup of Heiss OS
-# Not in the live session (the installer is there): /run/archiso exists only on the live image.
-# The wizard itself exits at once when this user has finished it (~/.config/heiss/welcome-done).
-Exec=sh -c "test -e /run/archiso || exec heiss-welcome"
-OnlyShowIn=KDE;
-NoDisplay=true
-X-KDE-autostart-phase=2
+Name=Heiss Key Bindings
+Name[ru]=Сочетания клавиш Heiss
+Comment=The key bindings of your desktop, read from the Hyprland configuration
+Comment[ru]=Сочетания клавиш вашего рабочего стола из конфигурации Hyprland
+Exec=heiss-welcome --force
+Icon=input-keyboard
+Categories=System;
+Keywords=heiss;welcome;keys;shortcuts;bindings;
+StartupWMClass=heiss-welcome
+Terminal=false

@@ -61,10 +61,10 @@ jobs:
         with:
           persist-credentials: false
       - name: qmllint finds no error (a duplicate id keeps the whole window from loading)
-        run: /usr/lib/qt6/bin/qmllint welcome/heiss_welcome/qml/Main.qml welcome/heiss_welcome/qml/ChoiceRow.qml control/heiss_control/qml/Main.qml
+        run: /usr/lib/qt6/bin/qmllint welcome/heiss_welcome/qml/Main.qml control/heiss_control/qml/Main.qml
       - name: No property is named on<Capital> (QML reads it as a signal handler and the colour comes out black)
         run: |
-          if grep -nE 'property +[A-Za-z.]+ +on[A-Z]' welcome/heiss_welcome/qml/Main.qml welcome/heiss_welcome/qml/ChoiceRow.qml control/heiss_control/qml/Main.qml; then
+          if grep -nE 'property +[A-Za-z.]+ +on[A-Z]' welcome/heiss_welcome/qml/Main.qml control/heiss_control/qml/Main.qml; then
             echo "::error::a QML property name starts with on + capital letter"
             exit 1
           fi

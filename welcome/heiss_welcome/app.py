@@ -1,30 +1,15 @@
-"""PySide6 glue: exposes the view model to QML as one object. All logic lives in viewmodel.py."""
+"""PySide6 glue: exposes the screen of model.py to QML. All logic lives in model.py and heiss_core.hyprcfg.
+
+    heiss-welcome              show the window
+    heiss-welcome --force      show it even when it was shown before
+    heiss-welcome --first-run  from the session start: shows it once per user, never in the live session
+"""
 import os
 import sys
 
-from heiss_core import hardware as hw
-from heiss_core import manifest as mf
-from heiss_core import wizard as wz
+from heiss_core import hyprcfg
 
-from .applier import CliApplier
-from .theme import apply_theme
-from .viewmodel import ViewModel
-
-PROFILES = os.environ.get("HEISS_PROFILES", "/usr/share/heiss/profiles")
-HARDWARE = os.environ.get("HEISS_HARDWARE", "/usr/share/heiss/hardware")
-
-
-def live_detector(hardware_dir=HARDWARE):
-    """Read-only detection of this machine (lspci, /sys, systemd-detect-virt) against the hardware profiles."""
-    return lambda: hw.detect(hw.collect_live(), hw.load_profiles(hardware_dir), hw.capabilities())
-
-
-def build(config_dir, profiles_dir=PROFILES, detector=None, applier=None, theme_applier=None):
-    manifests = mf.load_dir(profiles_dir)
-    store = wz.Store(config_dir)
-    wiz = store.load(manifests) or wz.Wizard(manifests)
-    return ViewModel(wiz, manifests, store, wz.PendingQueue(store.p("pending.json")), detector, applier,
-                     theme_applier=theme_applier), store
+from . import model
 
 
 def main(argv=None):
@@ -34,65 +19,36 @@ def main(argv=None):
 
     class Bridge(QObject):
         changed = Signal()
-        jobUpdated = Signal()   # emitted from the apply worker thread; delivered on the GUI thread
 
-        def __init__(self, vm):
+        def __init__(self, lang, cfg_dir):
             super().__init__()
-            self.vm, self._screen = vm, vm.screen()
-            vm.on_update = self.jobUpdated.emit
-            self.jobUpdated.connect(self._refresh)
-
-        @Slot()
-        def _refresh(self): self._set(self.vm.refresh())
-
-        def _set(self, screen):
-            self._screen = screen
-            self.changed.emit()
+            self.lang, self.cfg_dir, self._query = lang, cfg_dir, ""
+            self._screen = model.screen(lang, cfg_dir)
 
         screen = Property("QVariantMap", lambda self: self._screen, notify=changed)
 
-        @Slot(str, "QVariant")
-        def choose(self, path, value): self._set(self.vm.choose(path, value))
-
         @Slot(str)
-        def toggleAddon(self, addon_id): self._set(self.vm.toggle_addon(addon_id))
-
-        @Slot(str)
-        def toggleHardware(self, proposal_id): self._set(self.vm.toggle_hardware(proposal_id))
-
-        @Slot()
-        def next(self): self._set(self.vm.next())
-
-        @Slot()
-        def back(self): self._set(self.vm.back())
-
-        @Slot()
-        def skip(self): self._set(self.vm.skip())
-
-        @Slot()
-        def skipAll(self): self._set(self.vm.skip_whole())
-
-        @Slot()
-        def saveLater(self): self._set(self.vm.save_later())
-
-        @Slot()
-        def apply(self): self._set(self.vm.start_apply())
-
-        @Slot()
-        def retry(self): self._set(self.vm.retry_apply())
+        def search(self, query):
+            self._query = query
+            self._screen = model.screen(self.lang, self.cfg_dir, query)
+            self.changed.emit()
 
     argv = sys.argv if argv is None else argv
-    config = os.environ.get("HEISS_CONFIG_DIR") or os.path.join(
-        os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config"), "heiss")
-    vm, store = build(config, detector=live_detector(), applier=CliApplier(), theme_applier=apply_theme)
-    if store.is_done() and "--force" not in argv:
+    cfg_dir = hyprcfg.config_dir()
+    if not model.should_show("--first-run" in argv, "--force" in argv, cfg_dir):
         return 0
-    app = QGuiApplication(argv)
+    app = QGuiApplication([a for a in argv if a not in ("--force", "--first-run")])
     app.setApplicationName("heiss-welcome")
-    bridge = Bridge(vm)
+    lang = "ru" if (os.environ.get("LC_ALL") or os.environ.get("LC_MESSAGES") or os.environ.get("LANG") or "").startswith("ru") else "en"
+    bridge = Bridge(lang, cfg_dir)
     engine = QQmlApplicationEngine()
-    engine.rootContext().setContextProperty("wizard", bridge)
+    engine.rootContext().setContextProperty("welcome", bridge)
     engine.load(QUrl.fromLocalFile(os.path.join(os.path.dirname(__file__), "qml", "Main.qml")))
     if not engine.rootObjects():
         return 1
+    if "--first-run" in argv:
+        try:
+            model.mark_done(cfg_dir)   # shown: do not show it at the next login
+        except OSError:
+            pass
     return app.exec()

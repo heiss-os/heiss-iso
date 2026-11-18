@@ -3,8 +3,8 @@
 The command does the real work through the privileged helper (D-Bus and polkit: the system asks for the
 password); this window only starts it and shows the step lines. The queue item was validated when it was saved
 and again when it was read; the ids are checked once more here and passed in the `--option=value` form, so an id
-can never be read as an option. No shell. The child runs isolated (`-I`), in `/`, with an allowlisted environment and a fixed PATH. The same command as the wizard's apply (`heiss_welcome.applier`),
-duplicated on purpose so the Control Center does not depend on the wizard package.
+can never be read as an option. No shell. The child runs isolated (`-I`), in `/`, with an allowlisted environment and a fixed PATH.
+
 """
 import os
 import re
@@ -21,7 +21,6 @@ STEP_RE = re.compile(r"^\[(\d+)/(\d+)\] (.*)$")   # printed by `heiss profile ap
 # DECISIONS.md). So it gets an ALLOWLIST: only what a session program needs (home, locale, the session bus and the
 # display for the polkit agent) and a fixed PATH; nothing that changes which code Python or the loader runs
 # (PYTHON*, LD_*, GI_*, GIO_*, ...), nothing from HEISS_*, and no variable that will be invented later.
-# The same list in heiss_welcome.applier, duplicated on purpose (tests keep the two equal).
 ALLOW_NAMES = ("HOME", "USER", "LOGNAME", "LANG", "LANGUAGE", "TZ", "TERM",
                "XDG_RUNTIME_DIR", "XDG_SESSION_ID", "XDG_SESSION_TYPE", "XDG_CURRENT_DESKTOP",
                "XDG_CONFIG_HOME", "XDG_CACHE_HOME", "XDG_DATA_HOME", "XDG_STATE_HOME",

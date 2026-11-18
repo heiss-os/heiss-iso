@@ -52,8 +52,17 @@ local fileManager = "thunar"
 local menu        = "fuzzel"
 
 -- The main modifier of every key binding below. ALT keeps Hyprland usable inside a virtual machine whose host
--- uses SUPER. Change it here only (for example to "SUPER"); a settings option for it comes with the settings window.
+-- uses SUPER. The Heiss settings window switches it between ALT and SUPER by writing ~/.config/heiss/modifier
+-- (one word); you can also change the default on the next line.
 local mainMod = "ALT"
+do
+    local f = io.open(config_dir .. "/heiss/modifier", "r")
+    if f then
+        local v = (f:read("*l") or ""):match("^%s*(%u+)%s*$")
+        f:close()
+        if v == "ALT" or v == "SUPER" then mainMod = v end
+    end
+end
 
 -------------------
 ---- AUTOSTART ----
@@ -61,6 +70,8 @@ local mainMod = "ALT"
 
 hl.on("hyprland.start", function()
     hl.exec_cmd("heiss-wallpaper")
+    -- the welcome window with the key bindings: it shows itself once per user and never in the live session
+    hl.exec_cmd("heiss-welcome --first-run")
     hl.exec_cmd("waybar")
     hl.exec_cmd("mako")
     hl.exec_cmd("hypridle")
@@ -152,6 +163,8 @@ hl.bind(mainMod .. " + Q", hl.dsp.window.close())
 hl.bind(mainMod .. " + F", hl.dsp.window.fullscreen())
 -- Toggle floating for the active window
 hl.bind(mainMod .. " + V", hl.dsp.window.float({ action = "toggle" }))
+-- Show the list of key bindings (the welcome window)
+hl.bind(mainMod .. " + F1", hl.dsp.exec_cmd("heiss-welcome --force"))
 -- Lock the screen
 hl.bind(mainMod .. " + L", hl.dsp.exec_cmd("hyprlock"))
 -- Leave the session
