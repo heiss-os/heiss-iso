@@ -9,7 +9,7 @@ Split into small PRs. Status of each page:
 | Overview (profile, privacy level, Heiss-installed package count, pending actions, kernel) | built, read-only |
 | About (system, build, kernel, Plasma, links, licence, "not affiliated with Arch Linux") | built, read-only |
 | Search (page titles and keywords, en/ru) | built |
-| Profiles and software (chosen and applied profile, add-ons, what Heiss OS installed, pending actions) | built; shows what is chosen and installed; applies or removes the actions saved by the wizard ("apply later"); changing the profile needs its own PR |
+| Profiles and software (chosen and applied profile, add-ons, what Heiss OS installed, pending actions) | built; shows what is chosen and installed; applies or removes saved actions (the wizard that saved them is gone since H2a; nothing writes them until the installer in H3; the code goes in H2c); changing the profile needs its own PR |
 | Appearance (Dark and Light switch) | built; the only page that changes anything, as the user |
 | Advanced (opens the stock KDE System Settings; runs `heiss check` and lists the result) | built; the check changes no settings (it takes a short-lived lock file in `$XDG_RUNTIME_DIR`, or in `~/.local/state/heiss` when that is not private to the user, shared with `heiss theme sync`, so the theme item shows WARN while a sync runs) |
 | Security Center (firewall, disk encryption, Secure Boot display, SSH, open network ports) | built, read-only: plain-language facts and advice, no fix buttons, no score |

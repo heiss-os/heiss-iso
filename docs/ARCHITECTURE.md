@@ -5,7 +5,7 @@ Status: proposal. Nothing here is implemented yet. Items marked CONFIRM need an 
 ## 1. Overview
 
 ```
- Welcome wizard (GUI)   Control Center (GUI)   CLI: heiss ...
+ Welcome window (GUI)   Control Center (GUI)   CLI: heiss ...
           \                    |                   /
            +-----------  heiss-core (Python, no GUI deps)  -----------+
            |   answers schema | resolver | state | hw detection      |
@@ -24,7 +24,7 @@ Rule: the GUI never runs as root; the helper accepts only structured commands (a
 |---|---|---|
 | `heiss-core` | Python 3, stdlib + PyYAML/tomllib, no Qt | Answers model, manifests, resolver, state, hardware detection, CLI |
 | `heiss-helper` | Python 3, `dbus` binding from official repos | Privileged executor on the system bus |
-| `heiss-welcome` | PySide6 + QML (Kirigami) | First-run wizard, installed system only |
+| `heiss-welcome` | PySide6 + QML | Key-binding window, shown once at the first login and by Alt + F1 (the wizard was removed in H2a) |
 | `heiss-control` | PySide6 + QML (plain QtQuick.Controls, see DECISIONS.md 2026-11-13) | Control Center |
 | `heiss-profile-*` | metapackages | `essentials`, `base`, `cyber`, `developer` |
 | `heiss-theme` | generated files | Output of `scripts/gen-theme.py` |
@@ -51,7 +51,7 @@ answers + manifests + current state -> plan (install / enable / configure / remo
 
 ## 6. Data flow examples
 
-1. Wizard "Apply": answers saved -> resolver builds plan -> user sees summary -> core sends action requests to the helper one by one -> helper snapshots, runs, reports progress -> state file updated.
+1. Apply (`heiss profile apply`; the wizard that used to start it was removed in H2a): answers saved -> resolver builds plan -> user sees summary -> core sends action requests to the helper one by one -> helper snapshots, runs, reports progress -> state file updated.
 2. Offline: network actions go to a "Pending actions" queue stored next to the answers; the Control Center runs them later.
 3. Theme switch: see "Theme sync" below.
 
