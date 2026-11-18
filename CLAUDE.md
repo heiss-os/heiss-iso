@@ -47,7 +47,7 @@ sudo mkarchiso -v -w ~/archiso-work -o out profile
 Тест в VirtualBox: режим BIOS, 4 ГБ ОЗУ, Video Memory 128 МБ, чистый диск 20-40 ГБ. Ожидается:
 1. В меню загрузки Heiss OS, без логотипа Arch.
 2. Рабочий стол Hyprland с Waybar сверху в нейтральной теме с песочным акцентом, обои Heiss-Everyday (в ВМ включить 3D-ускорение VMSVGA, иначе сессия перезапустится с программным рендером).
-3. Установщик Calamares открывается сам, в стиле Heiss.
+3. Установщик Calamares (запасной, до этапа H3) открывается сам, в стиле Heiss.
 4. После установки на пустой диск и загрузки с диска: сеть работает (`nmcli general status`), `systemctl --failed` пуст, `sudo passwd -S root` показывает `L`, пользователя `liveuser` нет.
 
 ## Правила работы с Git
@@ -60,7 +60,7 @@ sudo mkarchiso -v -w ~/archiso-work -o out profile
 
 ## Защищённые файлы (Tier A)
 
-Утверждённый вид и загрузочная цепочка защищены: список путей в `docs/design/protected-paths.txt`, контрольные суммы в `docs/design/protected.sha256`, проверка `scripts/check-protected.py verify` и задача CI `protected-paths`. Менять такие файлы можно только по явному пункту, одобренному владельцем (метка PR `design-approved`). Подробности: `docs/design/PROTECTION.md`. Существующие значения палитры, шрифты, песочный акцент и последовательность модулей Calamares не менять. Tier B (панель, док, настройки Plasma) только после «ok» по конкретному пункту, Tier C свободен.
+Утверждённый вид и загрузочная цепочка защищены: список путей в `docs/design/protected-paths.txt`, контрольные суммы в `docs/design/protected.sha256`, проверка `scripts/check-protected.py verify` и задача CI `protected-paths`. Менять такие файлы можно только по явному пункту, одобренному владельцем (метка PR `design-approved`). Подробности: `docs/design/PROTECTION.md`. Существующие значения палитры, шрифты, песочный акцент и последовательность модулей Calamares не менять. Tier B (панель Waybar, конфиги Hyprland и настройки сессии; раньше: панель, док, настройки Plasma) только после «ok» по конкретному пункту, Tier C свободен.
 
 ## Рабочие правила
 

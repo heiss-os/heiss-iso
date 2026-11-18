@@ -606,4 +606,4 @@ Format: date, what, why. Newest at the bottom.
 - **CLAUDE.md updated by the assistant (not a protected path):** direction, decisions, structure, build and test lines no longer say KDE-only and Calamares-only. Removed features are listed there.
 - **`docs/OWNER-INPUTS.md`** lists what the owner still supplies (Hyprland and Waybar configs, binding descriptions, the ß logo SVG, wallpapers).
 - **Not verified:** everything at runtime (see the H1b lines of the FINAL VM TEST LIST). Unit tests ran with a fake environment and a temporary home only.
-
+- **Review notes:** the Tier B line of CLAUDE.md was translated from "panel, dock, Plasma settings" to "Waybar panel, Hyprland configs and session settings" (same rule, new names; the owner may revert it). The Tier A line about the Calamares module sequence stays until Calamares is removed in H5. Security LOW items accepted: a newline in `XDG_CONFIG_HOME` would only malform `qt6ct.conf`, and the temporary link name in `set_link` is predictable inside a directory only the user can write to; neither crosses a boundary.
