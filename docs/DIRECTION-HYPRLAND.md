@@ -48,7 +48,7 @@ Every removal lands in the PR of its stage, never half-way: a PR that removes a 
 | add-ons | `addon-kitty`, `addon-thunar` | become part of `essentials` (default apps), add-on files removed in H1 |
 | `heiss-control` optdepends | `kconfig`, `plasma-workspace`, `systemsettings` | removed |
 | `heiss-theme` optdepends | `konsole` | removed |
-| Calamares build (AUR, `~/localrepo`) | `kcoreaddons`, `kpmcore` (KDE Frameworks libraries, not Plasma) | stay for the hidden fallback until H5 |
+| Calamares build (AUR, `~/localrepo`) | `kcoreaddons`, `kpmcore` (KDE Frameworks libraries, not Plasma; from `pacman -Qip ~/localrepo/calamares-3.4.2-2-x86_64.pkg.tar.zst`, Depends On: kcoreaddons kpmcore libpwquality qt6-declarative qt6-svg yaml-cpp) | stay for the hidden fallback until H5 |
 
 All replacement names exist in the official repositories (`pacman -Si`, checked 2026-11-18 against the local sync database): hyprland 0.57.0-1, waybar 0.15.0-3, hyprlock 0.9.6-3, hypridle 0.1.8-2, swaybg 1.2.2-1, fuzzel 1.15.0-2, mako 1.11.0-1, hyprpolkitagent 0.2.0-1, xdg-desktop-portal-hyprland 1.4.1-2, xdg-desktop-portal-gtk 1.15.3-2, grim, slurp, wl-clipboard, network-manager-applet, blueman, pavucontrol, brightnessctl, kitty 0.49.2-1, thunar 4.20.10-1, qt6-wayland 6.12.0-1, qt6ct 0.11-9, adwaita-cursors 51.0-1, adwaita-icon-theme 51.0-1, ttf-nerd-fonts-symbols-mono 3.5.1-1, inter-font 4.1-1. Not in the repositories (so not used): `rofi-wayland`, `bibata-cursor-theme`, `ttf-font-awesome`.
 
@@ -75,7 +75,7 @@ All replacement names exist in the official repositories (`pacman -Si`, checked 
 | `.github/workflows/core.yml` jobs "tool the wizard uses ... plasma-workspace", "... kconfig", "dock pins" | package-database checks for KDE tools | Removed in H1 |
 | Tests: `test_lnf_layout`, `test_themesync` (rewritten), `test_dock_lock`, `test_shortcuts`, `test_menu`, `test_terminal`, `test_launchers`, `test_check`, `test_gtk`, `tests/test_mimeapps.py`, `tests/test_installer_desktop.py`, `test_calamares_quiet` (kept until H5) | cover the above | Removed or rewritten together with the code |
 | Docs: `docs/design/{THEME-SYNC,GTK,SHORTCUTS}.md`, `docs/apps/{LAUNCHER,TERMINAL-HERE,ASSOCIATIONS}.md`, `docs/CONTROL-CENTER.md`, `docs/WELCOME.md`, `docs/PROFILES.md` | describe the Plasma behaviour | Rewritten in the stage that changes the behaviour; leftovers swept in H5 |
-| Calamares: `profile/airootfs/etc/calamares/`, `usr/share/calamares/branding/heiss/`, `scripts/heiss-calamares-build.sh`, `scripts/patches/calamares-heiss-layout.patch`, `calamares.desktop` | installer | Kept hidden through H3, removed in H5 (Tier A) |
+| Calamares: `profile/airootfs/etc/calamares/`, `usr/share/calamares/branding/heiss/`, `scripts/heiss-calamares-build.sh`, `scripts/patches/calamares-heiss-layout.patch`, `usr/local/share/applications/calamares.desktop` (under `profile/airootfs/`) | installer | Kept hidden through H3, removed in H5 (Tier A) |
 
 Tier A paths touched by H1 (label `design-approved` needed, checksums updated in the same PR): `etc/sddm.conf.d/`, `usr/share/plasma/look-and-feel/`, `usr/share/color-schemes/`, `usr/local/bin/heiss-setup-dock.sh`, `usr/share/heiss/` (new desktop drop-in directory), `usr/share/libalpm/hooks/` if a hook is added.
 
@@ -84,7 +84,7 @@ Tier A paths touched by H1 (label `design-approved` needed, checksums updated in
 | Part | Choice | Why |
 |---|---|---|
 | Compositor, bar | `hyprland`, `waybar` | the task |
-| Launcher | `fuzzel` | small, Wayland native, one ini file from the tokens; `wofi` is unmaintained GTK, `rofi-wayland` is not in the repositories |
+| Launcher | `fuzzel` | small, Wayland native, one ini file from the tokens; `wofi` is GTK3 and larger (my judgement, not measured), `rofi-wayland` is not in the repositories |
 | Notifications | `mako` | tiny, one config file, themable; `swaync` is larger and brings a second UI |
 | Polkit agent | `hyprpolkitagent` | needed by the helper prompts and Thunar mounts; small Qt6 agent from the same project as Hyprland (its Qt dependencies are already pulled by SDDM) |
 | Portals | `xdg-desktop-portal-hyprland` (screencast, screenshot) + `xdg-desktop-portal-gtk` (file chooser, settings, dark/light) with a `hyprland-portals.conf` | the usual pair; the GTK portal answers `org.freedesktop.appearance color-scheme` |
@@ -105,7 +105,7 @@ Tier A paths touched by H1 (label `design-approved` needed, checksums updated in
 
 ## 6. The LTS kernel and the NVIDIA rule
 
-`heiss-safe-graphics` (`/etc/grub.d/41_heiss_safe`) loops over `linux` and `linux-lts` and writes an entry only for a kernel that exists. It works with `linux` alone: the entry boots with `nomodeset` and the NVIDIA modules blacklisted. It does not need the LTS add-on. The NVIDIA hardware profiles (`hardware/gpu-nvidia-open.toml` and the others that list it) install `linux-lts` and `nvidia-open-lts` themselves (`packages`, `keep_on_remove = ["linux-lts"]`) as a second kernel to start from. So removing the add-on (`addon-lts-kernel`) changes nothing for that rule; the hardware step keeps working unchanged and only the add-on entry and its two test lines go away. Not verified: a real boot of the safe-graphics entry (listed in the FINAL VM TEST LIST).
+`heiss-safe-graphics` (`/etc/grub.d/41_heiss_safe`) loops over `linux` and `linux-lts` and writes an entry only for a kernel that exists. It works with `linux` alone: the entry boots with `nomodeset` and the NVIDIA modules blacklisted. It does not need the LTS add-on. The NVIDIA hardware profiles (only `hardware/gpu-nvidia-open.toml` lists them; the legacy and hybrid NVIDIA profiles do not mention an LTS kernel) install `linux-lts` and `nvidia-open-lts` themselves (`packages`, `keep_on_remove = ["linux-lts"]`) as a second kernel to start from. So removing the add-on (`addon-lts-kernel`) changes nothing for that rule; the hardware step keeps working unchanged and only the add-on entry and its two test lines go away. Not verified: a real boot of the safe-graphics entry (listed in the FINAL VM TEST LIST).
 
 ## 7. Dependency check: Heiss packages
 
@@ -126,7 +126,7 @@ Recommendation: **keep Qt (PySide6 with QtQuick Controls) on Wayland with `qt6-w
 
 Reasons:
 1. SDDM already depends on `qt6-base` and `qt6-declarative`, so the Qt runtime is in the image either way; `pyside6` (52 MiB) is the only extra.
-2. All logic is in toolkit-free Python (viewmodels, models, `heiss-core`, 5000 lines and their tests). Only the QML skin changes. A GTK rewrite would redo the part that is already tested for no user-visible gain.
+2. All logic is in toolkit-free Python (viewmodels, models, `heiss-core`, about 2600 lines of `core/heiss_core` plus the viewmodels, with their tests). Only the QML skin changes. A GTK rewrite would redo the part that is already tested for no user-visible gain.
 3. `scripts/render-gui.py` renders the QML windows offscreen to PNGs, so the owner and I can look at a result without a VM. There is nothing equivalent for GTK here.
 4. Our windows draw from the design tokens themselves, so they do not need Plasma's colour mechanism.
 
@@ -139,3 +139,9 @@ H0 (this document), H1 session (large: split in two PRs if it passes about 600 l
 ## 10. Questions that block
 
 None for H0 and H1. Decisions that would need the owner later: removing the Calamares branding (Tier A, H5), the root account policy (the owner is deciding; unchanged), manual partitioning (out of scope for H3, recorded).
+
+## 11. Not verified in this plan
+
+- Functional fit of the replacements: `plasma-firewall` by `firewalld` alone, `kio-extras` and `kdegraphics-thumbnailers` by `tumbler` + `ffmpegthumbnailer`.
+- That the X11 greeter with an own QtQuick SDDM theme starts, that Hyprland starts in VirtualBox (needs 3D acceleration or `WLR_RENDERER_ALLOW_SOFTWARE=1`), Qt versus GTK startup time, and a real safe-graphics boot with `linux` only.
+- Package sizes and versions are from the local sync database of 2026-11-18.
