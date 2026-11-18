@@ -134,6 +134,12 @@ class Jobs(Base):
         self.assertTrue(self.do("layout", "xx"))
         self.assertFalse(self.do("layout", "x"))
 
+    def test_finish_does_not_trust_its_caller_with_text_that_becomes_lua(self):
+        for job, arg in (("layout", 'us"})\nos.execute("x")--'), ("scale", "1 })\nos.execute('x')\nhl.config({")):
+            self.m.finish(job, arg)
+            self.assertEqual(self.m.msg[job][0], "error")
+        self.assertFalse(os.path.exists(os.path.join(self.d, "hypr", "heiss-user.lua")))
+
     def test_scale_is_written_and_shown(self):
         self.do("scale", "1.5")
         self.assertIn("scale = 1.5", self.user())
@@ -246,7 +252,9 @@ class Tools(unittest.TestCase):
         out = '[{"name":"A","width":1920,"height":1080,"refreshRate":59.94,"scale":1.5},{"name":"B"},"x",{"name":"C","width":"a","height":1}]'
         rows = sysx.monitors(lambda argv: (0, out))
         self.assertEqual(rows, [{"name": "A", "width": 1920, "height": 1080, "refresh": 59.9, "scale": 1.5}])
-        for bad in ((1, ""), (0, "not json"), (0, "{}")):
+        hostile = '[{"name":"A","width":1e999,"height":1,"refreshRate":1,"scale":1},{"name":"B","width":1,"height":1,"refreshRate":NaN,"scale":1}]'
+        self.assertEqual(sysx.monitors(lambda argv: (0, hostile)), [])
+        for bad in ((1, ""), (0, "not json"), (0, "{}"), (0, "[" * 100000)):
             try:
                 self.assertEqual(sysx.monitors(lambda argv, b=bad: b), [])
             except RuntimeError:

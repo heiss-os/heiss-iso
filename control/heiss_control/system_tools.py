@@ -3,6 +3,7 @@
 No shell, no privileges. A program is started by name from a fixed table (`PROGRAMS`), never from user input.
 """
 import json
+import math
 import shutil
 import subprocess
 
@@ -40,16 +41,19 @@ def monitors(run_cmd=run):
         raise RuntimeError("hyprctl monitors failed")
     try:
         data = json.loads(out)
-    except ValueError as e:
+    except (ValueError, RecursionError) as e:
         raise RuntimeError("hyprctl monitors printed no JSON") from e
     rows = []
     for m in data if isinstance(data, list) else []:
         if not isinstance(m, dict):
             continue
         try:
-            rows.append({"name": str(m.get("name", ""))[:40], "width": int(m["width"]), "height": int(m["height"]),
-                         "refresh": round(float(m.get("refreshRate", 0)), 1), "scale": float(m.get("scale", 1))})
-        except (KeyError, TypeError, ValueError):
+            row = {"name": str(m.get("name", ""))[:40], "width": int(m["width"]), "height": int(m["height"]),
+                   "refresh": round(float(m.get("refreshRate", 0)), 1), "scale": float(m.get("scale", 1))}
+            if not all(math.isfinite(row[k]) for k in ("refresh", "scale")):
+                continue
+            rows.append(row)
+        except (KeyError, TypeError, ValueError, OverflowError):
             continue
     return rows[:16]
 

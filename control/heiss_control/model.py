@@ -148,6 +148,8 @@ class Model:
         self._reload("modifier", self.tr("keyboard.mainkey.done") % self.tr("keyboard." + arg.lower()))
 
     def _do_layout(self, arg):
+        if not LAYOUT.fullmatch(arg):   # the text becomes Lua: never trust the caller to have checked
+            raise ValueError(self.tr("keyboard.layout.bad"))
         body = 'hl.config({ input = { kb_layout = "%s"%s } })' % (arg, ', kb_options = "grp:ctrl_shift_toggle"' if "," in arg else "")
         try:
             hyprcfg.set_block(self.env.cfg_dir, "keyboard", body)
@@ -157,6 +159,8 @@ class Model:
         self._reload("layout", self.tr("keyboard.layout.done"))
 
     def _do_scale(self, arg):
+        if arg not in SCALES:
+            raise ValueError("scale")
         body = 'hl.monitor({ output = "", mode = "preferred", position = "auto", scale = %s })' % arg
         try:
             hyprcfg.set_block(self.env.cfg_dir, "display", body)

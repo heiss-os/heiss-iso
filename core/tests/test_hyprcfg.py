@@ -309,6 +309,35 @@ class Blocks(unittest.TestCase):
         with self.assertRaises((OSError, ValueError)):
             hc.set_block(self.d, "keyboard", "x()")
 
+    def test_crlf_files_duplicated_blocks_symlinks_modes_and_foreign_bytes(self):
+        b, e = hc._marks("keyboard")
+        write(self.path, "-- mine\r\n%s\r\nold()\r\n%s\r\nafter\r\n" % (b, e))
+        self.assertEqual(hc.get_block(self.d, "keyboard"), "old()")
+        hc.set_block(self.d, "keyboard", "new()")
+        self.assertEqual(hc.get_block(self.d, "keyboard"), "new()")
+        self.assertEqual(self.text().count("heiss:keyboard begin"), 1)
+        # a hand-duplicated block leaves no stale copy
+        write(self.path, "%s\na()\n%s\nmid()\n%s\nb()\n%s\n" % (b, e, b, e))
+        hc.set_block(self.d, "keyboard", "one()")
+        self.assertEqual(self.text(), "%s\none()\n%s\nmid()\n" % (b, e))
+        # a symlinked file stays a link, its target changes, the mode is kept
+        real = os.path.join(self.d, "dotfiles", "user.lua")
+        write(real, "-- real\n")
+        os.chmod(real, 0o600)
+        os.remove(self.path)
+        os.symlink(real, self.path)
+        hc.set_block(self.d, "display", "d()")
+        self.assertTrue(os.path.islink(self.path))
+        self.assertIn("d()", open(real, encoding="utf-8").read())
+        self.assertEqual(os.stat(real).st_mode & 0o777, 0o600)
+        # bytes that are not UTF-8 outside the block survive
+        os.remove(self.path)
+        with open(self.path, "wb") as f:
+            f.write(b"-- caf\xe9\n")
+        hc.set_block(self.d, "display", "d()")
+        with open(self.path, "rb") as f:
+            self.assertTrue(f.read().startswith(b"-- caf\xe9\n"))
+
     def test_a_begin_marker_without_end_is_left_alone_and_a_second_block_is_added(self):
         write(self.path, "-- heiss:keyboard begin (written by the Heiss settings, edit outside these two lines)\nbroken\n")
         hc.set_block(self.d, "keyboard", "ok()")
