@@ -51,7 +51,10 @@ jobs:
         with:
           persist-credentials: false
       - name: Hyprland --verify-config on the file a user gets at the first login (Dark and Light)
-        run: bash scripts/check-hyprland-config.sh
+        # as an unprivileged user: Hyprland refuses to run as root
+        run: |
+          useradd -m builder
+          su builder -c "bash $GITHUB_WORKSPACE/scripts/check-hyprland-config.sh"
 
   namcap:
     name: namcap on the built packages (informational)
