@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Developer tool: render every Heiss GUI page to PNG files without a display.
 
-Starts heiss-welcome (every wizard page) and heiss-control (every Control Center page) with
+Starts heiss-welcome (the key-binding window) and heiss-control (every Control Center page) with
 QT_QPA_PLATFORM=offscreen, on fixture data, in dark and light and in en and ru, grabs each window to a PNG and
 prints the paths. It also collects every Qt/QML warning and error that was logged while loading and drawing.
 
@@ -61,121 +61,60 @@ class FakeApplier:
 # ---------------------------------------------------------------- welcome
 
 def welcome_pages(out, lang, theme, shots):
-    from heiss_core import wizard as wz
-    from heiss_core import manifest as mf
-    from heiss_core import hardware as hw
-    from heiss_welcome.viewmodel import ViewModel
+    """The key-binding window on the shipped hyprland.lua (Alt, then Super) and on a configuration of the user's own."""
+    from heiss_core import hyprcfg
+    from heiss_welcome import model
     from PySide6.QtCore import QObject, Property, Signal, Slot, QUrl
     from PySide6.QtQml import QQmlApplicationEngine
 
-    manifests = mf.load_dir(os.path.join(REPO, "profiles"))
-    facts, profiles = fixture_hardware()
-
-    def new_vm(applier):
-        w = wz.Wizard(manifests, language=lang)
-        vm = ViewModel(w, manifests, None, None, lambda: hw.detect(facts, profiles), applier, spawn=lambda fn: fn())
-        return vm
+    scratch = tempfile.mkdtemp(prefix="scratch-", dir=out)
+    shipped = os.path.join(REPO, "desktop", "hypr", "hyprland.lua")
 
     class Bridge(QObject):
         changed = Signal()
 
-        def __init__(self, vm):
+        def __init__(self, cfg_dir):
             super().__init__()
-            self.vm, self._screen = vm, vm.screen()
-
-        def _set(self, s):
-            self._screen = s
-            self.changed.emit()
+            self.cfg_dir, self._screen = cfg_dir, model.screen(lang, cfg_dir)
 
         screen = Property("QVariantMap", lambda self: self._screen, notify=changed)
 
-        @Slot(str, "QVariant")
-        def choose(self, path, value): self._set(self.vm.choose(path, value))
         @Slot(str)
-        def toggleAddon(self, a): self._set(self.vm.toggle_addon(a))
-        @Slot(str)
-        def toggleHardware(self, p): self._set(self.vm.toggle_hardware(p))
-        @Slot()
-        def next(self): self._set(self.vm.next())
-        @Slot()
-        def back(self): self._set(self.vm.back())
-        @Slot()
-        def skip(self): self._set(self.vm.skip())
-        @Slot()
-        def skipAll(self): self._set(self.vm.skip_whole())
-        @Slot()
-        def saveLater(self): self._set(self.vm.save_later())
-        @Slot()
-        def apply(self): self._set(self.vm.start_apply())
-        @Slot()
-        def retry(self): self._set(self.vm.retry_apply())
+        def search(self, query):
+            self._screen = model.screen(lang, self.cfg_dir, query)
+            self.changed.emit()
 
-    def open_window(vm):
-        bridge = Bridge(vm)
+    def config(name, text):
+        d = os.path.join(scratch, name)
+        os.makedirs(os.path.join(d, "hypr"))
+        with open(os.path.join(d, "hypr", "hyprland.lua"), "w", encoding="utf-8") as f:
+            f.write(text)
+        return d
+
+    with open(shipped, encoding="utf-8") as f:
+        shipped_text = f.read()
+    alt, sup = config("alt", shipped_text), config("super", shipped_text)
+    hyprcfg.write_modifier(sup, "SUPER")
+    own = config("own", 'local mainMod = "SUPER"\n-- Open the terminal\nhl.bind(mainMod .. " + T", f())\n')
+    empty = os.path.join(scratch, "empty")
+    os.makedirs(empty)
+
+    for name, cfg_dir, size in (("alt", alt, (760, 640)), ("alt-small", alt, (520, 440)), ("super", sup, (760, 640)),
+                                ("own-config", own, (760, 640)), ("no-config", empty, (760, 640))):
+        bridge = Bridge(cfg_dir)
         engine = QQmlApplicationEngine()
-        engine.rootContext().setContextProperty("wizard", bridge)
+        engine.rootContext().setContextProperty("welcome", bridge)
         engine.load(QUrl.fromLocalFile(qml_for_theme(out, "welcome", theme)))
         if not engine.rootObjects():
             WARNINGS.append(("error", "welcome: Main.qml did not load"))
-            return None, None
-        return engine, bridge
-
-    def shot(win, bridge, name):
+            return
+        win = engine.rootObjects()[0]
+        set_size(win, *size)
         shots.append(grab(win, os.path.join(out, "welcome-%s-%s-%s.png" % (lang, theme, name))))
-
-    vm = new_vm(FakeApplier())
-    vm.choose("profile", "cyber")                    # a profile with a long description
-    engine, bridge = open_window(vm)
-    if engine is None:
-        return
-    win = engine.rootObjects()[0]
-    set_size(win, 1280, 720)
-    seen = 0
-    while True:
-        sid = vm.w.step_id
-        if sid == "addons":   # one ticked box, to see the marker (the row itself must look like the others)
-            vm.w.set("addons", ["addon-lts-kernel"])
-            bridge._set(vm.screen())
-        shot(win, bridge, "%02d-%s" % (seen, sid))
-        set_size(win, 800, 600)
-        shot(win, bridge, "%02d-%s-800x600" % (seen, sid))
-        set_size(win, 1280, 720)
-        if sid == "hardware":   # a laptop-sized window: the list must scroll, with a visible sign of it
-            set_size(win, 1024, 600)
-            shot(win, bridge, "%02d-%s-small-window" % (seen, sid))
-            set_size(win, 1280, 720)
-            # the same machine without the safe graphics boot entry: the NVIDIA tick box is replaced by one line
-            keep = (vm.detector, vm._report, vm._detected)
-            vm.detector, vm._detected = (lambda: hw.detect(facts, profiles, set())), False
-            bridge._set(vm.screen())
-            shot(win, bridge, "%02d-%s-not-offered" % (seen, sid))
-            vm.detector, vm._report, vm._detected = keep
-            bridge._set(vm.screen())
-        seen += 1
-        if sid == wz.SUMMARY:
-            # a long add-on list, the case that used to run off the screen
-            vm.w.set("addons", sorted(m for m, x in manifests.items() if x.kind == "addon"))
-            bridge._set(vm.screen())
-            set_size(win, 800, 600)
-            shot(win, bridge, "%02d-%s-long-addons-800x600" % (seen, sid))
-            set_size(win, 1280, 720)
-            break
-        bridge.next()
-    # the applying screen while running (nothing finishes: spawn does nothing), after a failure, then done
-    sync = vm._spawn
-    vm._spawn = lambda fn: None
-    bridge.apply()
-    vm._job.update(step="[1/3] installing packages", log=["resolving dependencies...", "downloading packages..."])
-    bridge._set(vm.screen())
-    shot(win, bridge, "%02d-applying-running" % seen); seen += 1
-    vm._spawn, vm.applier = sync, FakeApplier(fail=True)
-    vm.run_job(vm.w.final_answers(), [])
-    bridge._set(vm.screen())
-    shot(win, bridge, "%02d-applying-failed" % seen); seen += 1
-    vm.applier = FakeApplier()
-    bridge.retry()
-    shot(win, bridge, "%02d-%s" % (seen, vm.w.step_id))
-    close(engine)
+        if name == "alt":
+            bridge.search("workspace")
+            shots.append(grab(win, os.path.join(out, "welcome-%s-%s-search.png" % (lang, theme))))
+        close(engine)
 
 
 # ---------------------------------------------------------------- control
@@ -347,7 +286,7 @@ def qml_for_theme(out, app, theme):
     dst = os.path.join(d, "Main.qml")
     with open(dst, "w", encoding="utf-8") as f:
         f.write(text.replace(SCHEME_TEST, "true" if theme == "dark" else "false"))
-    for name in os.listdir(os.path.dirname(src)):   # shared components next to Main.qml (ChoiceRow.qml)
+    for name in os.listdir(os.path.dirname(src)):   # shared components next to Main.qml, if any
         if name.endswith(".qml") and name != "Main.qml":
             shutil.copy(os.path.join(os.path.dirname(src), name), os.path.join(d, name))
     return dst

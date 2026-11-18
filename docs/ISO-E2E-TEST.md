@@ -160,7 +160,7 @@ python3 scripts/render-gui.py            # PNGs go to a new directory under $TMP
 python3 scripts/render-gui.py --out ~/share/gui-shots --only control --lang ru --theme light
 ```
 
-It starts the real `Main.qml` of heiss-welcome (every wizard page, plus the applying screen running and failed) and
+It starts the real `Main.qml` of heiss-welcome (the key-binding window: search, empty result, own configuration, both languages) and
 heiss-control (every page, a search, and the smallest window) with `QT_QPA_PLATFORM=offscreen`, on the hardware
 fixtures of `core/tests/fixtures/hw` and fake sources, in dark and light, in `en` and `ru`, and prints every Qt/QML
 warning and error. Look at the PNGs; expect `Qt/QML warnings and errors: 0`. The test `tests/test_render_gui.py`

@@ -13,7 +13,8 @@ COMPILED = re.compile(r"^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*re\.compile\(", re.M)
 LITERAL = re.compile(r"\bre\.match\(\s*r?[\"']\^")
 
 # STEP_RE only picks progress lines out of a child's output (nothing is validated or trusted through it)
-PARSERS = {"STEP_RE"}
+# the Lua tokenizer in hyprcfg.py matches a token at a position (pattern.match(text, i)): it reads, it validates nothing
+PARSERS = {"STEP_RE", "_BLOCK_COMMENT", "_LONG_STRING", "_NUMBER", "_NAME"}
 
 
 class Anchors(unittest.TestCase):

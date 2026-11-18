@@ -48,7 +48,7 @@ NEVER = {"sshd.service", "sshd.socket", "reflector.service", "reflector.timer", 
          "avahi-daemon.service", "avahi-daemon.socket", "fwupd.service", "fwupd-refresh.timer",
          "packagekit.service", "packagekit-offline-update.service"}
 # Programs the default Hyprland configuration starts (exec-once): none of them may fetch anything.
-EXEC_ONCE = ["heiss-wallpaper", "waybar", "mako", "hypridle", "hyprpolkitagent", "nm-applet --indicator", "blueman-applet",
+EXEC_ONCE = ["heiss-wallpaper", "heiss-welcome --first-run", "waybar", "mako", "hypridle", "hyprpolkitagent", "nm-applet --indicator", "blueman-applet",
              "command -v VBoxClient-all >/dev/null && VBoxClient-all"]
 
 

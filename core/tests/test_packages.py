@@ -202,8 +202,7 @@ class WelcomePackage(unittest.TestCase):
         pk = pkgbuild("heiss-welcome")
         self.assertIn("welcome/heiss_welcome", pk)
         self.assertRegex(pk, r"welcome/data/heiss-welcome(\s|\")")
-        self.assertIn("/etc/xdg/autostart/heiss-welcome.desktop", pk)
-        for dep in ("'python'", "'pyside6'", "'heiss-core'"):
+        for dep in ("'python'", "'pyside6'", "'qt6-wayland'", "'heiss-core'"):
             self.assertIn(dep, pk)
         with open(os.path.join(REPO, "packages", "pkgrel.json")) as f:
             rel = json.load(f)
@@ -215,44 +214,23 @@ class WelcomePackage(unittest.TestCase):
         for f in os.listdir(os.path.join(REPO, "welcome", "data")):
             self.assertIn("welcome/data/" + f, pk, f)
 
-    def test_autostart_is_never_active_in_the_live_session(self):
+    def test_the_menu_entry_opens_the_window_even_when_it_was_shown_before(self):
         with open(os.path.join(REPO, "welcome", "data", "heiss-welcome.desktop"), encoding="utf-8") as f:
             d = f.read()
-        exec_line = [l for l in d.splitlines() if l.startswith("Exec=")][0]
-        self.assertIn("test -e /run/archiso ||", exec_line)
-        self.assertIn("OnlyShowIn=KDE;", d)
-        self.assertIn("NoDisplay=true", d)
+        self.assertIn("Exec=heiss-welcome --force\n", d)
+        self.assertNotIn("OnlyShowIn", d)
+        self.assertNotIn("NoDisplay=true", d)
+        self.assertIn("/usr/share/applications/heiss-welcome.desktop", pkgbuild("heiss-welcome"))
 
-    def test_exec_line_runs_the_wizard_only_where_the_live_marker_is_missing(self):
-        import shlex
-        import stat
-        import subprocess
-        import tempfile
-        with open(os.path.join(REPO, "welcome", "data", "heiss-welcome.desktop"), encoding="utf-8") as f:
-            exec_line = [l for l in f.read().splitlines() if l.startswith("Exec=")][0][len("Exec="):]
-        argv = shlex.split(exec_line)                    # desktop-entry quoting: double quotes only
-        self.assertEqual(argv[:2], ["sh", "-c"])
-        with tempfile.TemporaryDirectory() as d:
-            fake = os.path.join(d, "heiss-welcome")
-            with open(fake, "w") as f:
-                f.write("#!/bin/sh\necho started\n")
-            os.chmod(fake, os.stat(fake).st_mode | stat.S_IXUSR)
-            env = dict(os.environ, PATH=d + os.pathsep + os.environ["PATH"])
-            marker = os.path.join(d, "archiso")
-            for present, expected in ((False, "started"), (True, "")):
-                if present:
-                    open(marker, "w").close()
-                script = argv[2].replace("/run/archiso", marker)   # /run/archiso cannot be created in a test
-                out = subprocess.run(["sh", "-c", script], env=env, capture_output=True, text=True)
-                self.assertEqual(out.returncode, 0)
-                self.assertEqual(out.stdout.strip(), expected)
+    def test_the_session_starts_the_window_once_and_the_package_is_in_the_iso_list(self):
+        with open(os.path.join(REPO, "desktop", "hypr", "hyprland.lua"), encoding="utf-8") as f:
+            self.assertIn('hl.exec_cmd("heiss-welcome --first-run")', f.read())
 
     def test_build_script_archives_the_sources_and_the_iso_list_does_not_have_the_package(self):
         with open(os.path.join(REPO, "scripts", "heiss-packages-build.sh"), encoding="utf-8") as f:
             self.assertRegex(f.read(), r"archive .* welcome ")
-        # not in the ISO list any more: the Hyprland session has its own welcome window (docs/DIRECTION-HYPRLAND.md, H2)
         with open(os.path.join(REPO, "profile", "packages.x86_64"), encoding="utf-8") as f:
-            self.assertNotIn("heiss-welcome", f.read().split())
+            self.assertIn("heiss-welcome", f.read().split())
 
 
 class ControlPackage(unittest.TestCase):

@@ -16,6 +16,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: Lua interpreter (the key-binding reader is compared with a real run of hyprland.lua)
+        run: sudo apt-get update -qq && sudo apt-get install -y lua5.4
       - run: python3 -m unittest discover -s core/tests -v
       - run: python3 -m unittest discover -s helper/tests -v
       - run: python3 -m unittest discover -s welcome/tests -v
@@ -61,10 +63,10 @@ jobs:
         with:
           persist-credentials: false
       - name: qmllint finds no error (a duplicate id keeps the whole window from loading)
-        run: /usr/lib/qt6/bin/qmllint welcome/heiss_welcome/qml/Main.qml welcome/heiss_welcome/qml/ChoiceRow.qml control/heiss_control/qml/Main.qml
+        run: /usr/lib/qt6/bin/qmllint welcome/heiss_welcome/qml/Main.qml control/heiss_control/qml/Main.qml
       - name: No property is named on<Capital> (QML reads it as a signal handler and the colour comes out black)
         run: |
-          if grep -nE 'property +[A-Za-z.]+ +on[A-Z]' welcome/heiss_welcome/qml/Main.qml welcome/heiss_welcome/qml/ChoiceRow.qml control/heiss_control/qml/Main.qml; then
+          if grep -nE 'property +[A-Za-z.]+ +on[A-Z]' welcome/heiss_welcome/qml/Main.qml control/heiss_control/qml/Main.qml; then
             echo "::error::a QML property name starts with on + capital letter"
             exit 1
           fi
