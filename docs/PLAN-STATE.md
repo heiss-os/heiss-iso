@@ -23,7 +23,7 @@ See the phase and round sections below. Phases 0 to 7 are merged; round 23 (pre-
 ## Next
 
 - H1b, then wait for the owner (rebuild of the ISO and the VM run of the H1a and H1b lines). The KDE preview image is not rebuilt.
-- First ISO build and static inspection of the image, then the owner's VM run of the FINAL VM TEST LIST. Later: Btrfs and snapshots, new neutral wallpapers.
+- First ISO build and static inspection of the image, then the owner's VM run of the FINAL VM TEST LIST. Later: new neutral wallpapers (Btrfs and snapshots were removed from the plan, see DECISIONS 2026-11-18).
 
 ## Open questions
 
@@ -393,6 +393,12 @@ H1a needs the label `design-approved` (Tier A: color-schemes, plasma/look-and-fe
 - [ ] Waybar after `heiss theme set light` / expect it re-reads the CSS without a restart (`pkill -USR2` and the `@import "../heiss/theme/waybar-colors.css"`); if not, report `journalctl --user -b | grep -i waybar`.
 - [ ] `heiss theme status` and `heiss check` / expect `theme` OK after a `set`; after `echo x >> ~/.config/heiss/theme/mako.conf` expect `WARN theme` naming `colors`.
 - [ ] Put your own `~/.config/gtk-3.0/gtk.css` (any text) in place and run `heiss theme set light` / expect `gtk ... warn` and your file unchanged.
+- [ ] Cursor: after `heiss theme set light` / expect the `cursor:` line is `changed` or `ok`, the pointer stays Adwaita 24 px (`hyprctl setcursor Adwaita 24`).
+- [ ] `hyprctl reload` re-reads the sourced colours: after `heiss theme set light` / expect the window border colour changes at once without logging out and `hyprctl configerrors` prints nothing; if not, report the output.
+- [ ] Notifications: after `heiss theme set light` run `notify-send test hello` / expect a light mako popup with the sand accent (`makoctl reload` was never run).
+- [ ] libadwaita: open Loupe or Papers after `heiss theme set light` / expect the Heiss light colours from `~/.config/gtk-4.0/gtk.css`, not the default Adwaita blue accent; the same in dark.
+- [ ] First login on a fresh user, then `ls ~/.config/heiss/theme` / expect `current` containing `dark`, the four colour files and the `wallpaper` link; `heiss theme init` run again prints `theme already set (dark)`; after `heiss theme set light` and a new login the theme is still light.
+- [ ] Outside Hyprland (a tty login, `HYPRLAND_INSTANCE_SIGNATURE` unset): `heiss theme set dark` / expect the `cursor` and `reload` lines `skipped` and exit code 0.
 - [ ] `heiss-gtk-audit after-light` / expect a report without KDE sections; send it back.
 
 ## Round 20, item 3a (2026-11-11): hardware choices applied

@@ -123,7 +123,7 @@ journalctl --user -u heiss-theme-sync --no-pager | tail -20
 cat ~/.local/state/heiss/theme-sync.log
 ```
 
-Open a NEW Konsole window and keep one that was open before the switch: both must show the Light colors. Switch back to Heiss Dark and repeat. Expected in the log: six `theme-sync:` lines per switch; anything marked `warn` or `failed` is what I need to see. Details and the list of unverified assumptions: Details were in the removed THEME-SYNC document (see git history before H1a).
+Open a NEW Konsole window and keep one that was open before the switch: both must show the Light colors. Switch back to Heiss Dark and repeat. Expected in the log: six `theme-sync:` lines per switch; anything marked `warn` or `failed` is what I need to see. Details were in the removed THEME-SYNC document (see git history before H1a).
 
 ## The Hyprland session (H1; nothing of it has run yet)
 

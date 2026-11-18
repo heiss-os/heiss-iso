@@ -603,8 +603,11 @@ Format: date, what, why. Newest at the bottom.
 - **User files are never overwritten:** a `gtk.css`, `settings.ini` or `qt6ct.conf` without the Heiss header is reported as `warn` and left alone; a wallpaper link to a file that is not a Heiss wallpaper stays. `heiss-session` runs `heiss theme init` once after the first-login copy.
 - **`heiss check` has the `theme` item again** (read-only, uses `heiss theme status`; WARN when none was set or a file differs, FAIL when the generated files are missing; not judged as root). Eight items now.
 - **`heiss-gtk-audit` rewritten** for the new stack (no `plasmashell`, `kreadconfig6`, kded). `docs/design/GTK.md` shrunk to a pointer.
-- **CLAUDE.md updated by the assistant (not a protected path):** direction, decisions, structure, build and test lines no longer say KDE-only and Calamares-only. Removed features are listed there.
+- **CLAUDE.md updated (not a protected path, the owner asked for it):** direction, decisions, structure, build and test lines no longer say KDE-only and Calamares-only. Removed features are listed there.
 - **`docs/OWNER-INPUTS.md`** lists what the owner still supplies (Hyprland and Waybar configs, binding descriptions, the ß logo SVG, wallpapers).
 - **Not verified:** everything at runtime (see the H1b lines of the FINAL VM TEST LIST). Unit tests ran with a fake environment and a temporary home only.
 - **Review notes:** the Tier B line of CLAUDE.md was translated from "panel, dock, Plasma settings" to "Waybar panel, Hyprland configs and session settings" (same rule, new names; the owner may revert it). The Tier A line about the Calamares module sequence stays until Calamares is removed in H5. Security LOW items accepted: a newline in `XDG_CONFIG_HOME` would only malform `qt6ct.conf`, and the temporary link name in `set_link` is predictable inside a directory only the user can write to; neither crosses a boundary.
 - **qa-verifier LOW items fixed:** a user file in another encoding is read leniently, so it counts as the user's own and is not overwritten; when a file target fails, GSettings, cursor and reload are skipped, so a theme is never half switched (the exit code stays 1).
+- **Btrfs and snapshots are off the plan** (direction change `heiss-task-31`): CLAUDE.md no longer lists them under the roadmap; the snapshot code goes in H2 and H3.
+- **pkgrel bumps (H1b):** `heiss-core` 22, `heiss-control` 19 (code changed), `heiss-theme` 3.
+
