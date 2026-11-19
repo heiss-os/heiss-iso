@@ -468,7 +468,7 @@ class DataFiles(unittest.TestCase):
                      "SystemCallArchitectures": "native",
                      "RestrictAddressFamilies": "AF_UNIX AF_INET AF_INET6 AF_NETLINK"}.items():
             self.assertEqual(opts.get(k), v, k)
-        # Deliberately absent: each would break pacman, mkinitcpio, grub or snapper (docs/SECURITY-MODEL.md, item 12).
+        # Deliberately absent: each would break pacman, mkinitcpio, or grub (docs/SECURITY-MODEL.md, item 12).
         for k in ("ProtectSystem", "ProtectKernelModules", "RestrictSUIDSGID", "PrivateDevices", "CapabilityBoundingSet",
                   "MemoryDenyWriteExecute", "RestrictNamespaces", "SystemCallFilter"):
             self.assertNotIn(k, opts, k)

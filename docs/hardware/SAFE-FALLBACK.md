@@ -9,10 +9,7 @@ A bad GPU driver can leave the user with a black screen and no way back. Today:
 
 - The NVIDIA profile (`hardware/gpu-nvidia-open.toml`) tells the user: "If the screen stays black, choose the safe
   graphics boot entry". That entry did not exist when this was written; it is built by the package `heiss-safe-graphics` (see Status). The warning promises something we do not ship. (Text since changed: round 22 moved the recovery step to the first sentence and added a short `recovery` text for the wizard.)
-- The helper takes a best-effort snapshot before install/remove/update, but only when `snapper` and
-  `/etc/snapper/configs/root` exist (`helper/heiss_helper/actions.py`). The installer creates ext4 today
-  (`docs/PLAN-STATE.md`, Phase 6 note: Btrfs and snapshots are a separate Tier A item), so on a fresh install
-  there is **no snapshot** and the only rollback is removing the packages the state file recorded.
+- Update 2026-11-19 (H2c): the helper has no snapshot step any more (snapshots were removed from the product, DECISIONS 2026-11-18 and 2026-11-19). There is **no snapshot** and the only rollback is removing the packages the state file recorded.
 - No second kernel is installed (`profile/packages.x86_64` has `linux` only). (Changed in step 4a: `linux-lts` comes with the NVIDIA driver, still not in the ISO.)
 
 ## What would be built
