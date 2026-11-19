@@ -64,7 +64,7 @@ d9a0d3436dee6e6c0385abedfa0affa6e635d96191761b4fe8e6462f55c481dc  profile/airoot
 adf2ecb46060e590e69ff5b6b843847bf1c600f66c15f80f604839d21f6b8008  profile/airootfs/etc/calamares/settings.conf
 f6194e480859d4f5b5ab6ff6a9ba62b9107aad37f35852a4465bf30200fc2c77  profile/airootfs/etc/sddm.conf.d/autologin.conf
 a91746a00e8b62da73e9952f5e34c541deb679d81bb7b4f3f185489da7511e9c  profile/airootfs/etc/sddm.conf.d/heiss-theme.conf
-ed96be2b44371ca50ca60d586b5613e58c5f39d9e93a1264751b8ab04e7955ae  profile/airootfs/usr/local/bin/heiss-boot-branding.sh
+8b8ac5d74bedea021ec1bddcb32cb052e08c4d447cfcf0e419b1188323ab7dba  profile/airootfs/usr/local/bin/heiss-boot-branding.sh
 90e6d69042effc5a2e8c85507d0212552f201c124d2481fb3c8e9b141f5a94f1  profile/airootfs/usr/local/bin/heiss-cleanup.sh
 0b93653f185046b434f3244d8a58a1dac745e70599c605deb04d66ed77eb516c  profile/airootfs/usr/share/calamares/branding/heiss/banner.png
 1b44cdf6ccc3fcf7bb2617adfa30d6320cc8cdb4aa995baf162811722167fe78  profile/airootfs/usr/share/calamares/branding/heiss/banner.png.license

@@ -90,6 +90,11 @@ class Theme(unittest.TestCase):
         self.assertIn("setvar GRUB_GFXPAYLOAD_LINUX keep", sh)
         self.assertIn("setvar GRUB_TERMINAL_OUTPUT gfxterm", sh)
 
+    def test_a_rerun_removes_every_old_inter_font_before_copying_the_theme(self):
+        sh = read(PROFILE, "airootfs/usr/local/bin/heiss-boot-branding.sh")
+        rm = sh.index("rm -f /boot/grub/themes/heiss/inter-*.pf2")
+        self.assertLess(rm, sh.index("cp -a /usr/share/heiss/grub-theme/. /boot/grub/themes/heiss/"))
+
 
 class LiveMenu(unittest.TestCase):
     def test_systemd_boot_has_normal_safe_and_speech_entries_in_order(self):
