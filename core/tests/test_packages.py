@@ -239,7 +239,7 @@ class ControlPackage(unittest.TestCase):
         self.assertIn("control/heiss_control", pk)
         self.assertRegex(pk, r"control/data/heiss-control(\s|\")")
         self.assertIn("/usr/share/applications/heiss-control.desktop", pk)
-        for dep in ("'python'", "'pyside6'", "'heiss-core'"):
+        for dep in ("'python'", "'pyside6'", "'qt6-wayland'", "'heiss-core'"):
             self.assertIn(dep, pk)
         with open(os.path.join(REPO, "packages", "pkgrel.json")) as f:
             rel = json.load(f)
@@ -253,20 +253,20 @@ class ControlPackage(unittest.TestCase):
                 continue
             self.assertIn("control/data/" + f, pk, f)
 
-    def test_desktop_file_is_a_visible_kde_launcher_for_the_installed_command(self):
+    def test_desktop_file_is_a_visible_launcher_for_the_installed_command(self):
         with open(os.path.join(REPO, "control", "data", "heiss-control.desktop"), encoding="utf-8") as f:
             d = dict(l.split("=", 1) for l in f.read().splitlines() if "=" in l)
         self.assertEqual(d["Exec"], "heiss-control")
-        self.assertEqual(d["OnlyShowIn"], "KDE;")
+        self.assertNotIn("OnlyShowIn", d)
         self.assertNotIn("NoDisplay", d)
         self.assertEqual(d["StartupWMClass"], "heiss-control")
         self.assertIn("Settings", d["Categories"])
 
-    def test_build_script_archives_the_sources_and_the_iso_list_does_not_have_the_package(self):
+    def test_build_script_archives_the_sources_and_the_iso_list_has_the_package(self):
         with open(os.path.join(REPO, "scripts", "heiss-packages-build.sh"), encoding="utf-8") as f:
             self.assertRegex(f.read(), r"archive .* welcome control ")
         with open(os.path.join(REPO, "profile", "packages.x86_64"), encoding="utf-8") as f:
-            self.assertNotIn("heiss-control", f.read().split())
+            self.assertIn("heiss-control", f.read().split())
 
 
 class DesktopPackage(unittest.TestCase):

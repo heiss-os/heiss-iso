@@ -1,68 +1,34 @@
-"""What the Control Center shows. No Qt here: the QML only draws this and calls it.
+"""What the Heiss settings window shows. No Qt here: the QML only draws this and calls it.
 
-Read-only in this version: every value is read from a file or a command that cannot change the system. All
-sources are injected through `Env`, so tests run on fixtures. A failing source never stops the window; it
-shows the error on its own card.
+A page is a list of blocks (heading, text, rows, choice, field, action, items, report); the QML draws any page from
+them. Every source is injected through `Env`, so tests run on fixtures. A failing source never stops the window: it
+shows the error on its own page. Anything slow (the theme switch, hardware detection, `heiss check`, `hyprctl`)
+runs in a worker thread: `begin(job, arg)` accepts it on the GUI thread, `finish(job, arg)` does it on the worker.
 """
 import os
-import subprocess
+import re
 from dataclasses import dataclass, field
 
-from heiss_core import answers as ans
+from heiss_core import hyprcfg
 from heiss_core import manifest as mf
 from heiss_core import state as st
-from heiss_core import wizard as wz
 from heiss_core.errors import HeissError
-from heiss_core.system import PacmanSystem
 
 from . import hardware_view
-from . import privacy_view
-from . import runner
-from . import security
+from . import system_tools as sysx
 from . import theme as th
 from . import tools
-from . import updates_view
 from .strings import t
 
-# (id, built). Pages that are not built show the "coming soon" text, so the sidebar is the final one from day one.
-PAGES = (("overview", True), ("profiles", True), ("appearance", True), ("security", True), ("updates", True),
-         ("hardware", True), ("network", True), ("power", False), ("backups", False), ("advanced", True),
-         ("about", True))
-PAGE_IDS = tuple(p for p, _ in PAGES)
+PAGES = ("appearance", "display", "keyboard", "network", "audio", "packages", "hardware", "system")
 LANGUAGES = ("en", "ru")
-MAX_MESSAGE = 300   # longest error text shown; messages can echo file content
-MAX_WARNING = 1200   # longest driver warning shown; shipped texts are far shorter (a test checks), so none is cut mid-sentence
-MAX_REPORT = 8000   # longest report text kept; longer ones get a marker
-MAX_LIST = 200   # longest list of package names drawn on the page
-
-
-def _plasma_version():
-    r = subprocess.run(["plasmashell", "--version"], capture_output=True, text=True, timeout=3)
-    return r.stdout.strip().removeprefix("plasmashell").strip() if r.returncode == 0 else ""
-
-
-@dataclass
-class Env:
-    os_release: str = "/usr/lib/os-release"
-    system_answers: str = "/etc/heiss/profile.toml"
-    user_dir: str = field(default_factory=lambda: os.path.join(
-        os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config"), "heiss"))
-    state_file: str = "/var/lib/heiss/state.json"
-    profiles_dir: str = field(default_factory=lambda: os.environ.get("HEISS_PROFILES", "/usr/share/heiss/profiles"))
-    theme_get: callable = field(default_factory=lambda: th.read_current)
-    apply_theme: callable = field(default_factory=lambda: th.apply_theme)
-    security_facts: callable = field(default_factory=lambda: security.collect)
-    privacy_facts: callable = field(default_factory=lambda: privacy_view.collect)
-    hardware_data: callable = field(default_factory=lambda: hardware_view.collect)
-    update_facts: callable = field(default_factory=lambda: updates_view.collect)
-    online: callable = field(default_factory=lambda: lambda: PacmanSystem().network_connected())
-    run_pending_item: callable = field(default_factory=lambda: runner.run_item)
-    run_hw_remove: callable = field(default_factory=lambda: runner.run_hw_remove)
-    run_check: callable = field(default_factory=lambda: tools.run_check)
-    open_settings: callable = field(default_factory=lambda: tools.open_settings)
-    # default_factory: a plain lambda as a class default would be bound as a method
-    kernel: callable = field(default_factory=lambda: lambda: os.uname().release)
-    plasma: callable = field(default_factory=lambda: _plasma_version)
+SCALES = ("1", "1.25", "1.5", "2")
+LAYOUT = re.compile(r"[a-z]{2,3}(,[a-z]{2,3}){0,3}")
+SCALE_LINE = re.compile(r"scale\s*=\s*([0-9.]+)")
+LAYOUT_LINE = re.compile(r'kb_layout\s*=\s*"([^"]*)"')
+MAX_MESSAGE = 300
+MAX_REPORT = 8000
+MAX_LIST = 200
 
 
 def parse_os_release(text):
@@ -74,18 +40,31 @@ def parse_os_release(text):
     return out
 
 
+@dataclass
+class Env:
+    cfg_dir: str = field(default_factory=hyprcfg.config_dir)
+    os_release: str = "/usr/lib/os-release"
+    system_answers: str = "/etc/heiss/profile.toml"
+    state_file: str = "/var/lib/heiss/state.json"
+    profiles_dir: str = field(default_factory=lambda: os.environ.get("HEISS_PROFILES", "/usr/share/heiss/profiles"))
+    theme_get: callable = field(default_factory=lambda: th.read_current)
+    apply_theme: callable = field(default_factory=lambda: th.apply_theme)
+    run: callable = field(default_factory=lambda: sysx.run)
+    launch: callable = field(default_factory=lambda: sysx.launch)
+    monitors: callable = field(default_factory=lambda: sysx.monitors)
+    layouts: callable = field(default_factory=lambda: sysx.known_layouts)
+    hardware_data: callable = field(default_factory=lambda: hardware_view.collect)
+    run_check: callable = field(default_factory=lambda: tools.run_check)
+    kernel: callable = field(default_factory=lambda: lambda: os.uname().release)
+
+
 class Model:
     def __init__(self, env=None, language="en"):
-        self.env, self.language, self.page = env or Env(), language if language in LANGUAGES else "en", "overview"
-        self.theme_state, self.theme_message = "idle", ""   # idle | running | ok | failed
-        self.check_state, self.check_items, self.check_message = "idle", [], ""   # idle | running | done | failed
-        self.settings_message = ""
-        self.sec_state, self.sec_facts, self.sec_message = "idle", [], ""   # idle | running | done | failed
-        self.net_state, self.net_facts, self.net_message = "idle", [], ""   # idle | running | done | failed
-        self.up_state, self.up_facts, self.up_message = "idle", [], ""   # idle | running | done | failed
-        self.hw_state, self.hw_data, self.hw_message, self.hw_copied = "idle", None, "", False   # idle | running | done | failed
-        self.pend_state, self.pend_step, self.pend_message = "idle", "", ""   # idle | running | ok | failed | offline
-        self.hwr_state, self.hwr_id, self.hwr_message = "idle", "", ""        # driver removal: idle | running | ok | failed
+        self.env, self.language, self.page = env or Env(), language if language in LANGUAGES else "en", "appearance"
+        self.busy = ""                       # the job that runs now, or ""
+        self.msg = {}                        # block id -> (tone, text): the result of the last action
+        self.hw_state, self.hw_data, self.hw_copied = "idle", None, False
+        self.check_state, self.check_items = "idle", []
 
     def tr(self, key):
         return t(self.language, key)
@@ -102,331 +81,123 @@ class Model:
         if language in LANGUAGES:
             self.language = language
 
-    def open(self, page_id):
-        if page_id in PAGE_IDS:
-            self.page = page_id
+    def open(self, page):
+        if page in PAGES:
+            self.page = page
 
-    def sidebar(self):
-        return [{"id": p, "title": self.tr("page." + p), "built": built, "current": p == self.page} for p, built in PAGES]
+    # ------------------------------------------------------------------ jobs
+    JOBS = ("theme", "modifier", "layout", "scale", "launch", "detect", "check")
 
-    # --- search: page titles and keywords only (no per-setting entries exist yet) ---
-    def search(self, query):
-        words = query.casefold().split()
-        if not words:
-            return []
-        hits = []
-        for p, built in PAGES:
-            title = self.tr("page." + p).casefold()
-            keys = self.tr("kw." + p).casefold()
-            if all(w in title or w in keys for w in words):
-                hits.append((0 if all(w in title for w in words) else 1, p, built))
-        return [{"id": p, "title": self.tr("page." + p), "built": built} for _, p, built in sorted(hits, key=lambda h: h[0])]
-
-    # --- overview ---
-    def _answers(self):
-        for path in (self.env.system_answers, os.path.join(self.env.user_dir, "answers.toml")):
-            if os.path.exists(path):
-                return ans.load(path)
-        return None
-
-    def _card(self, cid, fn):
-        try:
-            value, detail = fn()
-            return {"id": cid, "title": self.tr("card." + cid), "value": value, "detail": detail, "error": ""}
-        except Exception as e:  # a source must never stop the window, whatever it raises
-            return {"id": cid, "title": self.tr("card." + cid), "value": self.tr("unknown"), "detail": "",
-                    "error": self._err(e)}
-
-    def overview(self):
-        def profile():
-            a = self._answers()
-            return (self._pname(a["profile"]), "") if a else (self.tr("not_set"), "")
-
-        def privacy():
-            a = self._answers()
-            return (self.tr("lvl." + a["privacy"]["level"]), "") if a else (self.tr("not_set"), "")
-
-        def managed():
-            s = st.load(self.env.state_file)
-            return str(len(s["packages"])), ""
-
-        def pending():
-            items = wz.PendingQueue(os.path.join(self.env.user_dir, "pending.json")).list()
-            failed = sum(1 for i in items if i["status"] == "failed")
-            waiting = sum(1 for i in items if i["status"] == "pending")
-            return str(len(items)), ", ".join(x for x in (self.tr("pending.waiting") % waiting if waiting else "",
-                                                          self.tr("pending.failed") % failed if failed else "") if x)
-
-        return {"what": self.tr("overview.what"),
-                "cards": [self._card("profile", profile), self._card("privacy", privacy),
-                          self._card("managed", managed), self._card("pending", pending),
-                          self._card("kernel", lambda: (self.env.kernel(), ""))]}
-
-    # --- profiles and software (read-only) ---
-    def _manifests(self):
-        try:
-            return mf.load_dir(self.env.profiles_dir)
-        except (OSError, ValueError, HeissError):
-            return {}
-
-    def _pname(self, item_id, manifests=None):
-        m = (self._manifests() if manifests is None else manifests).get(item_id)
-        return (m.name.get(self.language) or m.name.get("en") or item_id) if m else item_id
-
-    def profiles(self):
-        manifests, errors = self._manifests(), []
-        if not manifests:
-            errors.append(self._err(self.env.profiles_dir))
-        rows, sections, pending = [], [], []
-        try:
-            a = self._answers()
-            chosen = [self._pname(a["profile"], manifests)] if a else [self.tr("not_set")]
-            addons = ", ".join(self._pname(x, manifests) for x in a["addons"]) if a and a["addons"] else self.tr("none")
-            rows += [("profiles.chosen", chosen[0]), ("profiles.addons", addons)]
-        except Exception as e:  # noqa: BLE001
-            errors.append(self._err(e))
-        try:
-            doc = st.load(self.env.state_file)
-            applied = doc["applied"]["profile"]
-            rows.append(("profiles.applied", self._pname(applied, manifests) if applied else self.tr("not_set")))
-            for key in ("packages", "services", "flatpaks"):
-                items = sorted(doc[key])
-                shown = items[:MAX_LIST] + (["... +%d" % (len(items) - MAX_LIST)] if len(items) > MAX_LIST else [])
-                sections.append({"title": "%s (%d)" % (self.tr("profiles." + key), len(items)), "items": shown})
-        except Exception as e:  # noqa: BLE001
-            errors.append(self._err(e))
-        try:
-            for i in wz.PendingQueue(os.path.join(self.env.user_dir, "pending.json")).list():
-                text = self.tr("profiles.pending_apply") % self._pname(i["payload"]["profile"], manifests)
-                pending.append({"id": i["id"], "text": text, "status": self.tr("pstatus." + i["status"]),
-                                "error": self._clip(i["error"])})
-        except Exception as e:  # noqa: BLE001
-            errors.append(self._err(e))
-        return {"what": self.tr("profiles.what"), "rows": [{"label": self.tr(k), "value": v} for k, v in rows],
-                "sections": sections, "pendingTitle": self.tr("card.pending"), "pending": pending,
-                "errors": errors, "note": self.tr("profiles.note"),
-                "run": {"label": self.tr("profiles.run"), "removeLabel": self.tr("profiles.remove"),
-                        "warning": self.tr("profiles.run_warning"), "state": self.pend_state,
-                        "step": self.pend_step, "message": self.pend_message,
-                        "offline": self.tr("profiles.offline"), "running": self.tr("profiles.running"),
-                        "done": self.tr("profiles.done")}}
-
-    # --- saved ("apply later") actions: run them, or drop them ---
-    def _queue(self):
-        return wz.PendingQueue(os.path.join(self.env.user_dir, "pending.json"))
-
-    def begin_pending(self):
-        """True when the run may start: nothing runs already, something is waiting, and the network is up."""
-        if self.pend_state == "running" or self.hwr_state == "running":
+    def begin(self, job, arg=""):
+        """Accept a job (True) or refuse it: unknown job or value, or another job is running."""
+        if self.busy or job not in self.JOBS or not isinstance(arg, str):
             return False
-        try:
-            waiting = bool(self._queue().list())
-            online = bool(self.env.online())
-        except Exception as e:  # noqa: BLE001
-            self.pend_state, self.pend_step, self.pend_message = "failed", "", self._err(e)
+        self._arg = arg
+        valid = {"theme": lambda: arg in ("dark", "light"), "modifier": lambda: arg in hyprcfg.MODIFIERS,
+                 "layout": self._layout_ok, "scale": lambda: arg in SCALES,
+                 "launch": lambda: arg in sysx.PROGRAMS, "detect": lambda: True, "check": lambda: True}[job]
+        ok = valid()
+        if not ok:
+            if job == "layout" and ok is False:
+                self.msg["layout"] = ("error", self.tr("keyboard.layout.bad"))
             return False
-        if not waiting:
-            return False
-        if not online:
-            self.pend_state, self.pend_step, self.pend_message = "offline", "", ""
-            return False
-        self.pend_state, self.pend_step, self.pend_message = "running", "", ""
+        if job == "check":
+            self.check_state, self.check_items = "running", []
+        if job == "detect":
+            self.hw_state, self.hw_copied = "running", False
+        self.busy = job
         return True
 
-    def finish_pending(self, notify=None):
-        """Runs the queue in order; called from a worker thread. notify() is called on every step."""
-        def on_step(n, total, text):
-            self.pend_step = self._clip("%d/%d %s" % (n, total, text))
-            if notify:
-                notify()
-        try:
-            q = self._queue()
-            q.run(lambda item: self.env.run_pending_item(item, on_step), True)
-            failed = [i for i in q.list() if i["status"] == "failed"]
-            if failed:
-                self.pend_state, self.pend_message = "failed", self._clip(failed[0]["error"])
-            else:
-                self.pend_state, self.pend_message = "ok", ""
-        except Exception as e:  # noqa: BLE001
-            self.pend_state, self.pend_message = "failed", self._err(e)
-        self.pend_step = ""
-
-    def remove_pending(self, item_id):
-        """Drop one saved action without running it. Not while a run is in progress."""
-        if self.pend_state == "running" or self.hwr_state == "running" or not isinstance(item_id, int) or isinstance(item_id, bool):
+    def _layout_ok(self):
+        arg = self._arg
+        if not LAYOUT.fullmatch(arg):
             return False
-        try:
-            q = self._queue()
-            q.remove(item_id)
-            if not any(i["status"] == "failed" for i in q.list()):
-                self.pend_state, self.pend_step, self.pend_message = "idle", "", ""   # the old error is gone with its item
-        except Exception as e:  # noqa: BLE001
-            self.pend_state, self.pend_message = "failed", self._err(e)
-            return False
-        return True
-
-    # --- appearance: Dark and Light only ---
-    def appearance(self):
-        try:
-            cur = self.env.theme_get()
-        except Exception:  # noqa: BLE001 - a broken tool must not stop the page
-            cur = ""
-        cur = cur if cur in ("dark", "light") else ""
-        return {"what": self.tr("appearance.what"), "currentLabel": self.tr("appearance.current"),
-                "current": self.tr("theme." + cur) if cur else self.tr("unknown"),
-                "choices": [{"id": c, "label": self.tr("theme." + c), "selected": c == cur} for c in ("dark", "light")],
-                "state": self.theme_state, "message": self.theme_message, "running": self.tr("appearance.running"),
-                "note": self.tr("appearance.note")}
-
-    def begin_theme(self, theme):
-        """Accept a theme change (True) or ignore it: unknown value, or one is already running."""
-        if theme not in ("dark", "light") or self.theme_state == "running":
-            return False
-        self.theme_state, self.theme_message = "running", ""
-        return True
-
-    def finish_theme(self, theme):
-        """Runs the switch; called from a worker thread, the glue refreshes the screen afterwards."""
-        try:
-            ok, msg = self.env.apply_theme(theme)
-        except Exception as e:  # noqa: BLE001
-            ok, msg = False, str(e)
-        self.theme_state, self.theme_message = ("ok", "") if ok else ("failed", self._clip(msg))
-
-    # --- security center: read-only facts, no fixes yet ---
-    def begin_security(self):
-        if self.sec_state == "running":
-            return False
-        self.sec_state, self.sec_message = "running", ""
-        return True
-
-    def finish_security(self):
-        """Collects the facts; called from a worker thread, the glue refreshes the screen afterwards."""
-        try:
-            self.sec_facts, self.sec_state = self._clean_facts(self.env.security_facts()), "done"
-        except Exception as e:  # noqa: BLE001
-            self.sec_facts, self.sec_state, self.sec_message = [], "failed", self._err(e)
-
-    def _sec_text(self, key, default=""):
-        try:
-            return t(self.language, key)
-        except KeyError:
-            return default
-
-    def _facts_page(self, prefix, facts, state, message):
-        """Plain-language cards for a list of facts. prefix is "sec" or "nw": strings are `<prefix>.<id>[.<code>]`."""
-        items = []
-        for f in facts:
-            base = "%s.%s" % (prefix, f["id"])
-            detail = self._sec_text("%s.%s" % (base, f["code"]), self.tr("sec.unknown_code"))
-            detail = detail.replace("%s", f["data"])   # not %-formatting: the data comes from the system
-            items.append({"id": f["id"], "title": self._sec_text(base, f["id"]), "status": f["status"],
-                          "statusLabel": self.tr("sec.status." + f["status"]), "detail": detail,
-                          "advice": self._sec_text(base + ".advice") if f["status"] == "warn" else ""})
-        n = {k: sum(1 for f in facts if f["status"] == k) for k in ("ok", "warn", "info")}
-        summary = self.tr("sec.summary") % (n["ok"], len(facts), n["warn"]) if facts else ""
-        return {"runLabel": self.tr("sec.run"), "running": self.tr("sec.running"), "state": state,
-                "message": message, "items": items, "summary": summary}
-
-    def _clean_facts(self, raw):
-        facts = []
-        for f in raw:
-            status = f["status"] if f["status"] in ("ok", "warn", "info") else "info"
-            facts.append({"id": str(f["id"])[:20], "status": status, "code": str(f["code"])[:30],
-                          "data": self._clip(f.get("data", ""))})
-        return facts
-
-    def security_page(self):
-        page = self._facts_page("sec", self.sec_facts, self.sec_state, self.sec_message)
-        page.update(what=self.tr("sec.what"), note=self.tr("sec.note"))
-        return page
-
-    # --- network and privacy: what is in place compared with the chosen level (read-only) ---
-    def _chosen_level(self):
-        try:
-            a = self._answers()
-            return a["privacy"]["level"] if a else None
-        except Exception:  # noqa: BLE001
+        known = self.env.layouts()
+        if known and not all(x in known for x in arg.split(",")):
+            self.msg["layout"] = ("error", self.tr("keyboard.layout.unknown"))
             return None
-
-    def begin_network(self):
-        if self.net_state == "running":
-            return False
-        self.net_state, self.net_message = "running", ""
         return True
 
-    def finish_network(self):
-        """Collects the facts; called from a worker thread, the glue refreshes the screen afterwards."""
+    def finish(self, job, arg=""):
+        """Run an accepted job; called from the worker thread, the glue refreshes the screen afterwards."""
         try:
-            self.net_facts = self._clean_facts(self.env.privacy_facts(self._chosen_level()))
-            self.net_state = "done"
-        except Exception as e:  # noqa: BLE001
-            self.net_facts, self.net_state, self.net_message = [], "failed", self._err(e)
+            getattr(self, "_do_" + job)(arg)
+        except Exception as e:  # noqa: BLE001 - a job must never take the window down
+            self.msg[job] = ("error", self._clip(str(e)))
+        finally:
+            self.busy = ""
 
-    def network_page(self):
-        page = self._facts_page("nw", self.net_facts, self.net_state, self.net_message)
-        page.update(what=self.tr("nw.what"), note=self.tr("nw.note"), soonTitle=self.tr("soon"),
-                    soon=[self.tr("nw.soon." + k) for k in ("dns", "vpn", "bluetooth", "hardened")])
-        return page
+    def _do_theme(self, arg):
+        ok, msg = self.env.apply_theme(arg)
+        self.msg["theme"] = ("ok", self.tr("appearance.done")) if ok else ("error", self._clip(self.tr("appearance.failed") % msg))
 
-    # --- hardware and drivers: read-only detection, driver state, report without personal data ---
-    def begin_hardware(self):
-        if self.hw_state == "running" or self.hwr_state == "running":
-            return False
-        self.hw_state, self.hw_message, self.hw_copied = "running", "", False
-        return True
+    def _reload(self, key_ok, ok_text):
+        """After a write: ask the running Hyprland to read its files again."""
+        rc, out = self.env.run(["hyprctl", "reload"])
+        if rc == 0:
+            self.msg[key_ok] = ("ok", ok_text)
+        else:
+            self.msg[key_ok] = ("warn", self._clip(self.tr("keyboard.reload_failed") % (out.strip() or "hyprctl")))
 
-    def finish_hardware(self):
-        """Detects the hardware; called from a worker thread, the glue refreshes the screen afterwards."""
+    def _do_modifier(self, arg):
+        try:
+            hyprcfg.write_modifier(self.env.cfg_dir, arg)
+        except (OSError, ValueError) as e:
+            self.msg["modifier"] = ("error", self._clip(self.tr("keyboard.failed") % e))
+            return
+        self._reload("modifier", self.tr("keyboard.mainkey.done") % self.tr("keyboard." + arg.lower()))
+
+    def _do_layout(self, arg):
+        if not LAYOUT.fullmatch(arg):   # the text becomes Lua: never trust the caller to have checked
+            raise ValueError(self.tr("keyboard.layout.bad"))
+        body = 'hl.config({ input = { kb_layout = "%s"%s } })' % (arg, ', kb_options = "grp:ctrl_shift_toggle"' if "," in arg else "")
+        try:
+            hyprcfg.set_block(self.env.cfg_dir, "keyboard", body)
+        except (OSError, ValueError) as e:
+            self.msg["layout"] = ("error", self._clip(self.tr("keyboard.failed") % e))
+            return
+        self._reload("layout", self.tr("keyboard.layout.done"))
+
+    def _do_scale(self, arg):
+        if arg not in SCALES:
+            raise ValueError("scale")
+        body = 'hl.monitor({ output = "", mode = "preferred", position = "auto", scale = %s })' % arg
+        try:
+            hyprcfg.set_block(self.env.cfg_dir, "display", body)
+        except (OSError, ValueError) as e:
+            self.msg["scale"] = ("error", self._clip(self.tr("display.failed") % e))
+            return
+        self._reload("scale", self.tr("display.done"))
+
+    def _do_launch(self, arg):
+        ok, name = self.env.launch(arg)
+        if ok:
+            self.msg["launch." + arg] = ("ok", "")
+        else:
+            self.msg["launch." + arg] = ("error", self._clip(self.tr("missing") % name))
+
+    def _do_detect(self, arg):
         try:
             raw = self.env.hardware_data()
-            drivers = [{"id": "".join(c for c in str(d["id"]) if c.isalnum() or c == "-")[:41], "name": dict(d["name"]), "description": dict(d["description"]),
-                        "warning": dict(d["warning"]), "safe": bool(d["safe"]),
-                        "state": d["state"] if d["state"] in hardware_view.DRIVER_STATES else "unknown",
-                        "missing": [str(x)[:60] for x in d["missing"]][:20],
-                        "remove": self._clean_removal(d.get("remove"))} for d in raw["drivers"]]
-            self.hw_data = {"facts": self._clean_facts(raw["facts"]), "drivers": drivers, "report": self._report_text(raw["report"])}
+            drivers = [{"title": self._localized(d["name"]) or str(d["id"])[:40], "detail": self._localized(d["description"]),
+                        "warning": self._localized(d["warning"], 1200),
+                        "state": d["state"] if d["state"] in hardware_view.DRIVER_STATES else "unknown"} for d in raw["drivers"]]
+            self.hw_data = {"facts": self._facts(raw["facts"]), "drivers": drivers, "report": self._report(raw["report"])}
             self.hw_state = "done"
         except Exception as e:  # noqa: BLE001
-            self.hw_data, self.hw_state, self.hw_message = None, "failed", self._err(e)
+            self.hw_data, self.hw_state = None, "failed"
+            self.msg["hardware"] = ("error", self._err(e))
 
-    @staticmethod
-    def _clean_removal(r):
-        """The plan of "Remove this driver" as shown to the user: package names only, bounded."""
-        if not isinstance(r, dict) or not r.get("packages"):
-            return None
-        return {"packages": [str(x)[:60] for x in r["packages"]][:20], "kept": [str(x)[:60] for x in (r.get("kept") or [])][:20]}
-
-    # --- "Remove this driver": `heiss hw remove --yes ID` in a child process; the helper and polkit do the work ---
-    def begin_hw_remove(self, driver_id):
-        """True when the removal may start: nothing runs, and the driver is on the page with a removal plan."""
-        if self.hwr_state == "running" or self.pend_state == "running" or self.hw_state == "running":
-            return False
-        d = next((x for x in (self.hw_data or {}).get("drivers", []) if x["id"] == driver_id), None)
-        if d is None or not d["remove"]:
-            return False
-        self.hwr_state, self.hwr_id, self.hwr_message = "running", driver_id, ""
-        return True
-
-    def finish_hw_remove(self, notify=None):
-        """Runs the removal; called from a worker thread. The page is detected again afterwards; the result is
-        published only then, so the button stays disabled until the page is up to date (and begin_hw_remove, on the
-        GUI thread, never sees a half state)."""
-        state, message = "ok", ""
+    def _do_check(self, arg):
         try:
-            self.env.run_hw_remove(self.hwr_id)
+            self.check_items = [{"name": self._clip(i["name"]), "status": i["status"] if i["status"] in tools.STATUSES else "WARN",
+                                 "detail": self._clip(i["detail"])} for i in self.env.run_check()]
+            self.check_state = "done"
         except Exception as e:  # noqa: BLE001
-            state, message = "failed", self._clip(self.tr("hw.remove.failed") % e)
-        self.finish_hardware()
-        self.hwr_message, self.hwr_state = message, state
-
-    @staticmethod
-    def _report_text(text):
-        text = str(text)
-        return text if len(text) <= MAX_REPORT else text[:MAX_REPORT] + "\n[truncated]\n"
+            self.check_items, self.check_state = [], "failed"
+            self.msg["check"] = ("error", self._err(e))
 
     def copy_report(self, put):
-        """put(text) puts the report on the clipboard (the glue passes the Qt clipboard)."""
         if self.hw_data:
             put(self.hw_data["report"])
             self.hw_copied = True
@@ -435,129 +206,176 @@ class Model:
         text = " ".join(str(d.get(self.language) or d.get("en") or "").split())
         return text if len(text) <= limit else text[:limit - 3] + "..."
 
-    def hardware_page(self):
-        data = self.hw_data or {"facts": [], "drivers": [], "report": ""}
-        page = self._facts_page("hw", data["facts"], self.hw_state, self.hw_message)
-        page["summary"] = ""
-        drivers = []
-        for d in data["drivers"]:
-            state = d["state"]
-            rm = d["remove"]
-            drivers.append({"id": d["id"], "title": self._localized(d["name"]) or d["id"], "detail": self._localized(d["description"]),
-                            "removable": bool(rm), "removeLabel": self.tr("hw.remove"),
-                            "removeInfo": ((self.tr("hw.remove.info") % " ".join(rm["packages"]) +
-                                            (" " + self.tr("hw.remove.kept") % " ".join(rm["kept"]) if rm["kept"] else ""))
-                                           if rm else ""),
-                            "warning": self._localized(d["warning"], MAX_WARNING), "state": state,
-                            "stateLabel": self.tr("hw.state." + state),
-                            "status": "ok" if state in ("installed", "nothing") else "info",   # a driver that can be installed is not a problem
-                            "missing": self.tr("hw.missing") % " ".join(d["missing"]) if d["missing"] else "",
-                            "advice": (self.tr("hw.advice") % d["id"]) if state == "missing" else
-                                      (self.tr("hw.unknown_state") if state == "unknown" else "")})
-        page.update(what=self.tr("hw.what"), note=self.tr("hw.note"), driversTitle=self.tr("hw.drivers"),
-                    driversNone=self.tr("hw.drivers.none") if self.hw_state == "done" and not drivers else "",
-                    drivers=drivers, reportTitle=self.tr("hw.report"), reportWhat=self.tr("hw.report.what"),
-                    report=data["report"], copyLabel=self.tr("hw.copy"), copied=self.tr("hw.copied") if self.hw_copied else "",
-                    remove={"state": self.hwr_state, "driver": self.hwr_id, "message": self.hwr_message,
-                            "running": self.tr("hw.remove.running"), "done": self.tr("hw.remove.done"),
-                            "warning": self.tr("hw.remove.warning")})
-        return page
+    @staticmethod
+    def _report(text):
+        text = str(text)
+        return text if len(text) <= MAX_REPORT else text[:MAX_REPORT] + "\n[truncated]\n"
 
-    # --- updates and snapshots: read-only facts ---
-    def begin_updates(self):
-        if self.up_state == "running":
-            return False
-        self.up_state, self.up_message = "running", ""
-        return True
+    def _facts(self, raw):
+        out = []
+        for f in raw:
+            key = "fact.%s.%s" % (f["id"], f["code"])
+            try:
+                text = self.tr(key) % f["data"] if "%s" in self.tr(key) else self.tr(key)
+            except (KeyError, TypeError):
+                continue
+            out.append(self._clip(text))
+        return out
 
-    def finish_updates(self):
-        """Collects the facts; called from a worker thread, the glue refreshes the screen afterwards."""
-        try:
-            self.up_facts, self.up_state = self._clean_facts(self.env.update_facts()), "done"
-        except Exception as e:  # noqa: BLE001
-            self.up_facts, self.up_state, self.up_message = [], "failed", self._err(e)
-
-    def updates_page(self):
-        page = self._facts_page("up", self.up_facts, self.up_state, self.up_message)
-        page.update(what=self.tr("up.what"), note=self.tr("up.note"))
-        return page
-
-    # --- advanced: stock KDE settings and the system check ---
-    def advanced(self):
-        return {"what": self.tr("advanced.what"), "stockTitle": self.tr("advanced.stock"),
-                "openLabel": self.tr("advanced.open_settings"), "settingsMessage": self.settings_message,
-                "checkTitle": self.tr("advanced.check"), "runLabel": self.tr("advanced.run_check"),
-                "running": self.tr("advanced.running"), "state": self.check_state, "items": self.check_items,
-                "message": self.check_message, "note": self.tr("advanced.note")}
-
-    def open_stock_settings(self):
-        try:
-            ok, msg = self.env.open_settings()
-        except Exception as e:  # noqa: BLE001
-            ok, msg = False, str(e)
-        self.settings_message = "" if ok else self._clip(msg)
-
-    def begin_check(self):
-        if self.check_state == "running":
-            return False
-        self.check_state, self.check_message = "running", ""
-        return True
-
-    def finish_check(self):
-        """Runs `heiss check`; called from a worker thread, the glue refreshes the screen afterwards."""
-        try:
-            items = [{"name": self._clip(i["name"]), "status": i["status"] if i["status"] in tools.STATUSES else "WARN",
-                      "detail": self._clip(i["detail"])} for i in self.env.run_check()]
-            self.check_items, self.check_state = items, "done"
-        except Exception as e:  # noqa: BLE001
-            self.check_items, self.check_state, self.check_message = [], "failed", self._err(e)
+    # ------------------------------------------------------------------ blocks
+    def _msg(self, key):
+        tone, text = self.msg.get(key, ("", ""))
+        return {"type": "message", "tone": tone, "text": text} if text else None
 
     @staticmethod
-    def _safe(fn):
-        try:
-            return fn()
-        except Exception:  # noqa: BLE001 - same rule as the cards
-            return ""
+    def _choice(cid, title, options, current, note="", enabled=True):
+        return {"type": "choice", "id": cid, "title": title, "note": note, "enabled": enabled,
+                "options": [{"value": v, "label": label, "selected": v == current} for v, label in options]}
 
-    # --- about ---
-    def about(self):
+    def _page_appearance(self):
+        try:
+            cur = self.env.theme_get()
+        except Exception:  # noqa: BLE001
+            cur = ""
+        cur = cur if cur in ("dark", "light") else ""
+        return [{"type": "text", "text": self.tr("appearance.what")},
+                self._choice("theme", self.tr("appearance.theme"), [(c, self.tr("theme." + c)) for c in ("dark", "light")], cur),
+                self._msg("theme")]
+
+    def _current_scale(self):
+        body = hyprcfg.get_block(self.env.cfg_dir, "display") or ""
+        m = SCALE_LINE.search(body)
+        return m.group(1) if m and m.group(1) in SCALES else "1"
+
+    def _page_display(self):
+        blocks = [{"type": "text", "text": self.tr("display.what")}]
+        try:
+            rows = [{"label": m["name"], "value": "%dx%d, %s Hz, %s%%" % (m["width"], m["height"], ("%g" % m["refresh"]), "%g" % (m["scale"] * 100))}
+                    for m in self.env.monitors()]
+        except Exception:  # noqa: BLE001
+            rows = []
+        blocks.append({"type": "rows", "title": self.tr("display.monitors"), "rows": rows,
+                       "empty": self.tr("display.none") if not rows else ""})
+        blocks.append(self._choice("scale", self.tr("display.scale"), [(s, "%g%%" % (float(s) * 100)) for s in SCALES],
+                                   self._current_scale(), self.tr("display.scale.note")))
+        blocks.append(self._msg("scale"))
+        return blocks
+
+    def _page_keyboard(self):
+        cfg = hyprcfg.load(self.env.cfg_dir)
+        main = cfg.main_mod if cfg.main_mod in hyprcfg.MODIFIERS else hyprcfg.DEFAULT_MODIFIER
+        body = hyprcfg.get_block(self.env.cfg_dir, "keyboard") or ""
+        m = LAYOUT_LINE.search(body)
+        blocks = [{"type": "text", "text": self.tr("keyboard.what")},
+                  self._choice("modifier", self.tr("keyboard.mainkey"), [(v, self.tr("keyboard." + v.lower())) for v in hyprcfg.MODIFIERS],
+                               main, self.tr("keyboard.mainkey.note"), enabled=cfg.managed)]
+        if cfg.error:
+            blocks.append({"type": "message", "tone": "error", "text": self._err(cfg.error)})
+        elif not cfg.managed:
+            blocks.append({"type": "message", "tone": "warn", "text": self.tr("keyboard.own")})
+        blocks.append(self._msg("modifier"))
+        blocks.append({"type": "field", "id": "layout", "title": self.tr("keyboard.layout"), "value": m.group(1) if m else "",
+                       "hint": self.tr("keyboard.layout.hint"), "apply": self.tr("keyboard.layout.apply"),
+                       "note": self.tr("keyboard.layout.note")})
+        blocks.append(self._msg("layout"))
+        return blocks
+
+    def _action(self, key, label):
+        res = self.msg.get("launch." + key)
+        return {"type": "action", "id": "launch:" + key, "label": label,
+                "message": res[1] if res and res[0] == "error" else ""}
+
+    def _page_network(self):
+        rc, out = self.env.run(["nmcli", "-t", "-f", "STATE,CONNECTIVITY", "general"])
+        state = out.strip().replace(":", ", ") if rc == 0 and out.strip() else self.tr("network.state.none")
+        return [{"type": "text", "text": self.tr("network.what")},
+                {"type": "rows", "title": "", "rows": [{"label": self.tr("network.state"), "value": self._clip(state)}], "empty": ""},
+                self._action("network", self.tr("network.open")), self._action("bluetooth", self.tr("bluetooth.open"))]
+
+    def _page_audio(self):
+        return [{"type": "text", "text": self.tr("audio.what")}, self._action("audio", self.tr("audio.open"))]
+
+    def _pname(self, manifests, item_id):
+        m = manifests.get(item_id)
+        return (m.name.get(self.language) or m.name.get("en") or item_id) if m else item_id
+
+    def _page_packages(self):
+        rows, errors = [], []
+        try:
+            manifests = mf.load_dir(self.env.profiles_dir)
+        except (OSError, ValueError, HeissError):
+            manifests = {}
+        try:
+            from heiss_core import answers as ans
+            a = ans.load(self.env.system_answers) if os.path.exists(self.env.system_answers) else None
+            rows.append({"label": self.tr("packages.chosen"), "value": self._pname(manifests, a["profile"]) if a else self.tr("not_set")})
+            rows.append({"label": self.tr("packages.addons"), "value": ", ".join(self._pname(manifests, x) for x in a["addons"]) if a and a["addons"] else self.tr("none")})
+        except Exception as e:  # noqa: BLE001
+            errors.append(self._err(e))
+        try:
+            doc = st.load(self.env.state_file)
+            applied = doc["applied"]["profile"]
+            rows.append({"label": self.tr("packages.applied"), "value": self._pname(manifests, applied) if applied else self.tr("not_set")})
+            rows.append({"label": self.tr("packages.packages"), "value": str(min(len(doc["packages"]), 10 ** 6))})
+            rows.append({"label": self.tr("packages.services"), "value": str(min(len(doc["services"]), 10 ** 6))})
+        except Exception as e:  # noqa: BLE001
+            errors.append(self._err(e))
+        blocks = [{"type": "text", "text": self.tr("packages.what")}, {"type": "rows", "title": "", "rows": rows, "empty": ""}]
+        blocks += [{"type": "message", "tone": "error", "text": e} for e in errors]
+        return blocks
+
+    def _page_hardware(self):
+        blocks = [{"type": "text", "text": self.tr("hardware.what")}]
+        if self.hw_state == "running":
+            blocks.append({"type": "message", "tone": "", "text": self.tr("busy")})
+        data = self.hw_data
+        if data:
+            blocks.append({"type": "rows", "title": self.tr("hardware.facts"), "rows": [{"label": "", "value": f} for f in data["facts"]], "empty": ""})
+            blocks.append({"type": "rows", "title": self.tr("hardware.drivers"),
+                           "rows": [{"label": d["title"], "value": self.tr("hardware.state." + d["state"]) + (" " + d["warning"] if d["warning"] else "")}
+                                    for d in data["drivers"]],
+                           "empty": self.tr("hardware.drivers.none") if not data["drivers"] else ""})
+            blocks.append({"type": "report", "title": self.tr("hardware.report"), "text": data["report"], "copy": self.tr("hardware.copy"),
+                           "copied": self.tr("hardware.copied") if self.hw_copied else ""})
+        blocks.append(self._msg("hardware"))
+        blocks.append({"type": "action", "id": "detect", "label": self.tr("hardware.detect"), "message": ""})
+        return blocks
+
+    def _page_system(self):
         try:
             with open(self.env.os_release, encoding="utf-8", errors="replace") as f:
                 rel = parse_os_release(f.read())
         except (OSError, ValueError):
             rel = {}
-        plasma, kernel = self._safe(self.env.plasma), self._safe(self.env.kernel)
+        try:
+            kernel = self.env.kernel()
+        except Exception:  # noqa: BLE001
+            kernel = ""
         un = self.tr("unknown")
-        rows = [("about.system", rel.get("PRETTY_NAME") or un), ("about.build", rel.get("BUILD_ID") or un),
-                ("about.kernel", kernel or un), ("about.plasma", plasma or un)]
-        links = [(k, rel[v]) for k, v in (("about.home", "HOME_URL"), ("about.docs", "DOCUMENTATION_URL"),
-                                          ("about.bugs", "BUG_REPORT_URL"), ("about.support", "SUPPORT_URL")) if rel.get(v)]
-        return {"what": self.tr("about.what"),
-                "rows": [{"label": self.tr(k), "value": v} for k, v in rows],
-                "links": [{"label": self.tr(k), "url": v} for k, v in links],
-                "notes": [self.tr("about.license_text"), self.tr("about.affil"), self.tr("about.telemetry")]}
+        blocks = [{"type": "text", "text": self.tr("system.what")},
+                  {"type": "rows", "title": "", "empty": "", "rows": [
+                      {"label": self.tr("system.system"), "value": rel.get("PRETTY_NAME") or un},
+                      {"label": self.tr("system.build"), "value": rel.get("BUILD_ID") or un},
+                      {"label": self.tr("system.kernel"), "value": kernel or un}]},
+                  {"type": "links", "links": [{"label": self.tr(k), "url": rel[v]} for k, v in (
+                      ("system.home", "HOME_URL"), ("system.docs", "DOCUMENTATION_URL"), ("system.bugs", "BUG_REPORT_URL"),
+                      ("system.support", "SUPPORT_URL")) if rel.get(v, "").startswith("https://")]},
+                  {"type": "heading", "text": self.tr("system.check")},
+                  {"type": "text", "text": self.tr("system.check.note")}]
+        if self.check_state == "running":
+            blocks.append({"type": "message", "tone": "", "text": self.tr("system.check.running")})
+        if self.check_items:
+            blocks.append({"type": "items", "items": self.check_items})
+        blocks.append(self._msg("check"))
+        blocks.append({"type": "action", "id": "check", "label": self.tr("system.check.run"), "message": ""})
+        blocks += [{"type": "text", "text": self.tr("system.note.license")}, {"type": "text", "text": self.tr("system.note.telemetry")}]
+        return blocks
 
     def screen(self):
-        built = dict(PAGES)[self.page]
-        out = {"page": self.page, "title": self.tr("page." + self.page), "built": built, "sidebar": self.sidebar(),
-               "searchLabel": self.tr("search"), "noResults": self.tr("search.none"), "appTitle": self.tr("app"),
-               "soonTitle": self.tr("soon"), "soonWhat": self.tr("soon.what"), "language": self.language}
-        if self.page == "overview":
-            out["overview"] = self.overview()
-        elif self.page == "profiles":
-            out["profiles"] = self.profiles()
-        elif self.page == "appearance":
-            out["appearance"] = self.appearance()
-        elif self.page == "security":
-            out["security"] = self.security_page()
-        elif self.page == "hardware":
-            out["hardware"] = self.hardware_page()
-        elif self.page == "updates":
-            out["updates"] = self.updates_page()
-        elif self.page == "network":
-            out["network"] = self.network_page()
-        elif self.page == "advanced":
-            out["advanced"] = self.advanced()
-        elif self.page == "about":
-            out["about"] = self.about()
-        return out
+        try:
+            blocks = getattr(self, "_page_" + self.page)()
+        except Exception as e:  # noqa: BLE001 - a page must never take the window down
+            blocks = [{"type": "message", "tone": "error", "text": self._err(e)}]
+        return {"page": self.page, "title": self.tr("page." + self.page), "appTitle": self.tr("app"), "busy": self.busy != "",
+                "sidebar": [{"id": p, "title": self.tr("page." + p), "current": p == self.page} for p in PAGES],
+                "blocks": [b for b in blocks if b]}

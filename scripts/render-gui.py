@@ -16,7 +16,6 @@ properties and slots.
     python3 scripts/render-gui.py [--out DIR] [--only welcome|control] [--lang en,ru] [--theme dark,light]
 """
 import argparse
-import json
 import os
 import sys
 import shutil
@@ -120,111 +119,69 @@ def welcome_pages(out, lang, theme, shots):
 # ---------------------------------------------------------------- control
 
 def control_pages(out, lang, theme, shots):
-    from heiss_core import answers as ans
-    from heiss_core import wizard as wz
+    """Every page of the settings window on fixture data: no hyprctl, no nmcli, no pacman, no real home."""
+    from heiss_core import hyprcfg
     from heiss_control import hardware_view as hwv
     from heiss_control import model as m
     from PySide6.QtCore import QObject, Property, Signal, Slot, QUrl
     from PySide6.QtQml import QQmlApplicationEngine
 
     scratch = tempfile.mkdtemp(prefix="scratch-", dir=out)   # everything the model writes or reads lives here
+    cfg_dir = os.path.join(scratch, "config")
+    os.makedirs(os.path.join(cfg_dir, "hypr"))
+    shutil.copy(os.path.join(REPO, "desktop", "hypr", "hyprland.lua"), os.path.join(cfg_dir, "hypr", "hyprland.lua"))
+    hyprcfg.set_block(cfg_dir, "keyboard", 'hl.config({ input = { kb_layout = "us,ru", kb_options = "grp:ctrl_shift_toggle" } })')
     with open(os.path.join(scratch, "os-release"), "w", encoding="utf-8") as f:
         f.write('NAME="Heiss OS"\nPRETTY_NAME="Heiss OS"\nBUILD_ID=rolling\nHOME_URL="https://example.org/home"\n'
-                'DOCUMENTATION_URL="https://example.org/docs"\nBUG_REPORT_URL="https://example.org/bugs"\n'
-                'SUPPORT_URL="https://example.org/support"\n')
-    answers = dict(ans.DEFAULTS, profile="cyber", addons=["addon-lts-kernel"])
-    ans.save(os.path.join(scratch, "profile.toml"), answers)
-    state = {"schema_version": 1, "applied": {"profile": "cyber", "addons": []},
-             "packages": ["pkg-%03d" % i for i in range(40)], "services": ["firewalld.service"], "flatpaks": []}
-    with open(os.path.join(scratch, "state.json"), "w", encoding="utf-8") as f:
-        json.dump(state, f)
-    user = os.path.join(scratch, "user")
-    queue = wz.PendingQueue(os.path.join(user, "pending.json"))
-    queue.add("apply-profile", {"profile": "developer", "addons": []})
-
+                'DOCUMENTATION_URL="https://example.org/docs"\nBUG_REPORT_URL="https://example.org/bugs"\n')
     facts, profiles = fixture_hardware()
-    # the NVIDIA driver is installed by Heiss here, so the page shows the "Remove this driver" button
-    nv = ["nvidia-open", "nvidia-utils", "linux-lts", "nvidia-open-lts"]
-    with open(os.path.join(scratch, "hw-state.json"), "w", encoding="utf-8") as f:
-        json.dump({"schema_version": 1, "applied": {"profile": "base", "addons": []}, "packages": nv, "services": [],
-                   "flatpaks": []}, f)
-    hwdata = hwv.collect(os.path.join(REPO, "hardware"), facts, {"mesa", "vulkan-icd-loader"} | set(nv), "6.12.1-arch1-1",
-                         caps={"safe-graphics-entry"}, manifests_dir=os.path.join(REPO, "profiles"),
-                         state_file=os.path.join(scratch, "hw-state.json"))
+    installed = {"nvidia-open", "nvidia-utils"}
 
-    def item(i, s, c, d=""):
-        return {"id": i, "status": s, "code": c, "data": d}
+    def hardware_data():
+        return hwv.collect(facts=facts, installed=installed, kernel="6.12.1-arch1-1", caps=set(), hardware_dir=os.path.join(REPO, "hardware"))
 
-    env = m.Env(
-        os_release=os.path.join(scratch, "os-release"), system_answers=os.path.join(scratch, "profile.toml"),
-        user_dir=user, state_file=os.path.join(scratch, "state.json"), profiles_dir=os.path.join(REPO, "profiles"),
-        theme_get=lambda: theme,
-        apply_theme=lambda t: (True, ""), online=lambda: True, run_pending_item=lambda it, step: None,
-        run_check=lambda: [{"name": "units", "status": "OK", "detail": "all units active", "commands": []},
-                           {"name": "firewall", "status": "WARN", "detail": "firewalld is not enabled", "commands": []},
-                           {"name": "network", "status": "FAIL", "detail": "no default route", "commands": []}],
-        open_settings=lambda: (True, ""), kernel=lambda: "6.12.1-arch1-1", plasma=lambda: "6.4.5",
-        security_facts=lambda: [item("firewall", "warn", "inactive"), item("ssh", "warn", "on"),
-                                item("disk", "warn", "plain"), item("secure_boot", "info", "disabled"),
-                                item("listening", "warn", "some", "22, 631, 5353, 8080, 9090")],
-        privacy_facts=lambda chosen: [item("level", "info", chosen or "unset"), item("wifi_mac", "warn", "preserve"),
-                                      item("lock", "ok", "on", "3"), item("firewall", "ok", "active_enabled")],
-        update_facts=lambda: [item("pending", "warn", "some", "128"), item("last", "warn", "old", "2026-09-14"),
-                              item("reboot", "warn", "yes"), item("snapshots", "info", "btrfs_no_snapper")],
-        hardware_data=lambda: hwdata)
+    def run(argv, timeout=10):
+        if argv[0] == "nmcli":
+            return 0, "connected:full\n"
+        return 0, ""
 
-    model = m.Model(env, language=lang)
+    env = m.Env(cfg_dir=cfg_dir, os_release=os.path.join(scratch, "os-release"), system_answers=os.path.join(scratch, "none.toml"),
+                state_file=os.path.join(scratch, "state.json"), profiles_dir=os.path.join(REPO, "profiles"),
+                theme_get=lambda: theme, apply_theme=lambda t: (True, ""), run=run, launch=lambda key: (key != "bluetooth", "blueman-manager"),
+                monitors=lambda: [{"name": "Virtual-1", "width": 1920, "height": 1080, "refresh": 60.0, "scale": 1.0},
+                                  {"name": "HDMI-A-1", "width": 2560, "height": 1440, "refresh": 143.9, "scale": 1.5}],
+                layouts=lambda: {"us", "ru", "de"}, hardware_data=hardware_data, kernel=lambda: "6.12.1-arch1-1",
+                run_check=lambda: [{"name": "theme", "status": "OK", "detail": theme}, {"name": "firewall", "status": "WARN", "detail": "firewalld is not enabled"},
+                                   {"name": "services", "status": "FAIL", "detail": "one unit failed"}])
 
     class Bridge(QObject):
         changed = Signal()
 
-        def __init__(self):
+        def __init__(self, model):
             super().__init__()
-            self._screen, self._results = model.screen(), []
+            self.model, self._screen = model, model.screen()
 
-        def refresh(self):
-            self._screen = model.screen()
+        def _set(self):
+            self._screen = self.model.screen()
             self.changed.emit()
 
         screen = Property("QVariantMap", lambda self: self._screen, notify=changed)
-        results = Property("QVariantList", lambda self: self._results, notify=changed)
+
+        @Slot(str, str)
+        def run(self, job, arg):
+            if self.model.begin(job, arg):
+                self.model.finish(job, arg)   # synchronously: the render waits for the result
+            self._set()
 
         @Slot(str)
-        def open(self, page_id):
-            model.open(page_id)
-            self.refresh()
+        def open(self, page): self.model.open(page); self._set()
         @Slot()
-        def runHardware(self): pass
-        @Slot()
-        def copyReport(self): pass
-        @Slot(str)
-        def removeDriver(self, i): pass
-        @Slot()
-        def runUpdates(self): pass
-        @Slot()
-        def runNetwork(self): pass
-        @Slot()
-        def runPending(self): pass
-        @Slot(int)
-        def removePending(self, i): pass
-        @Slot()
-        def runSecurity(self): pass
-        @Slot(str)
-        def search(self, q):
-            self._results = model.search(q)
-            self.changed.emit()
-        @Slot(str)
-        def setTheme(self, t): pass
-        @Slot()
-        def runCheck(self): pass
-        @Slot()
-        def openSettings(self): pass
-        @Slot(str)
-        def setLanguage(self, lang_): pass
+        def copyReport(self): self.model.copy_report(lambda text: None); self._set()
         @Slot(str)
         def openUrl(self, url): pass
 
-    bridge = Bridge()
+    model = m.Model(env, language=lang)
+    bridge = Bridge(model)
     engine = QQmlApplicationEngine()
     engine.rootContext().setContextProperty("control", bridge)
     engine.load(QUrl.fromLocalFile(qml_for_theme(out, "control", theme)))
@@ -232,39 +189,22 @@ def control_pages(out, lang, theme, shots):
         WARNINGS.append(("error", "control: Main.qml did not load"))
         return
     win = engine.rootObjects()[0]
-    set_size(win, 1000, 1500)   # tall, so the whole page is visible; the real window scrolls
-
-    def shot(name):
-        shots.append(grab(win, os.path.join(out, "control-%s-%s-%s.png" % (lang, theme, name))))
-
-    for n, page in enumerate(m.PAGE_IDS):
-        model.open(page)
-        # the same data the background workers would have collected
-        if page == "security":
-            model.begin_security(); model.finish_security()
-        elif page == "network":
-            model.begin_network(); model.finish_network()
-        elif page == "updates":
-            model.begin_updates(); model.finish_updates()
-        elif page == "hardware":
-            model.begin_hardware(); model.finish_hardware()
-        elif page == "advanced":
-            model.begin_check(); model.finish_check()
-        elif page == "appearance":
-            model.theme_state = "ok"
-        bridge.refresh()
-        shot("%02d-%s" % (n, page))
-    model.open("overview")
-    bridge.refresh()
-    query = "net" if lang == "en" else "сет"
-    win.findChild(QObject, "searchField").setProperty("text", query)   # the QML calls control.search(text)
-    pump()
-    shot("%02d-search" % len(m.PAGE_IDS))
-    # the smallest window the app allows (minimumWidth/minimumHeight in Main.qml): the worst case for long Russian text
-    model.open("hardware")
-    bridge.refresh()
+    set_size(win, 1000, 680)
+    for page in m.PAGES:
+        bridge.open(page)
+        if page == "hardware":
+            bridge.run("detect", "")
+        if page == "system":
+            bridge.run("check", "")
+        if page == "network":
+            bridge.run("launch", "bluetooth")
+        shots.append(grab(win, os.path.join(out, "control-%s-%s-%s.png" % (lang, theme, page))))
+    bridge.open("keyboard")
+    bridge.run("modifier", "SUPER")
+    bridge.run("layout", "xx")           # refused: shows the layout hint error
+    shots.append(grab(win, os.path.join(out, "control-%s-%s-keyboard-after.png" % (lang, theme))))
     set_size(win, 640, 420)
-    shot("%02d-hardware-smallest-window" % (len(m.PAGE_IDS) + 1))
+    shots.append(grab(win, os.path.join(out, "control-%s-%s-keyboard-small.png" % (lang, theme))))
     close(engine)
 
 

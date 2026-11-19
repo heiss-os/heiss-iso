@@ -366,20 +366,22 @@ def read_modifier(cfg_dir):
     return v if v in MODIFIERS else ""
 
 
-def write_modifier(cfg_dir, value):
-    """Store the choice (atomically, in a fresh temporary file next to it). Raises ValueError for anything but ALT
-    or SUPER, OSError when the directory or the file cannot be written."""
-    if value not in MODIFIERS:
-        raise ValueError("the modifier is ALT or SUPER")
-    path = os.path.join(cfg_dir, MODIFIER_FILE)
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    fd, tmp = tempfile.mkstemp(prefix=".modifier.", dir=os.path.dirname(path))
+def _atomic_write(path, text):
+    """Write `text` to `path` through a fresh temporary file in the same directory (fsync, cleanup on error). A symlink
+    at `path` is followed (the file it points to is replaced, the link stays); an existing file keeps its mode."""
+    path = os.path.realpath(path)
     try:
-        with os.fdopen(fd, "w", encoding="utf-8") as f:
-            f.write(value + "\n")
+        mode = stat.S_IMODE(os.stat(path).st_mode)
+    except OSError:
+        mode = 0o644
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    fd, tmp = tempfile.mkstemp(prefix="." + os.path.basename(path) + ".", dir=os.path.dirname(path))
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8", errors="surrogateescape", newline="") as f:
+            f.write(text)
             f.flush()
             os.fsync(f.fileno())
-        os.chmod(tmp, 0o644)
+        os.chmod(tmp, mode)
         os.replace(tmp, path)
     except BaseException:
         try:
@@ -387,6 +389,91 @@ def write_modifier(cfg_dir, value):
         except OSError:
             pass
         raise
+
+
+def write_modifier(cfg_dir, value):
+    """Store the choice (atomically). Raises ValueError for anything but ALT or SUPER, OSError when the directory
+    or the file cannot be written."""
+    if value not in MODIFIERS:
+        raise ValueError("the modifier is ALT or SUPER")
+    _atomic_write(os.path.join(cfg_dir, MODIFIER_FILE), value + "\n")
+
+
+# ------------------------------------------------------------------ blocks of heiss-user.lua
+# The settings window keeps what it writes (keyboard layout, display scale) between two marker lines of
+# ~/.config/hypr/heiss-user.lua. Everything outside the markers is the user's and is never touched.
+
+USER_FILE = os.path.join("hypr", "heiss-user.lua")
+BLOCKS = ("keyboard", "display")
+
+
+def _marks(name):
+    return ("-- heiss:%s begin (written by the Heiss settings, edit outside these two lines)" % name,
+            "-- heiss:%s end" % name)
+
+
+def _read_raw(path):
+    """Like _read, but undecodable bytes survive a rewrite (surrogateescape): text outside the markers is never altered."""
+    if not stat.S_ISREG(os.stat(path).st_mode):
+        raise ValueError("not a regular file")
+    with open(path, "rb") as f:
+        data = f.read(MAX_BYTES + 1)
+    if len(data) > MAX_BYTES:
+        raise ValueError("file is too large")
+    return data.decode("utf-8", errors="surrogateescape")
+
+
+def _spans(lines, name):
+    """[(begin, end)] line indexes of every complete pair of markers of block `name` (a trailing CR is ignored)."""
+    begin, end = _marks(name)
+    out, i = [], None
+    for n, line in enumerate(lines):
+        line = line.rstrip("\r")
+        if line == begin and i is None:
+            i = n
+        elif line == end and i is not None:
+            out.append((i, n))
+            i = None
+    return out
+
+
+def get_block(cfg_dir, name):
+    """The Lua text between the markers of block `name` (the first pair), or None."""
+    if name not in BLOCKS:
+        raise ValueError("unknown block")
+    try:
+        lines = _read_raw(os.path.join(cfg_dir, USER_FILE)).split("\n")
+    except (OSError, ValueError):
+        return None
+    spans = _spans(lines, name)
+    return "\n".join(l.rstrip("\r") for l in lines[spans[0][0] + 1:spans[0][1]]) if spans else None
+
+
+def set_block(cfg_dir, name, body):
+    """Put `body` (Lua text; None removes the block) between the markers of block `name`, creating the file and
+    the block when missing. Every pair of markers of that name is replaced by one (a hand-duplicated block cannot
+    leave a stale copy behind). Refuses a heiss-user.lua that is not a regular file or is too large."""
+    if name not in BLOCKS:
+        raise ValueError("unknown block")
+    if body is not None and ("\r" in body or "-- heiss:" in body):
+        raise ValueError("a block holds plain Lua lines")
+    path = os.path.join(cfg_dir, USER_FILE)
+    try:
+        lines = _read_raw(path).split("\n")
+    except FileNotFoundError:
+        lines = []
+    begin, end = _marks(name)
+    new = [] if body is None else [begin] + body.split("\n") + [end]
+    spans = _spans(lines, name)
+    if spans:
+        for i, (a, b) in enumerate(reversed(spans)):
+            lines[a:b + 1] = new if i == len(spans) - 1 else []
+    elif new:
+        while lines and lines[-1] == "":
+            lines.pop()
+        lines += ([""] if lines else []) + new
+    text = "\n".join(lines)
+    _atomic_write(path, text + ("\n" if text and not text.endswith("\n") else ""))
 
 
 def load(cfg_dir=None):

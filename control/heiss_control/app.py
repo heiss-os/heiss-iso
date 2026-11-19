@@ -13,179 +13,54 @@ def main(argv=None):
 
     class Bridge(QObject):
         changed = Signal()
-        themeDone = Signal()   # emitted from the worker thread; delivered on the GUI thread
-        checkDone = Signal()
-        securityDone = Signal()
-        networkDone = Signal()
-        updatesDone = Signal()
-        hardwareDone = Signal()
-        pendingProgress = Signal()   # every step and the end of a saved-actions run, from the worker thread
+        jobDone = Signal()   # emitted from the worker thread; delivered on the GUI thread
 
         def __init__(self, model):
             super().__init__()
-            self.model, self._screen, self._results = model, model.screen(), []
-            self.themeDone.connect(self._set)
-            self.checkDone.connect(self._set)
-            self.securityDone.connect(self._set)
-            self.networkDone.connect(self._set)
-            self.updatesDone.connect(self._set)
-            self.hardwareDone.connect(self._set)
-            self.pendingProgress.connect(self._set)
+            self.model, self._screen = model, model.screen()
+            self.jobDone.connect(self._set)
 
         def _set(self):
             self._screen = self.model.screen()
             self.changed.emit()
 
         screen = Property("QVariantMap", lambda self: self._screen, notify=changed)
-        results = Property("QVariantList", lambda self: self._results, notify=changed)
 
-        @Slot(str)
-        def open(self, page_id):
-            self.model.open(page_id)
-            self._set()
-            if page_id == "security" and self.model.sec_state == "idle":
-                self.runSecurity()
-            if page_id == "network" and self.model.net_state == "idle":
-                self.runNetwork()
-            if page_id == "updates" and self.model.up_state == "idle":
-                self.runUpdates()
-            if page_id == "hardware" and self.model.hw_state == "idle":
-                self.runHardware()
-
-        @Slot()
-        def runHardware(self):
-            if self.model.begin_hardware():
-                threading.Thread(target=self._hardware, daemon=True).start()
-                self._set()
-
-        def _hardware(self):
+        def _work(self, job, arg):
             try:
-                self.model.finish_hardware()
+                self.model.finish(job, arg)
             finally:
-                self.hardwareDone.emit()
+                self.jobDone.emit()
 
-        @Slot(str)
-        def removeDriver(self, driver_id):
-            # removes packages through the helper (the system asks for the password): only on a click, in a worker thread
-            if self.model.begin_hw_remove(driver_id):
-                threading.Thread(target=self._remove_driver, daemon=True).start()
+        @Slot(str, str)
+        def run(self, job, arg):
+            # theme switch, hyprctl, hardware detection and `heiss check` are never run on the GUI thread
+            if self.model.begin(job, arg):
+                threading.Thread(target=self._work, args=(job, arg), daemon=True).start()
             self._set()
 
-        def _remove_driver(self):
-            try:
-                self.model.finish_hw_remove()
-            finally:
-                self.hardwareDone.emit()
+        @Slot(str)
+        def open(self, page):
+            self.model.open(page)
+            if page == "hardware" and self.model.hw_state == "idle":
+                self.run("detect", "")
+            self._set()
 
         @Slot()
         def copyReport(self):
             self.model.copy_report(QGuiApplication.clipboard().setText)
             self._set()
 
-        @Slot()
-        def runUpdates(self):
-            if self.model.begin_updates():
-                threading.Thread(target=self._updates, daemon=True).start()
-                self._set()
-
-        def _updates(self):
-            try:
-                self.model.finish_updates()
-            finally:
-                self.updatesDone.emit()
-
-        @Slot()
-        def runNetwork(self):
-            if self.model.begin_network():
-                threading.Thread(target=self._network, daemon=True).start()
-                self._set()
-
-        def _network(self):
-            try:
-                self.model.finish_network()
-            finally:
-                self.networkDone.emit()
-
-        @Slot()
-        def runPending(self):
-            # installs through the helper (the system asks for the password): only on a click, in a worker thread
-            if self.model.begin_pending():
-                threading.Thread(target=self._pending, daemon=True).start()
-            self._set()
-
-        def _pending(self):
-            try:
-                self.model.finish_pending(self.pendingProgress.emit)
-            finally:
-                self.pendingProgress.emit()
-
-        @Slot(int)
-        def removePending(self, item_id):
-            self.model.remove_pending(item_id)
-            self._set()
-
-        @Slot()
-        def runSecurity(self):
-            # a handful of short commands, but still never on the GUI thread
-            if self.model.begin_security():
-                threading.Thread(target=self._security, daemon=True).start()
-                self._set()
-
-        def _security(self):
-            try:
-                self.model.finish_security()
-            finally:
-                self.securityDone.emit()
-
-        @Slot(str)
-        def search(self, query):
-            self._results = self.model.search(query)
-            self.changed.emit()
-
-        @Slot(str)
-        def setTheme(self, theme):
-            # plasma-apply-lookandfeel can take seconds: never on the GUI thread
-            if self.model.begin_theme(theme):
-                threading.Thread(target=self._switch, args=(theme,), daemon=True).start()
-                self._set()
-
-        def _switch(self, theme):
-            self.model.finish_theme(theme)
-            self.themeDone.emit()
-
-        @Slot()
-        def runCheck(self):
-            # `heiss check` runs several commands (up to 30 s each): never on the GUI thread
-            if self.model.begin_check():
-                threading.Thread(target=self._check, daemon=True).start()
-                self._set()
-
-        def _check(self):
-            try:
-                self.model.finish_check()
-            finally:
-                self.checkDone.emit()
-
-        @Slot()
-        def openSettings(self):
-            self.model.open_stock_settings()
-            self._set()
-
-        @Slot(str)
-        def setLanguage(self, language):
-            self.model.set_language(language)
-            self._set()
-
         @Slot(str)
         def openUrl(self, url):
-            # only links that came from os-release; QML never passes anything else
+            # only the links of os-release (https); QML never passes anything else
             if url.startswith("https://"):
                 QDesktopServices.openUrl(QUrl(url))
 
     argv = sys.argv if argv is None else argv
     app = QGuiApplication(argv)
     app.setApplicationName("heiss-control")
-    lang = (os.environ.get("LANG") or "en")[:2]
+    lang = "ru" if (os.environ.get("LC_ALL") or os.environ.get("LC_MESSAGES") or os.environ.get("LANG") or "").startswith("ru") else "en"
     bridge = Bridge(Model(language=lang))
     engine = QQmlApplicationEngine()
     engine.rootContext().setContextProperty("control", bridge)

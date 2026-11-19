@@ -165,6 +165,8 @@ hl.bind(mainMod .. " + F", hl.dsp.window.fullscreen())
 hl.bind(mainMod .. " + V", hl.dsp.window.float({ action = "toggle" }))
 -- Show the list of key bindings (the welcome window)
 hl.bind(mainMod .. " + F1", hl.dsp.exec_cmd("heiss-welcome --force"))
+-- Open the Heiss settings
+hl.bind(mainMod .. " + I", hl.dsp.exec_cmd("heiss-control"))
 -- Lock the screen
 hl.bind(mainMod .. " + L", hl.dsp.exec_cmd("hyprlock"))
 -- Leave the session
