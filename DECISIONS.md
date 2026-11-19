@@ -659,5 +659,5 @@ Format: date, what, why. Newest at the bottom.
 - **Left on purpose:** `check.py` `KDE_PACKAGES` (the `session` item checks that no KDE package is installed), `core/tests/test_gtk.py` (it checks that no code calls `kwriteconfig`), the Calamares files and `heiss-cleanup.sh` (H3 and H5), `docs/DIRECTION-HYPRLAND.md` (the inventory stays as the record of what was removed).
 - **pkgrel bumps:** `heiss-core` 25, `heiss-helper` 8.
 - **Security:** the helper surface got smaller (two D-Bus methods and one polkit action fewer); `docs/SECURITY-MODEL.md` table and item 7 updated. A test checks that both methods are refused (`unknown method`) and absent from `ACTIONS`.
-- **Not verified:** everything at runtime on a real system (see the H2c block of the FINAL VM TEST LIST); only the unit tests ran (`core` 324, `helper`, `welcome`, `control`, `tests/`).
+- **Not verified:** everything at runtime on a real system (see the H2c block of the FINAL VM TEST LIST); only the unit tests ran (`core` 324, `helper`, `welcome`, `control`, `tests/`). Not run locally: shellcheck, the workflow YAML parse and the D-Bus-bus tests of the helper (CI runs them). Accepted LOW (qa-verifier): `answers.migrate` drops only `[privacy]`; other removed keys never existed in answers files.
 
