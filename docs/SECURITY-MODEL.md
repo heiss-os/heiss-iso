@@ -28,14 +28,11 @@ Files: `helper/heiss_helper/{policy,actions,dispatch,runner,audit}.py` (logic, t
 | AdoptPackages(as) | org.heiss.packages.adopt | records already installed, explicitly installed packages as Heiss-owned | name in manifests; installed; explicit; not owned yet |
 | SetServices(as, as) | org.heiss.services.manage | `systemctl enable/disable -- units` (never `--now`) | unit in manifests; no overlap |
 | WriteDropin(s) | org.heiss.config.write | writes ONE file | path must equal a drop-in declared in a manifest AND lie in one of three exact directories (`DROPIN_DIRS`: `mkinitcpio.conf.d`, `NetworkManager/conf.d`, `systemd/zram-generator.conf.d`) as a plain `*.conf` file, rechecked in `write_dropin`; the CONTENT is taken from the manifest, never from the client |
-| WritePrivacy(s) | org.heiss.config.write | writes ONE fixed file (`/etc/NetworkManager/conf.d/80-heiss-privacy.conf`) | the argument is only a level name (`standard`, `enhanced`, `maximum`); path and content are constants in `heiss_core/privacy.py`, never from the client; no service is restarted |
 | RunPostAction(s) | org.heiss.postaction.run | fixed argv (`mkinitcpio -P`, `grub-mkconfig -o /boot/grub/grub.cfg`, ...) | id must be one of four known ids |
 | UpdateSystem() | org.heiss.system.update | `pacman -Syu --noconfirm` | none needed; always a full upgrade, never `-Sy` alone |
-| CreateSnapshot(s) | org.heiss.snapshot.create | `snapper -c root create --description ...` | description regex (full match, a trailing newline is rejected), 80 chars |
 
 All polkit actions default to `allow_any=no`, `allow_inactive=no`, `allow_active=auth_admin_keep` (one authentication covers the several calls of one apply run). Texts are in English and Russian.
 
-Privacy level changes (including lowering to `standard`) are covered by `org.heiss.config.write`, the same trust level as `WriteDropin`; a test checks that no manifest drop-in shares the privacy file's path.
 
 There is no method that takes a command, a file path to read, or file content.
 
@@ -47,7 +44,7 @@ There is no method that takes a command, a file path to read, or file content.
 4. **Trusted allowlists.** Manifests are loaded on every call from `/usr/share/heiss/{profiles,hardware}`. The directories and files must be owned by root and not group- or world-writable and not symlinks, otherwise every request is refused.
 5. **Drop-in writes.** Normalized absolute path under `/etc/`, no symlink on any path component, target must not be a non-regular file, written to a temporary file with `O_EXCL|O_NOFOLLOW`, `fsync`, then `os.replace`; mode 0644.
 6. **Ownership state.** `/var/lib/heiss/state.json` (root-owned and root-writable only, mode 0644 so ordinary users can read the plan inputs: it lists only package, service and flatpak names; locked with `flock`, atomic writes; the directory is 0755 and the lock file next to it stays 0600; the audit log is not readable by users) is updated by the helper after a successful step, so a client cannot claim packages. Packages that were already installed before an install call are not recorded as Heiss-owned.
-7. **One job at a time**, a `db.lck` check, at least 1 GiB free space, best-effort snapshot before install/remove/update (a failed snapshot is a warning, an explicit `CreateSnapshot` failure is an error).
+7. **One job at a time**, a `db.lck` check, at least 1 GiB free space. Snapshots, `CreateSnapshot` and `WritePrivacy` were removed (DECISIONS 2026-11-19).
 8. **Resource limits.** At most 8 requests wait for polkit or validation; more are refused with `Busy`. Output is capped at 20000 lines per command and 3600 s per command. The time limit is checked by the loop that reads the output (`poll` with a clock), so it also ends a command that prints nothing and never exits, and a grandchild that left the process group and holds the output pipe cannot keep the reader waiting past the limit or past the exit of the command itself (plus a 0.5 s drain). The command runs in its own process group and gets SIGTERM (so pacman can release its database lock), then SIGKILL to the whole group once the leader has exited or after 10 s, so a member that ignores SIGTERM does not survive; the result is exit code 124. A command that closes its output but keeps working is waited for until the limit. A command is also stopped if the code reading its output fails.
 9. **Signals go only to the caller** (unicast), so other users do not see job output.
 10. **Audit.** Every call is logged to journald (identifier `heiss`) and `/var/log/heiss/audit.log` with uid, method, parameters and result. Control characters are replaced; drop-in content is never logged (tested).

@@ -11,7 +11,6 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
 from heiss_core import cli  # noqa: E402
 from heiss_core import state as st  # noqa: E402
-from heiss_core import wizard as wz  # noqa: E402
 
 
 def mode(path):
@@ -67,9 +66,6 @@ class StateFile(unittest.TestCase):
         with Umask(0o000):
             st.atomic_write(p, "{}")
         self.assertEqual(mode(p), 0o600)
-        with Umask(0o000):
-            wz.PendingQueue(os.path.join(self.dir, "pending.json")).add("apply-profile", {"profile": "base", "addons": []})
-        self.assertEqual(mode(os.path.join(self.dir, "pending.json")), 0o600)
 
     def test_a_failed_write_leaves_no_temporary_file(self):
         os.makedirs(self.dir)

@@ -23,11 +23,6 @@ class Helper:
         self.calls.append((method, args))
 
 
-class Local:
-    def kwriteconfig(self, *a):
-        pass
-
-
 class HardwareInPlan(unittest.TestCase):
     def setUp(self):
         self.m = mf.load_dir(PROFILES)

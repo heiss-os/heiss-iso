@@ -6,7 +6,7 @@ Last updated: 2026-11-18
 
 ## Done
 
-See the phase and round sections below. Phases 0 to 7 are merged; round 23 (pre-build audit) PRs 1 to 5 are merged. Direction change to Hyprland: H0 to H1c and H2a (#129) are merged; H2b (branch `feat/settings-window`) is in review; then H2c, H4, then wait for H3.
+See the phase and round sections below. Phases 0 to 7 are merged; round 23 (pre-build audit) PRs 1 to 5 are merged. Direction change to Hyprland: H0 to H1c, H2a (#129) and H2b (#130) are merged; H2c (branch `refactor/remove-privacy-verbosity-kde`) is in review; then H4, then wait for H3.
 
 ## In progress
 
@@ -22,7 +22,7 @@ See the phase and round sections below. Phases 0 to 7 are merged; round 23 (pre-
 
 ## Next
 
-- H2a is merged (#129). H2b is in review (settings window with the ALT/SUPER switch; branch `feat/settings-window`; `heiss-control` rewritten, old Control Center and its runner deleted; Not verified: see the H2b block of the FINAL VM TEST LIST), then H2c (privacy, verbosity and KDE code removed), then H4 (GRUB font and layout, Tier A, the owner adds the label); then stop and wait for H3 (terminal installer, strongest model).
+- H2a (#129) and H2b (#130) are merged. H2c is in review (branch `refactor/remove-privacy-verbosity-kde`: privacy levels, snapshots, `kde_settings`, `kwriteconfig` and the dead `wizard.py` removed from `heiss-core` and the helper; `heiss-core` pkgrel 25, `heiss-helper` pkgrel 8; Not verified: see the H2c block of the FINAL VM TEST LIST), then H4 (GRUB font and layout, Tier A, the owner adds the label); then stop and wait for H3 (terminal installer, strongest model).
 - First ISO build and static inspection of the image, then the owner's VM run of the FINAL VM TEST LIST. Later: new neutral wallpapers (Btrfs and snapshots were removed from the plan, see DECISIONS 2026-11-18).
 
 ## Open questions
@@ -198,13 +198,13 @@ Owner's rule (2026-11-11): no ISO build and no VM check until the whole master p
 - [x] (obsolete 2026-11-18, H2a removed the wizard; replaced by the H2a lines) Hardware screen in VirtualBox shows the guest-tools proposal; the privacy screen shows only the firewall as "In place".
 - [ ] Hardware choices (5f): ticking the VirtualBox guest tools and applying installs `virtualbox-guest-utils` and enables `vboxservice.service`; a later profile change keeps them (sticky rule); NVIDIA is never ticked by default, its plan prints the kernel-parameter note and the driver path was never run (black-screen risk); `grub-mkconfig` and `mkinitcpio` post-actions run and a failure of `grub-mkconfig` (no /boot/grub) is reported; detection on the GUI thread when the hardware screen was skipped does not freeze the window.
 - [x] (obsolete 2026-11-18, H2a removed the wizard; replaced by the H2a lines) Theme (5g): choosing Dark and Light on the appearance screen switches the desktop at once with `plasma-apply-lookandfeel`, the wizard recolours, theme-sync reacts; Automatic changes nothing; a failure shows the note.
-- [ ] Privacy 3c, Enhanced: choose Enhanced in the wizard and Apply, enter the polkit password / expect `/etc/NetworkManager/conf.d/80-heiss-privacy.conf` with `wifi.cloned-mac-address=stable`, and `~/.config/kscreenlockerrc` group `Daemon` with `Autolock=true`, `Timeout=3`, `LockGrace=5`.
-- [ ] Privacy 3c, Maximum: apply Maximum, run `sudo systemctl restart NetworkManager`, then `nmcli -f 802-11-wireless.cloned-mac-address connection show <name>` and `ip link` / expect a random Wi-Fi MAC (and `Timeout=1`, `LockGrace=0`); a connection profile with its own cloned MAC keeps it; on a captive-portal network expect it may fail.
-- [ ] Privacy 3c, screen lock: after Apply (re-login if needed) leave the session idle for the chosen time / expect the screen locks after 3 (Enhanced) or 1 (Maximum) minutes.
-- [ ] Privacy 3c, lowering: apply Standard again / expect `preserve` in the drop-in and `Timeout=5`, `LockGrace=5`.
-- [ ] Privacy 3c, screen: superseded by Round 25 PR B (the item list and its badges are gone; see the Round 25 PR B privacy line). Wi-Fi MAC and screen lock are checked by the Round 25 privacy-level steps.
-- [ ] Privacy 3c, helper: `heiss profile apply --privacy=enhanced --yes` through the helper / expect success; run `python3 -m unittest discover -s helper/tests` where python-gobject is installed / expect the 10 skipped D-Bus tests to pass.
-- [ ] Privacy 3c, user keys: `kwriteconfig6` writes `kscreenlockerrc` as the user during Apply / expect the keys present afterwards.
+- [x] (obsolete 2026-11-19, H2c removed the privacy levels) Privacy 3c, Enhanced: choose Enhanced in the wizard and Apply, enter the polkit password / expect `/etc/NetworkManager/conf.d/80-heiss-privacy.conf` with `wifi.cloned-mac-address=stable`, and `~/.config/kscreenlockerrc` group `Daemon` with `Autolock=true`, `Timeout=3`, `LockGrace=5`.
+- [x] (obsolete 2026-11-19, H2c removed the privacy levels) Privacy 3c, Maximum: apply Maximum, run `sudo systemctl restart NetworkManager`, then `nmcli -f 802-11-wireless.cloned-mac-address connection show <name>` and `ip link` / expect a random Wi-Fi MAC (and `Timeout=1`, `LockGrace=0`); a connection profile with its own cloned MAC keeps it; on a captive-portal network expect it may fail.
+- [x] (obsolete 2026-11-19, H2c removed the privacy levels) Privacy 3c, screen lock: after Apply (re-login if needed) leave the session idle for the chosen time / expect the screen locks after 3 (Enhanced) or 1 (Maximum) minutes.
+- [x] (obsolete 2026-11-19, H2c removed the privacy levels) Privacy 3c, lowering: apply Standard again / expect `preserve` in the drop-in and `Timeout=5`, `LockGrace=5`.
+- [x] (obsolete 2026-11-19, H2c removed the privacy levels) Privacy 3c, screen: superseded by Round 25 PR B (the item list and its badges are gone; see the Round 25 PR B privacy line). Wi-Fi MAC and screen lock are checked by the Round 25 privacy-level steps.
+- [x] (obsolete 2026-11-19, H2c removed the privacy levels) Privacy 3c, helper: `heiss profile apply --privacy=enhanced --yes` through the helper / expect success; run `python3 -m unittest discover -s helper/tests` where python-gobject is installed / expect the 10 skipped D-Bus tests to pass.
+- [x] (obsolete 2026-11-19, H2c removed the privacy levels) Privacy 3c, user keys: `kwriteconfig6` writes `kscreenlockerrc` as the user during Apply / expect the keys present afterwards.
 - [x] (obsolete 2026-11-18, H2a removed the wizard; replaced by the H2a lines) Apply: plan preview, polkit prompt, progress, success, failure with Try again, Save for later (also re-check after the isolation fix: the installed wizard's plan and Apply still start, since the child now runs `python -I` in `/` without `PYTHON*`/`HEISS_*` variables); the signal from the worker thread to the GUI works; the window refuses to close while applying.
 - [ ] `pyside6` 6.12 runs the QML; ISO size change after adding `pyside6` (52 MiB installed per `pacman -Si`); `kirigami` is not needed by the Control Center (DECISIONS.md 2026-11-13).
 - [x] (obsolete 2026-11-18, H2a removed the wizard; replaced by the H2a lines) Autostart: the wizard does NOT start in the live session (`/run/archiso` present) and starts once after the first login on the installed system.
@@ -413,6 +413,14 @@ H1c touches no Tier A file. `heiss-desktop` pkgrel 2 and `heiss-core` pkgrel 23:
 - [ ] Start time: `time heiss-welcome --force` in the VM / expect the window within about 2 s on the 4 GB VM; report the time (not measured; `docs/DIRECTION-HYPRLAND.md` section 8 says the Qt cost is unmeasured).
 - [ ] ISO size after `pyside6` and `qt6-wayland` joined `profile/packages.x86_64` / expect about +52 MiB plus `qt6-wayland` against the last image (`scripts/audit-image.sh`).
 - [ ] The window looks right in Dark and in Light (`heiss theme set light`, reopen) and at a small size; the offscreen renders (`python3 scripts/render-gui.py --only welcome`) were looked at, a real screenshot was not taken.
+
+### Direction change H2c (privacy, snapshot and KDE code removed, 2026-11-19)
+`heiss-core` pkgrel 25, `heiss-helper` pkgrel 8 (no `snapper` optdepends): rebuild the packages and the ISO. Tier A untouched. Unit tests only; nothing below was run on a real system.
+- [ ] On an installed system run `heiss profile diff --profile base` and `heiss profile apply --profile base --dry-run` / expect a normal plan, no `--privacy` option (`heiss profile apply --privacy standard` fails with "unrecognized arguments"), no mention of KDE settings.
+- [ ] `busctl introspect org.heiss.Helper1 /org/heiss/Helper1` (or `gdbus introspect --system --dest org.heiss.Helper1 --object-path /org/heiss/Helper1`) / expect no `WritePrivacy` and no `CreateSnapshot`; `ls /usr/share/polkit-1/actions/org.heiss.helper.policy && grep -c snapshot /usr/share/polkit-1/actions/org.heiss.helper.policy` / expect `0`.
+- [ ] Install and remove one package through the helper (`heiss profile apply` with an add-on, then remove it) / expect no "snapshot" step in the output and no error about `snapper`.
+- [ ] A machine that still has an old `/etc/heiss/profile.toml` with a `[privacy]` section (for example from the KDE preview image) / `heiss profile diff` loads it without an error (the section is ignored).
+- [ ] `pacman -Qi heiss-helper | grep -i optional` / expect no `snapper` line. `heiss check` / expect no new WARN or FAIL from this change.
 
 ### Direction change H2b (Heiss settings window, 2026-11-18)
 `heiss-control` pkgrel 20 (now in the ISO list), `heiss-desktop` pkgrel 4: rebuild the packages and the ISO. Tier A untouched.
