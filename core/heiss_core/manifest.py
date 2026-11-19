@@ -40,7 +40,7 @@ def dropin_path_ok(path):
 
 ALLOWED_KEYS = {
     "schema_version", "id", "kind", "tier", "name", "description", "requires", "conflicts",
-    "packages", "flatpaks", "services", "dropins", "kde_settings", "post_actions", "size",
+    "packages", "flatpaks", "services", "dropins", "post_actions", "size",
 }
 
 
@@ -57,7 +57,6 @@ class Manifest:
     flatpaks: tuple = ()
     services: tuple = ()
     dropins: tuple = ()        # ({"path": ..., "content": ...},)
-    kde_settings: tuple = ()   # ({"file","group","key","value"},)
     post_actions: tuple = ()
     size: dict = field(default_factory=dict)  # optional {"download_mib", "installed_mib"}
 
@@ -96,17 +95,6 @@ def _dropins(doc, where):
     return tuple(out)
 
 
-def _kde(doc, where):
-    out = []
-    for k in doc.get("kde_settings", []):
-        if set(k) != {"file", "group", "key", "value"} or not all(isinstance(v, str) for v in k.values()):
-            raise ValidationError("%s: kde_settings entries need file, group, key, value (strings)" % where)
-        if not re.fullmatch(r"[A-Za-z0-9_.-]+", k["file"]):
-            raise ValidationError("%s: bad kde_settings file %r" % (where, k["file"]))
-        out.append(dict(k))
-    return tuple(out)
-
-
 def parse(doc, source="manifest"):
     where = source
     unknown = set(doc) - ALLOWED_KEYS
@@ -133,7 +121,7 @@ def parse(doc, source="manifest"):
         requires=_strs(doc, "requires", ID_RE, where), conflicts=_strs(doc, "conflicts", ID_RE, where),
         packages=_strs(doc, "packages", PKG_RE, where), flatpaks=_strs(doc, "flatpaks", FLATPAK_RE, where),
         services=_strs(doc, "services", UNIT_RE, where), dropins=_dropins(doc, where),
-        kde_settings=_kde(doc, where), post_actions=tuple(actions), size=dict(size),
+        post_actions=tuple(actions), size=dict(size),
     )
 
 

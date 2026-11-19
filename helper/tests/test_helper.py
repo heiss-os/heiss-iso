@@ -51,7 +51,6 @@ class Env(unittest.TestCase):
         self.ctx = Context(os.path.join(REPO, "profiles"), os.path.join(REPO, "hardware"), self.state, self.root,
                            strict=False, runner=self.runner)
         self.ctx.free_bytes = lambda: 10 << 30
-        self.ctx.snapshots_available = lambda: False
         self.installed, self.explicit, self.enabled = set(), set(), set()
         self.ctx.installed_packages = lambda: set(self.installed)
         self.ctx.explicit_packages = lambda: set(self.explicit)
@@ -142,12 +141,6 @@ class Validation(Env):
                 actions.build_post_action(self.ctx, bad)
         self.assertEqual(set(policy.POST_ACTION_ARGV), mf.POST_ACTIONS)
 
-    def test_snapshot_description(self):
-        self.assertTrue(actions.build_snapshot(self.ctx, "Before update"))
-        for bad in ("", "x" * 81, "a;b", "a\nb", "Before update\n", "$(id)", None):
-            with self.assertRaises(HelperError, msg=str(bad)):
-                actions.build_snapshot(self.ctx, bad)
-
     def test_update_is_always_full_upgrade(self):
         argv = [s.argv for s in actions.build_update(self.ctx) if s.argv][0]
         self.assertEqual(argv, ["pacman", "-Syu", "--noconfirm"])
@@ -232,19 +225,12 @@ class Execution(Env):
         self.assertFalse(ok)
         self.assertEqual(self.runner.calls, [])
 
-    def test_snapshot_taken_when_available_and_failure_is_not_fatal(self):
-        self.ctx.snapshots_available = lambda: True
-        self.runner.fail_on = "snapper"
-        ok, _, lines = self.run_steps(actions.build_install(self.ctx, ["mousepad"]))
+    def test_no_snapshot_step_and_no_snapper_call(self):
+        ok, _, _ = self.run_steps(actions.build_install(self.ctx, ["mousepad"]))
         self.assertTrue(ok)
-        self.assertEqual([c[0] for c in self.runner.calls], ["snapper", "pacman"])
-        self.assertTrue(any("warning" in l for l in lines))
-
-    def test_explicit_snapshot_failure_is_fatal(self):
-        self.ctx.snapshots_available = lambda: True
-        self.runner.fail_on = "snapper"
-        ok, _, _ = self.run_steps(actions.build_snapshot(self.ctx, "manual"))
-        self.assertFalse(ok)
+        self.assertNotIn("snapper", [c[0] for c in self.runner.calls])
+        self.assertNotIn("CreateSnapshot", actions.ACTIONS)
+        self.assertNotIn("WritePrivacy", actions.ACTIONS)
 
     def test_failed_command_stops_sequence(self):
         self.runner.fail_on = "systemctl"
@@ -342,22 +328,11 @@ class DispatcherTests(Env):
         self.assertIn("action=WriteDropin", log)
         self.assertNotIn("zram-size", log)
 
-    def test_privacy_writes_one_fixed_file_from_the_level_name(self):
-        from heiss_core import privacy as pv
+    def test_removed_methods_are_refused(self):
         d = self.make()
-        d.handle(":1.5", 1000, "WritePrivacy", ("maximum",))
-        d.join()
-        self.assertEqual(self.auth.asked[-1][1], "org.heiss.config.write")
-        self.assertEqual(self.events[-1][2][1], True)
-        with open(os.path.join(self.root, pv.NM_DROPIN.lstrip("/"))) as f:
-            self.assertEqual(f.read(), pv.dropins("maximum")[0]["content"])
-
-    def test_privacy_refuses_anything_but_a_level_name(self):
-        d = self.make()
-        for bad in ("paranoid", "", "../../etc/passwd", "/etc/NetworkManager/conf.d/x.conf"):
+        for method in ("WritePrivacy", "CreateSnapshot"):
             with self.assertRaises(HelperError):
-                d.handle(":1.5", 1000, "WritePrivacy", (bad,))
-        self.assertFalse(os.path.exists(os.path.join(self.root, "etc", "NetworkManager")))
+                d.handle(":1.5", 1000, method, ("x",))
 
     def test_audit_neutralizes_control_characters(self):
         from heiss_helper.audit import clean
@@ -493,7 +468,7 @@ class DataFiles(unittest.TestCase):
                      "SystemCallArchitectures": "native",
                      "RestrictAddressFamilies": "AF_UNIX AF_INET AF_INET6 AF_NETLINK"}.items():
             self.assertEqual(opts.get(k), v, k)
-        # Deliberately absent: each would break pacman, mkinitcpio, grub or snapper (docs/SECURITY-MODEL.md, item 12).
+        # Deliberately absent: each would break pacman, mkinitcpio, or grub (docs/SECURITY-MODEL.md, item 12).
         for k in ("ProtectSystem", "ProtectKernelModules", "RestrictSUIDSGID", "PrivateDevices", "CapabilityBoundingSet",
                   "MemoryDenyWriteExecute", "RestrictNamespaces", "SystemCallFilter"):
             self.assertNotIn(k, opts, k)

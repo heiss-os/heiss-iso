@@ -12,7 +12,6 @@ from heiss_core import hardware as hw
 from heiss_core.errors import ValidationError
 from heiss_core import hwremove
 from heiss_core import manifest as mf
-from heiss_core import privacy as pv
 from heiss_core import state as st
 
 from . import policy
@@ -21,7 +20,6 @@ from .runner import Runner
 
 MIN_FREE_BYTES = 1 << 30   # 1 GiB free before install/update
 PACMAN_LOCK = "/var/lib/pacman/db.lck"
-SNAPPER_ROOT_CONFIG = "/etc/snapper/configs/root"
 
 
 @dataclass
@@ -84,9 +82,6 @@ class Context:
     def free_bytes(self):
         return shutil.disk_usage(self.root).free
 
-    def snapshots_available(self):
-        return shutil.which("snapper") is not None and os.path.exists(os.path.join(self.root, SNAPPER_ROOT_CONFIG.lstrip("/")))
-
 
 # ---- step functions ----
 
@@ -98,17 +93,6 @@ def _check_pacman_free(ctx, emit):
 def _check_space(ctx, emit):
     if ctx.free_bytes() < MIN_FREE_BYTES:
         raise HelperError("Failed", "less than 1 GiB free on the system partition")
-
-
-def _snapshot_step(desc):
-    def run(ctx, emit):
-        if not ctx.snapshots_available():
-            emit("snapshots are not available on this system, continuing without one")
-            return
-        rc = ctx.runner.run(["snapper", "-c", "root", "create", "--description", desc], emit, timeout=600)
-        if rc != 0:
-            raise HelperError("Failed", "snapshot failed (exit %d)" % rc)
-    return Step("snapshot", func=run, optional=True)
 
 
 def _dropin_step(path, content):
@@ -133,7 +117,7 @@ def build_install(ctx, names):
         emit("recorded %d new package(s) as installed by Heiss" % len(new))
 
     return [Step("check lock", func=_check_pacman_free), Step("check space", func=_check_space),
-            _snapshot_step("Heiss: before installing packages"), Step("remember installed", func=remember),
+            Step("remember installed", func=remember),
             Step("install", argv=["pacman", "-S", "--needed", "--noconfirm", "--"] + names),
             Step("record ownership", func=record)]
 
@@ -145,7 +129,6 @@ def build_remove(ctx, names):
         c.update_state(lambda d: d.__setitem__("packages", [p for p in d["packages"] if p not in names]))
 
     return [Step("check lock", func=_check_pacman_free),
-            _snapshot_step("Heiss: before removing packages"),
             Step("remove", argv=["pacman", "-R", "--noconfirm", "--"] + names),   # no -s: never cascades
             Step("record ownership", func=record)]
 
@@ -186,13 +169,6 @@ def build_dropin(ctx, path):
     return [_dropin_step(path, content)]
 
 
-def build_privacy(ctx, level):
-    """Write the network drop-in of a privacy level. No service is restarted: NetworkManager reads it when it
-    starts or is reloaded."""
-    level = policy.check_privacy_level(level)
-    return [_dropin_step(d["path"], d["content"]) for d in pv.dropins(level)]
-
-
 def _dropin_remove_step(path, content):
     def run(ctx, emit):
         try:
@@ -231,15 +207,7 @@ def build_post_action(ctx, action_id):
 
 def build_update(ctx):
     return [Step("check lock", func=_check_pacman_free), Step("check space", func=_check_space),
-            _snapshot_step("Heiss: before system update"),
             Step("update", argv=["pacman", "-Syu", "--noconfirm"])]   # always a full upgrade
-
-
-def build_snapshot(ctx, description):
-    desc = policy.check_snapshot_description(description)
-    s = _snapshot_step(desc)
-    s.optional = False
-    return [s]
 
 
 @dataclass(frozen=True)
@@ -257,10 +225,8 @@ ACTIONS = {a.method: a for a in (
     Action("AdoptPackages", "org.heiss.packages.adopt", "as", build_adopt),
     Action("SetServices", "org.heiss.services.manage", "asas", build_services),
     Action("WriteDropin", "org.heiss.config.write", "s", build_dropin),
-    Action("WritePrivacy", "org.heiss.config.write", "s", build_privacy),
     Action("RunPostAction", "org.heiss.postaction.run", "s", build_post_action),
     Action("UpdateSystem", "org.heiss.system.update", "", build_update),
-    Action("CreateSnapshot", "org.heiss.snapshot.create", "s", build_snapshot),
 )}
 
 

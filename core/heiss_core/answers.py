@@ -8,7 +8,6 @@ LEVELS = ("beginner", "confident", "advanced")
 THEMES = ("dark", "light", "auto")
 ANIMATIONS = ("full", "reduced", "off")
 UPDATE_POLICIES = ("notify", "download", "weekly")
-PRIVACY = ("standard", "enhanced", "maximum")
 LANGUAGES = ("en", "ru")
 
 DEFAULTS = {
@@ -19,7 +18,6 @@ DEFAULTS = {
     "addons": [],
     "appearance": {"theme": "auto", "animations": "full"},
     "software": {"flathub": False, "update_policy": "notify"},
-    "privacy": {"level": "standard"},
 }
 
 # version N -> function(doc) returning a document of version N+1
@@ -28,6 +26,7 @@ MIGRATIONS: dict = {}
 
 def migrate(doc, migrations=None):
     migrations = MIGRATIONS if migrations is None else migrations
+    doc = {k: v for k, v in doc.items() if k != "privacy"}   # privacy levels were removed (2026-11-19): an old file may still have the section
     v = doc.get("schema_version")
     if not isinstance(v, int) or v < 0:
         raise ValidationError("answers: schema_version missing or invalid")
@@ -67,7 +66,6 @@ def validate(doc, known_profiles=None, known_addons=None):
     _choice(out["appearance"]["theme"], THEMES, "appearance.theme")
     _choice(out["appearance"]["animations"], ANIMATIONS, "appearance.animations")
     _choice(out["software"]["update_policy"], UPDATE_POLICIES, "software.update_policy")
-    _choice(out["privacy"]["level"], PRIVACY, "privacy.level")
     if not isinstance(out["software"]["flathub"], bool):
         raise ValidationError("answers: software.flathub must be true or false")
     if not isinstance(out["addons"], list) or not all(isinstance(a, str) for a in out["addons"]):
