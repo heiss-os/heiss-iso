@@ -22,6 +22,17 @@ def pf2_name(path):
     return data[i + 8:i + 8 + n].rstrip(b"\0").decode()
 
 
+def pf2_height(path):
+    """Ascent + descent of a .pf2 font: the height one line of text needs."""
+    with open(path, "rb") as f:
+        data = f.read(400)
+    out = 0
+    for tag in (b"ASCE", b"DESC"):
+        i = data.index(tag)
+        out += int.from_bytes(data[i + 8:i + 10], "big")
+    return out
+
+
 class Theme(unittest.TestCase):
     def test_every_font_the_theme_names_exists_with_that_exact_name(self):
         theme = "\n".join(l for l in read(THEME, "theme.txt").splitlines() if not l.lstrip().startswith("#"))
@@ -29,7 +40,7 @@ class Theme(unittest.TestCase):
         self.assertTrue(used)
         have = {pf2_name(os.path.join(THEME, f)) for f in os.listdir(THEME) if f.endswith(".pf2")}
         self.assertEqual(used - have, set(), "theme names a font that no .pf2 file provides")
-        self.assertEqual(have, {"Inter Medium Regular %d" % s for s in (16, 24)})   # no Regular-weight leftovers
+        self.assertEqual(have, {"Inter Medium Regular %d" % s for s in (18, 26)})   # no Regular-weight leftovers
 
     def test_layout_is_one_centred_block_that_fits_640x480_and_larger(self):
         theme = read(THEME, "theme.txt")
@@ -60,12 +71,29 @@ class Theme(unittest.TestCase):
         self.assertEqual((int.from_bytes(head[16:20], "big"), int.from_bytes(head[20:24], "big")), (logo_w, logo_h))
         self.assertEqual(expr("left", "image"), (50, -logo_w // 2))
 
+    def test_a_menu_row_fits_its_font_and_the_footer_label_fits_its_font(self):
+        theme = read(THEME, "theme.txt")
+        menu = re.search(r"\+ boot_menu \{(.*?)\n\}", theme, re.S).group(1)
+        label = re.search(r"\+ label \{(.*?)\n\}", theme, re.S).group(1)
+        num = lambda block, k: int(re.search(r"\b%s = (\d+)" % k, block).group(1))  # noqa: E731
+        row = pf2_height(os.path.join(THEME, "inter-medium-26.pf2"))
+        self.assertGreaterEqual(num(menu, "item_height"), row, "a menu row is shorter than its text")
+        rows = num(menu, "height") // (num(menu, "item_height") + num(menu, "item_spacing"))
+        self.assertGreaterEqual(rows, 5, "fewer than five rows are visible")
+        self.assertGreaterEqual(num(label, "height"), pf2_height(os.path.join(THEME, "inter-medium-18.pf2")))
+        self.assertIn('item_font = "Inter Medium Regular 26"', menu)
+
     def test_installed_menu_switches(self):
         sh = read(PROFILE, "airootfs/usr/local/bin/heiss-boot-branding.sh")
         self.assertIn("setvar GRUB_DISABLE_BOOTNEXT true", sh)       # 31_efi_bootnext entries
         self.assertIn('HEISS_GRUB_GFXMODE:-auto}', sh)
         self.assertIn("setvar GRUB_GFXPAYLOAD_LINUX keep", sh)
         self.assertIn("setvar GRUB_TERMINAL_OUTPUT gfxterm", sh)
+
+    def test_a_rerun_removes_every_old_inter_font_before_copying_the_theme(self):
+        sh = read(PROFILE, "airootfs/usr/local/bin/heiss-boot-branding.sh")
+        rm = sh.index("rm -f /boot/grub/themes/heiss/inter-*.pf2")
+        self.assertLess(rm, sh.index("cp -a /usr/share/heiss/grub-theme/. /boot/grub/themes/heiss/"))
 
 
 class LiveMenu(unittest.TestCase):

@@ -22,7 +22,8 @@ See the phase and round sections below. Phases 0 to 7 are merged; round 23 (pre-
 
 ## Next
 
-- H2a (#129) and H2b (#130) are merged. H2c is in review (branch `refactor/remove-privacy-verbosity-kde`: privacy levels, snapshots, `kde_settings`, `kwriteconfig` and the dead `wizard.py` removed from `heiss-core` and the helper; `heiss-core` pkgrel 25, `heiss-helper` pkgrel 8; Not verified: see the H2c block of the FINAL VM TEST LIST), then H4 (GRUB font and layout, Tier A, the owner adds the label); then stop and wait for H3 (terminal installer, strongest model).
+- H2a (#129), H2b (#130) and H2c (#131) are merged (H2c: privacy levels, snapshots, `kde_settings`, `kwriteconfig` and the dead `wizard.py` removed from `heiss-core` and the helper; `heiss-core` pkgrel 25, `heiss-helper` pkgrel 8; Not verified: see the H2c block of the FINAL VM TEST LIST). H4 is next, see below; then stop and wait for H3 (terminal installer, strongest model).
+- H4 (boot look: GRUB fonts Inter Medium 26 for the menu and 18 for the label and terminal, layout re-balanced, Tier A, needs the label `design-approved`) is in review (branch `feat/grub-look`); then stop and wait for H3. Not verified: see the H4 block of the FINAL VM TEST LIST.
 - First ISO build and static inspection of the image, then the owner's VM run of the FINAL VM TEST LIST. Later: new neutral wallpapers (Btrfs and snapshots were removed from the plan, see DECISIONS 2026-11-18).
 
 ## Open questions
@@ -332,7 +333,7 @@ Added in round 23 PR 5. Each line is run in part 3 of `heiss-task-28.md` (read-o
 - [ ] No "(EFI BootNext)" lines: `grep -c BootNext /boot/grub/grub.cfg` prints 0; `grep GRUB_DISABLE_BOOTNEXT /etc/default/grub` prints `GRUB_DISABLE_BOOTNEXT=true`.
 - [ ] Live ISO, UEFI: the boot menu shows Heiss OS Live, safe graphics, speech, Memtest86+ and no "EFI Shell"; safe graphics boots to a desktop (`cat /proc/cmdline` contains `nomodeset`).
 - [ ] Live ISO, BIOS: the syslinux menu has the same entries; "safe graphics" works the same way.
-- [ ] Re-run on an existing install: `sudo /usr/local/bin/heiss-boot-branding.sh` (only if the script is still there; on a normal install it removes itself, then mark n/a), `ls /boot/grub/themes/heiss/*.pf2`; expect only `inter-medium-16.pf2` and `inter-medium-24.pf2`.
+- [ ] Re-run on an existing install: `sudo /usr/local/bin/heiss-boot-branding.sh` (only if the script is still there; on a normal install it removes itself, then mark n/a), `ls /boot/grub/themes/heiss/*.pf2`; expect only `inter-medium-16.pf2` and `inter-medium-24.pf2` (superseded by H4: now `inter-medium-18.pf2` and `inter-medium-26.pf2`, see the H4 block).
 - [ ] Live session: `pacman -Q edk2-shell` prints "was not found"; the Memtest86+ entry starts the RAM test (UEFI and BIOS).
 - [ ] Live ISO booted through GRUB (`grub.cfg`/`loopback.cfg`, only if you boot it that way, otherwise n/a): the same entries, hotkey `g` safe graphics, `s` speech.
 - [ ] How long until the first menu appears in the VM (stopwatch from power on), with and without the CD attached: if it is more than 10 s, say so, the cause is the firmware and not the menu.
@@ -422,6 +423,15 @@ H1c touches no Tier A file. `heiss-desktop` pkgrel 2 and `heiss-core` pkgrel 23:
 - [ ] A machine that still has an old `/etc/heiss/profile.toml` with a `[privacy]` section (for example from the KDE preview image) / `heiss profile diff` loads it without an error (the section is ignored).
 - [ ] Not run locally (CI runs them): shellcheck, the workflow YAML parse and the D-Bus-bus tests of the helper; check the CI result of this PR.
 - [ ] `pacman -Qi heiss-helper | grep -i optional` / expect no `snapper` line. `heiss check` / expect no new WARN or FAIL from this change.
+
+### Direction change H4 (boot look, GRUB fonts and layout, 2026-11-19)
+Tier A files changed (label `design-approved`): `grub-theme/theme.txt`, the two `.pf2` fonts, `heiss-boot-branding.sh` (one `rm -f` line). Rebuild the ISO. Image state: the newest ISO predates this PR's change to `profile/` (fonts, `theme.txt`, `heiss-boot-branding.sh`); it was not rebuilt and not audited with `scripts/audit-image.sh` for this PR ("image not verified"). Rebuild, then run the branding-auditor on the new image. The theme only applies to the installed system's GRUB; the live menu is the text menu and is unchanged.
+- [ ] Installed system, reboot (BIOS and UEFI VM, 1024x768 and the VM's larger mode) / expect the logo, then the menu lines (Heiss OS Linux, Advanced options for Heiss OS Linux, UEFI Firmware Settings; one more per extra OS found by os-prober) in a clean, solid Inter font with no gaps or steps in the letters, the selected line in sand colour on the bar, "Heiss OS" at the bottom; send a screenshot (only offscreen mock renders of the glyph bitmaps were looked at, never GRUB itself).
+- [ ] 640x480 fallback (VM setting `GRUB_GFXMODE=640x480` in `/etc/default/grub`, then `sudo grub-mkconfig -o /boot/grub/grub.cfg`) / expect the block fits, the text does not touch the bottom label; with a second OS found by os-prober (five lines in total) the fifth line does not overlap "Heiss OS".
+- [ ] Long entry names: with a Windows entry on `/dev/sda1` (`Windows Boot Manager (on /dev/sda1)`) / expect it fits the bar at 26 px (488 px of 532 px by glyph widths, not seen in GRUB). Also look at longer names (an NVMe Windows entry is 572 px, the Advanced-options fallback line 686 px by glyph widths): say whether GRUB cuts them off cleanly or draws over the edge of the bar; this is not examined.
+- [ ] An install made by an earlier image that is re-run through `heiss-boot-branding.sh` / expect `ls /boot/grub/themes/heiss` shows `inter-medium-18.pf2` and `inter-medium-26.pf2` and no `inter-medium-16.pf2` / `inter-medium-24.pf2` (normal installs run it once).
+- [ ] On the rebuilt ISO: `bash scripts/audit-image.sh` / expect no FAIL, and the grub-theme files list `inter-medium-18.pf2` and `inter-medium-26.pf2` only (this PR's profile change is not yet audited).
+- [ ] Look at the weight: if the 26 px Medium text looks too heavy or too light, say so; the alternatives (SemiBold, 22 px) were rendered and are one line in `scripts/gen-grub-fonts.sh` away.
 
 ### Direction change H2b (Heiss settings window, 2026-11-18)
 `heiss-control` pkgrel 20 (now in the ISO list), `heiss-desktop` pkgrel 4: rebuild the packages and the ISO. Tier A untouched.
