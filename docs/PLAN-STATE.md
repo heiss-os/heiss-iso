@@ -22,8 +22,8 @@ See the phase and round sections below. Phases 0 to 7 are merged; round 23 (pre-
 
 ## Next
 
-- H2a (#129), H2b (#130) and H2c (#131) are merged (H2c: privacy levels, snapshots, `kde_settings`, `kwriteconfig` and the dead `wizard.py` removed from `heiss-core` and the helper; `heiss-core` pkgrel 25, `heiss-helper` pkgrel 8; Not verified: see the H2c block of the FINAL VM TEST LIST). H4 is next, see below; then stop and wait for H3 (terminal installer, strongest model).
-- H4 (boot look: GRUB fonts Inter Medium 26 for the menu and 18 for the label and terminal, layout re-balanced, Tier A, needs the label `design-approved`) is in review (branch `feat/grub-look`); then stop and wait for H3. Not verified: see the H4 block of the FINAL VM TEST LIST.
+- H2a (#129), H2b (#130) and H2c (#131) are merged (H2c: privacy levels, snapshots, `kde_settings`, `kwriteconfig` and the dead `wizard.py` removed from `heiss-core` and the helper; `heiss-core` pkgrel 25, `heiss-helper` pkgrel 8; Not verified: see the H2c block of the FINAL VM TEST LIST). H4 (#132) is merged; stop and wait for H3 (terminal installer, strongest model), then H5.
+- H4 (boot look: GRUB fonts Inter Medium 26 for the menu and 18 for the label and terminal, layout re-balanced, Tier A, label `design-approved`) is merged (#132). Not verified: real GRUB rendering and the image (not rebuilt after the change), see the H4 block of the FINAL VM TEST LIST. Next: H3 (waits for the strongest model), then H5.
 - First ISO build and static inspection of the image, then the owner's VM run of the FINAL VM TEST LIST. Later: new neutral wallpapers (Btrfs and snapshots were removed from the plan, see DECISIONS 2026-11-18).
 
 ## Open questions
