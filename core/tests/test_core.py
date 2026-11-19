@@ -95,9 +95,14 @@ class Answers(unittest.TestCase):
 
     def test_rejects(self):
         for bad in ({"level": "god"}, {"nope": 1}, {"appearance": {"theme": "pink"}}, {"addons": ["a", "a"]},
-                    {"software": {"flathub": "yes"}}, {"privacy": {"x": 1}}):
+                    {"software": {"flathub": "yes"}}, {"appearance": {"x": 1}}):
             with self.assertRaises(ValidationError, msg=str(bad)):
                 ans.validate(bad)
+
+    def test_an_old_file_with_a_privacy_section_still_loads_and_the_section_is_dropped(self):
+        doc = ans.loads('schema_version = 1\nprofile = "cyber"\n\n[privacy]\nlevel = "maximum"\n')
+        self.assertNotIn("privacy", doc)
+        self.assertEqual(doc["profile"], "cyber")
 
     def test_unknown_profile(self):
         with self.assertRaises(ValidationError):

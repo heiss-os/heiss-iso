@@ -26,14 +26,6 @@ class FakeHelper:
             raise HeissError("simulated failure")
 
 
-class FakeLocal:
-    def __init__(self):
-        self.calls = []
-
-    def kwriteconfig(self, *a):
-        self.calls.append(a)
-
-
 def plan_for(profile, addons=(), state=None, system=None, adopt=False):
     m = mf.load_dir(PROFILES)
     return resolver.resolve(ans.validate({"profile": profile, "addons": list(addons)}), m, state or dict(EMPTY),
@@ -71,10 +63,10 @@ class Order(unittest.TestCase):
 
 
 class Apply(unittest.TestCase):
-    def run_apply(self, plan, helper=None, system=None, local=None):
+    def run_apply(self, plan, helper=None, system=None):
         lines, steps = [], []
         helper = helper or FakeHelper()
-        n = ap.apply_plan(plan, helper, system or FakeSystem(), lines.append, local or FakeLocal(),
+        n = ap.apply_plan(plan, helper, system or FakeSystem(), lines.append,
                           on_step=lambda *a: steps.append(a))
         return n, helper, lines, steps
 
@@ -123,20 +115,10 @@ class Apply(unittest.TestCase):
             self.run_apply(plan, helper)
         self.assertEqual(helper.calls, [])
 
-    def test_kde_settings_run_locally_after_helper_calls(self):
-        plan = plan_for("base")
-        plan.kde_settings = [{"file": "kdeglobals", "group": "General", "key": "ColorScheme", "value": "HeissDark"}]
-        local = FakeLocal()
-        self.run_apply(plan, local=local)
-        self.assertEqual(local.calls, [("kdeglobals", "General", "ColorScheme", "HeissDark")])
-
-    def test_kde_settings_not_written_when_helper_fails(self):
-        plan = plan_for("base")
-        plan.kde_settings = [{"file": "a", "group": "b", "key": "c", "value": "d"}]
-        local = FakeLocal()
-        with self.assertRaises(HeissError):
-            self.run_apply(plan, FakeHelper(fail_at="InstallPackages"), local=local)
-        self.assertEqual(local.calls, [])
+    def test_no_privacy_or_kde_calls_exist(self):
+        for plan in (plan_for("base"), plan_for("cyber")):
+            self.assertFalse({c[0] for c in ap.build_calls(plan)} & {"WritePrivacy", "CreateSnapshot"})
+            self.assertFalse(hasattr(plan, "kde_settings") or hasattr(plan, "privacy"))
 
 
 class CliApply(unittest.TestCase):

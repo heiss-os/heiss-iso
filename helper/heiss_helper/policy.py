@@ -1,17 +1,14 @@
 """Trusted allowlists and parameter validation (pure, no side effects except write_dropin)."""
 import os
-import re
 import stat
 
 from heiss_core import hardware as hw
 from heiss_core import manifest as mf
-from heiss_core import privacy as pv
 from heiss_core import state as st
 
 from .errors import invalid
 
 MAX_ITEMS = 500
-SNAPSHOT_DESC_RE = re.compile(r"^[A-Za-z0-9 .:_()/+-]{1,80}$")
 # post-actions are ids; the argv is fixed here, never taken from a client or a manifest
 POST_ACTION_ARGV = {
     "update-desktop-database": ["update-desktop-database", "-q"],
@@ -113,23 +110,10 @@ def check_dropin(path, trusted):
     return path, trusted.dropins[path]
 
 
-def check_privacy_level(level):
-    """Only a level name comes from the client; path and content come from heiss_core.privacy."""
-    if not isinstance(level, str) or level not in pv.LEVELS:
-        raise invalid("unknown privacy level")
-    return level
-
-
 def check_post_action(action_id):
     if not isinstance(action_id, str) or action_id not in POST_ACTION_ARGV:
         raise invalid("unknown post action")
     return list(POST_ACTION_ARGV[action_id])
-
-
-def check_snapshot_description(desc):
-    if not isinstance(desc, str) or not SNAPSHOT_DESC_RE.fullmatch(desc):
-        raise invalid("invalid snapshot description")
-    return desc
 
 
 def write_dropin(path, content, root="/"):

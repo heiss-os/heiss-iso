@@ -14,7 +14,6 @@ from . import theme as thememod
 from . import apply as applymod
 from . import hardware as hw
 from . import hwremove
-from . import privacy as pv
 from . import manifest as mf
 from . import resolver, state as st
 from .errors import HeissError
@@ -78,13 +77,10 @@ def _chosen_hardware(args, catalog):
     if getattr(args, "sub", "") == "apply" and not getattr(args, "dry_run", False):
         for i in sorted(set(ids)):
             if hw.needs_confirmation(catalog[i]) and i not in confirmed:
-                snap = ("A snapshot is set up (snapper), but check it before you continue."
-                        if hw.snapshot_available() else
-                        "No snapshot is set up, so going back means removing the packages.")
                 raise HeissError("hardware profile %s needs your explicit confirmation: it installs a graphics driver "
-                                 "and a wrong choice can leave a black screen. %s If the screen stays black, restart "
+                                 "and a wrong choice can leave a black screen. If the screen stays black, restart "
                                  "and choose \"Heiss OS, safe graphics\" in the boot menu. Pass --confirm-hardware %s "
-                                 "to go on." % (i, snap, i))
+                                 "to go on." % (i, i))
     return [catalog[i] for i in sorted(set(ids))]
 
 
@@ -100,7 +96,7 @@ def _build(args, system=None):
     state, catalog = st.load(state_path), _hardware_catalog()
     return resolver.resolve(doc, manifests, state, system or PacmanSystem(), adopt=getattr(args, "adopt", False),
                             hardware=_chosen_hardware(args, catalog), catalog=catalog,
-                            matching=_matching_hardware(catalog), privacy=getattr(args, "privacy", None))
+                            matching=_matching_hardware(catalog))
 
 
 def _ask(prompt):
@@ -134,7 +130,6 @@ def main(argv=None, system=None, out=sys.stdout, helper=None, confirm=None, chec
         sp.add_argument("--hardware", action="append", metavar="ID", help="also apply this hardware profile (see 'hw detect')")
         sp.add_argument("--confirm-hardware", action="append", metavar="ID",
                         help="confirm a hardware profile that is not safe by default (needed by apply, see 'hw detect')")
-        sp.add_argument("--privacy", choices=pv.LEVELS, help="also apply this privacy level (network MAC, screen lock)")
         if name == "apply":
             sp.add_argument("--dry-run", action="store_true")
             sp.add_argument("--yes", action="store_true", help="do not ask for confirmation")

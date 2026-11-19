@@ -13,7 +13,7 @@ Status: proposal. Nothing here is implemented yet. Items marked CONFIRM need an 
                                         | D-Bus (system bus), polkit
                               heiss-helper  org.heiss.Helper1  (root, systemd-activated)
                                         |
-                  pacman | systemctl | drop-in config writes | snapper | flatpak
+                  pacman | systemctl | drop-in config writes | flatpak
 ```
 
 Rule: the GUI never runs as root; the helper accepts only structured commands (action id + validated parameters).
@@ -40,18 +40,18 @@ Verified in the repositories (2026-11-09): `pyside6 6.12.0-3`, `qt6-declarative 
 
 ## 4. Resolver and execution
 
-answers + manifests + current state -> plan (install / enable / configure / remove). `--dry-run` prints the plan. Execution is idempotent, atomic per step, resumable. Never `pacman -Sy` without `-u`. Before applying: snapshot if available, free-space check, network check, lock against parallel pacman runs.
+answers + manifests + current state -> plan (install / enable / configure / remove). `--dry-run` prints the plan. Execution is idempotent, atomic per step, resumable. Never `pacman -Sy` without `-u`. Before applying: free-space check, network check, lock against parallel pacman runs.
 
 ## 5. Helper security model (summary; full text goes to `docs/SECURITY-MODEL.md` in Phase 3)
 
-- Separate polkit actions: install packages, manage services, write config, snapshots.
+- Separate polkit actions: install packages, manage services, write config (snapshots and privacy writes were removed, DECISIONS 2026-11-19).
 - Package names validated against an allowlist built from the manifests; paths normalized; writes only into drop-in directories.
 - No arbitrary command strings. Logging to journald (tag `heiss`) plus an audit log without secrets.
 - First iteration may use `pkexec` + allowlist, with a written plan to move to D-Bus.
 
 ## 6. Data flow examples
 
-1. Apply (`heiss profile apply`; the wizard that used to start it was removed in H2a): answers saved -> resolver builds plan -> user sees summary -> core sends action requests to the helper one by one -> helper snapshots, runs, reports progress -> state file updated.
+1. Apply (`heiss profile apply`; the wizard that used to start it was removed in H2a): answers saved -> resolver builds plan -> user sees summary -> core sends action requests to the helper one by one -> helper runs, reports progress -> state file updated.
 2. Offline: network actions go to a "Pending actions" queue stored next to the answers; (the saved-actions queue was removed in H2b: run `heiss profile apply` again when online).
 3. Theme switch: see "Theme sync" below.
 

@@ -25,8 +25,7 @@ ALLOWED = {"schema_version", "id", "name", "description", "safe_by_default", "ma
 # heiss-safe-graphics, so a bad driver can be backed out of (docs/hardware/SAFE-FALLBACK.md, answer 3 A).
 REQUIRES = {"safe-graphics-entry"}
 SAFE_ENTRY_PATH = "/etc/grub.d/41_heiss_safe"
-SNAPPER_ROOT = "/etc/snapper/configs/root"
-# Readable vendor names, shared by every screen that shows hardware (wizard, Control Center, reports).
+# Readable vendor names, shared by every screen that shows hardware (settings window, reports).
 # CPU: the raw `vendor_id` of /proc/cpuinfo. PCI: the vendor ids that matter on a desktop or in a VM.
 CPU_VENDORS = {"GenuineIntel": "Intel", "AuthenticAMD": "AMD", "HygonGenuine": "Hygon", "CentaurHauls": "Centaur"}
 PCI_VENDORS = {"8086": "Intel", "1002": "AMD", "10de": "NVIDIA", "80ee": "VirtualBox", "15ad": "VMware",
@@ -147,7 +146,7 @@ class HwProfile:
     dropins: tuple = ()
     post_actions: tuple = ()
     warnings: dict = field(default_factory=dict)
-    recovery: dict = field(default_factory=dict)   # optional short plain-language recovery step (wizard); warnings holds the full text
+    recovery: dict = field(default_factory=dict)   # optional short plain-language recovery step; warnings holds the full text
     requires: tuple = ()                            # subset of REQUIRES; unmet means "not offered" (see capabilities)
     keep_on_remove: tuple = ()                      # packages of this profile that stay when the profile is removed (hwremove.py)
 
@@ -289,12 +288,6 @@ def capabilities(safe_entry_path=None):
 def needs_confirmation(profile):
     """A profile that is not safe by default is only applied after an explicit confirmation (docs/hardware/SAFE-FALLBACK.md)."""
     return not profile.safe_by_default
-
-
-def snapshot_available(path=None):
-    """True when snapper is set up for the root filesystem, so a change could be rolled back by a snapshot.
-    Listing snapshots needs root, so this only looks for the configuration file."""
-    return os.path.isfile(path or SNAPPER_ROOT)
 
 
 def unmet(profile, caps):

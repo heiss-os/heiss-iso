@@ -40,8 +40,7 @@ class Anchors(unittest.TestCase):
         sys.path.insert(0, os.path.join(REPO, "core"))
         sys.path.insert(0, os.path.join(REPO, "helper"))
         from heiss_core import manifest as mf
-        from heiss_helper import policy
-        for rx, ok in ((mf.PKG_RE, "nmap"), (mf.UNIT_RE, "sshd.service"), (policy.SNAPSHOT_DESC_RE, "Before update")):
+        for rx, ok in ((mf.PKG_RE, "nmap"), (mf.UNIT_RE, "sshd.service")):
             self.assertTrue(rx.fullmatch(ok), ok)
             self.assertIsNone(rx.fullmatch(ok + "\n"), ok)
 
