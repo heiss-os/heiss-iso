@@ -4,24 +4,24 @@
 # selected_item_pixmap_style line when HEISS_GRUB_SELECT_BAR=0 (text color only).
 #
 # Fonts: GRUB fonts are 1-bit bitmaps, so the weight is Inter Medium (strokes stay solid;
-# Inter Regular broke into gaps). Built by scripts/gen-grub-fonts.sh as inter-medium-{16,24}.pf2;
+# Inter Regular broke into gaps). Built by scripts/gen-grub-fonts.sh as inter-medium-{18,26}.pf2;
 # grub-mkconfig loads every *.pf2 of the theme directory. The names below must match the files.
 desktop-image: "background.png"
 desktop-color: "#1E1F21"
 title-text: ""
-terminal-font: "Inter Medium Regular 16"
+terminal-font: "Inter Medium Regular 18"
 
 # Layout. GRUB does not scale images: logo.png is drawn at its own size (exactly 128x128, glyph centred,
 # transparent background). Everything is one block centred on the screen's vertical middle, so there is no
 # empty band above it and the spacing is the same at every resolution:
-#   logo 128 px, gap 32 px, menu 255 px (five rows of 44 + 6 px; this menu has four) = 415 px,
-#   block top = 50% - 207, footer label 36 px above the bottom edge.
-# At 640x480 the block runs from y=33 to y=448 and the label sits at y=444: only a fifth menu row would touch
-# it, and the menu has four. At 1024x768 it is y=177..592, at 1920x1080 y=333..748.
+#   logo 128 px, gap 28 px, menu 250 px (five rows of 46 + 4 px; this menu has four) = 406 px,
+#   block top = 50% - 203, footer label 36 px above the bottom edge.
+# At 640x480 the block runs from y=37 to y=443 and the label starts at y=444, so even a fifth menu row (a second
+# system found by os-prober) does not touch it. At 1024x768 it is y=181..587, at 1920x1080 y=337..743.
 + image {
     file = "logo.png"
     left = 50%-64
-    top = 50%-207
+    top = 50%-203
     width = 128
     height = 128
 }
@@ -30,14 +30,14 @@ terminal-font: "Inter Medium Regular 16"
     left = 50%-280
     top = 50%-47
     width = 560
-    height = 255
-    item_font = "Inter Medium Regular 24"
+    height = 250
+    item_font = "Inter Medium Regular 26"
     item_color = "#A9A7A1"
-    selected_item_font = "Inter Medium Regular 24"
+    selected_item_font = "Inter Medium Regular 26"
     selected_item_color = "#C9B28A"
-    item_height = 44
+    item_height = 46
     item_padding = 14
-    item_spacing = 6
+    item_spacing = 4
     selected_item_pixmap_style = "select_*.png"
     scrollbar = false
 }
@@ -46,9 +46,9 @@ terminal-font: "Inter Medium Regular 16"
     left = 50%-280
     top = 100%-36
     width = 560
-    height = 24
+    height = 26
     align = "center"
-    font = "Inter Medium Regular 16"
+    font = "Inter Medium Regular 18"
     color = "#A9A7A1"
     text = "Heiss OS"
 }

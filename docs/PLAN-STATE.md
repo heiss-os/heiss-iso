@@ -23,6 +23,7 @@ See the phase and round sections below. Phases 0 to 7 are merged; round 23 (pre-
 ## Next
 
 - H2a is merged (#129). H2b is in review (settings window with the ALT/SUPER switch; branch `feat/settings-window`; `heiss-control` rewritten, old Control Center and its runner deleted; Not verified: see the H2b block of the FINAL VM TEST LIST), then H2c (privacy, verbosity and KDE code removed), then H4 (GRUB font and layout, Tier A, the owner adds the label); then stop and wait for H3 (terminal installer, strongest model).
+- H4 (boot look: GRUB fonts Inter Medium 26 for the menu and 18 for the label and terminal, layout re-balanced, Tier A, needs the label `design-approved`) is in review (branch `feat/grub-look`); then stop and wait for H3. Not verified: see the H4 block of the FINAL VM TEST LIST.
 - First ISO build and static inspection of the image, then the owner's VM run of the FINAL VM TEST LIST. Later: new neutral wallpapers (Btrfs and snapshots were removed from the plan, see DECISIONS 2026-11-18).
 
 ## Open questions
@@ -413,6 +414,14 @@ H1c touches no Tier A file. `heiss-desktop` pkgrel 2 and `heiss-core` pkgrel 23:
 - [ ] Start time: `time heiss-welcome --force` in the VM / expect the window within about 2 s on the 4 GB VM; report the time (not measured; `docs/DIRECTION-HYPRLAND.md` section 8 says the Qt cost is unmeasured).
 - [ ] ISO size after `pyside6` and `qt6-wayland` joined `profile/packages.x86_64` / expect about +52 MiB plus `qt6-wayland` against the last image (`scripts/audit-image.sh`).
 - [ ] The window looks right in Dark and in Light (`heiss theme set light`, reopen) and at a small size; the offscreen renders (`python3 scripts/render-gui.py --only welcome`) were looked at, a real screenshot was not taken.
+
+### Direction change H4 (boot look, GRUB fonts and layout, 2026-11-19)
+Tier A files changed (label `design-approved`): `grub-theme/theme.txt`, the two `.pf2` fonts, `heiss-boot-branding.sh` (one `rm -f` line). Rebuild the ISO. The theme only applies to the installed system's GRUB; the live menu is the text menu and is unchanged.
+- [ ] Installed system, reboot (BIOS and UEFI VM, 1024x768 and the VM's larger mode) / expect the logo, then four lines (Heiss OS Linux, Advanced options, Heiss OS safe graphics, UEFI Firmware Settings) in a clean, solid Inter font with no gaps or steps in the letters, the selected line in sand colour on the bar, "Heiss OS" at the bottom; send a screenshot (only offscreen mock renders of the glyph bitmaps were looked at, never GRUB itself).
+- [ ] 640x480 fallback (VM setting `GRUB_GFXMODE=640x480` in `/etc/default/grub`, then `sudo grub-mkconfig -o /boot/grub/grub.cfg`) / expect the block fits, the text does not touch the bottom label; with a second OS found by os-prober (five lines) the fifth line does not overlap "Heiss OS".
+- [ ] Long entry names: with a Windows entry (`Windows Boot Manager (on /dev/sda1)`) / expect it fits the bar without cut-off at 26 px (the glyph widths say about 490 px of a 532 px text width, not seen in GRUB).
+- [ ] An install made by an earlier image that is re-run through `heiss-boot-branding.sh` / expect `ls /boot/grub/themes/heiss` shows `inter-medium-18.pf2` and `inter-medium-26.pf2` and no `inter-medium-16.pf2` / `inter-medium-24.pf2` (normal installs run it once).
+- [ ] Look at the weight: if the 26 px Medium text looks too heavy or too light, say so; the alternatives (SemiBold, 22 px) were rendered and are one line in `scripts/gen-grub-fonts.sh` away.
 
 ### Direction change H2b (Heiss settings window, 2026-11-18)
 `heiss-control` pkgrel 20 (now in the ISO list), `heiss-desktop` pkgrel 4: rebuild the packages and the ISO. Tier A untouched.

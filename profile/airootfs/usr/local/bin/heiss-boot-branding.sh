@@ -56,7 +56,7 @@ if [ -f "$G" ]; then
   fi
   if [ "$HEISS_GRUB_THEME" != 0 ] && [ -d /usr/share/heiss/grub-theme ]; then
     install -d /boot/grub/themes/heiss
-    rm -f /boot/grub/themes/heiss/inter-regular-*.pf2   # fonts of the earlier theme (a re-run on an existing install)
+    rm -f /boot/grub/themes/heiss/inter-regular-*.pf2 /boot/grub/themes/heiss/inter-medium-16.pf2 /boot/grub/themes/heiss/inter-medium-24.pf2   # fonts of the earlier themes (a re-run on an existing install)
     cp -a /usr/share/heiss/grub-theme/. /boot/grub/themes/heiss/
     T=/boot/grub/themes/heiss/theme.txt
     if [ "$HEISS_GRUB_SELECT_BAR" = 0 ]; then
